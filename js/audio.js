@@ -184,8 +184,47 @@
     pop: t => musicBox(84, t, 0.09, sfxBus),
     boop: t => { musicBox(55, t, 0.1, sfxBus); musicBox(54, t + 0.12, 0.08, sfxBus); },
     title: t => { bell(64, t, 0.05); bell(71, t + 0.25, 0.04); },
-    tap: t => musicBox(91, t, 0.025, sfxBus)
+    tap: t => musicBox(91, t, 0.025, sfxBus),
+    gem: t => { bell(93, t, 0.08); bell(98, t + 0.07, 0.06); bell(100, t + 0.14, 0.04); },
+    thump: t => thud(t, 70, 0.35, 0.4),
+    heart: t => { thud(t, 55, 0.3, 0.25); thud(t + 0.22, 50, 0.22, 0.25); },
+    door: t => { thud(t, 90, 0.25, 0.3); noise(t + 0.02, 0.25, 0.08, 400, 200); },
+    knock: t => [0, 0.18, 0.36].forEach(d => thud(t + d, 180, 0.2, 0.08)),
+    steps: t => [0, 0.35, 0.7, 1.05].forEach(d => { thud(t + d, 110, 0.12, 0.1); noise(t + d, 0.08, 0.03, 900, 500); }),
+    crowd: t => { noise(t, 2.2, 0.06, 500, 900); noise(t + 0.3, 1.8, 0.04, 1200, 700); },
+    wind: t => noise(t, 2.6, 0.07, 300, 1400),
+    fire: t => { for (let i = 0; i < 9; i++) noise(t + Math.random() * 1.4, 0.05, 0.05, 2500, 1200); noise(t, 1.5, 0.03, 300, 500); },
+    hammer: t => { thud(t, 220, 0.25, 0.06); bell(76, t, 0.03); },
+    plane: t => noise(t, 0.45, 0.09, 2600, 900),
+    sheep: t => { const o = ctx.createOscillator(), v = ctx.createOscillator(), vg = ctx.createGain(), g = ctx.createGain(), f = ctx.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = 420; v.frequency.value = 22; vg.gain.value = 18; v.connect(vg); vg.connect(o.frequency); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 2; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.07, t + 0.05); g.gain.linearRampToValueAtTime(0.05, t + 0.4); g.gain.linearRampToValueAtTime(0, t + 0.6); o.connect(f); f.connect(g); g.connect(out(sfxBus, 1, 0.3)); o.start(t); v.start(t); o.stop(t + 0.65); v.stop(t + 0.65); },
+    angel: t => { pad([72, 76, 79, 84], t, 2.2, 0.03); [84, 88, 91, 96].forEach((m, i) => bell(m, t + 0.15 * i, 0.05)); },
+    baby: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(660, t + 0.25); o.frequency.linearRampToValueAtTime(480, t + 0.7); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.08); g.gain.linearRampToValueAtTime(0, t + 0.75); o.connect(g); g.connect(out(sfxBus, 1, 0.5)); o.start(t); o.stop(t + 0.8); }
   };
+  function thud(t, f, vol, dur) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.05);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(out(sfxBus, 1, 0.3)); o.start(t); o.stop(t + dur + 0.05);
+  }
+
+  // 대사 말소리: 인물마다 높이가 다른 짧은 '톡'
+  const VOICE = { '사가랴': 150, '엘리사벳': 330, '요셉': 190, '마리아': 420, '할아버지': 135, '제사장': 170, '젊은 제사장': 230, '꼬마': 520, '이웃': 360, '천사': 600, '가브리엘': 600, '목자': 175, '여관 주인': 210, '랍비': 160, '친척': 260, '나': 440 };
+  let lastBlip = 0;
+  function blip(who) {
+    if (!on() || !ctx || ctx.state !== 'running') return;
+    const t = ctx.currentTime;
+    if (t - lastBlip < 0.045) return;
+    lastBlip = t;
+    try {
+      if (!who || /서판$/.test(who)) { noise(t, 0.035, 0.035, 2800, 1800); return; }
+      const f = (VOICE[who] || 280) * (0.94 + Math.random() * 0.12);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = who === '천사' || who === '가브리엘' ? 'sine' : 'triangle';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.045, t + 0.006); g.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+      o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + 0.07);
+    } catch (e) { /* 무시 */ }
+  }
   function sfx(name) {
     if (!on() || !ctx || ctx.state !== 'running' || !FX[name]) return;
     try { FX[name](ctx.currentTime + 0.01); } catch (e) { /* 무시 */ }
@@ -205,5 +244,5 @@
 
   // 장 분위기 → 곡
   const TONE_SONG = { ch0: 'night', ch1: 'veni', ch2: 'calm', ch3: 'joy', ch4: 'silent', end: 'silent', home: 'night' };
-  window.Sound = { sfx, music, setOn, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
+  window.Sound = { sfx, blip, music, setOn, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
 })();

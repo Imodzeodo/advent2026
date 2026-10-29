@@ -76,7 +76,7 @@
           <button class="btn ghost" id="cards">🃏 카드 도감 <small>${Core.starCount()}/${Core.starTotal()}</small></button>
           <button class="btn ghost" id="fame">📜 나의 기록</button>
           <button class="btn ghost" id="code">🔑 주일 암호 <small>${Object.keys(D.codes || {}).length}/4</small></button>
-          <button class="btn ghost" id="diary">📔 일기장</button>
+          <button class="btn ghost" id="diary">📔 묵상 노트</button>
           <button class="btn ghost wide" id="settings">⚙️ 설정</button>
         </div>` : ''}
         <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
@@ -154,25 +154,65 @@
 
   /* ---------- 일기장 ---------- */
   function diary() {
-    const D = Core.data;
     const root = show('diary', 'page');
-    const M = D.medi || {};
-    const items = EPISODES.filter(e => (D.diary[e.id] && D.diary[e.id].a) || (M[e.id] && M[e.id].a.some(Boolean)));
+    const list = Note.entries();
     root.innerHTML = `
       ${testBanner()}
-      <div class="page-head"><button class="back">←</button><h1>📔 일기장</h1></div>
-      <p class="page-note">이 폰에만 저장돼 있어요. 아무도 볼 수 없어요.</p>
-      ${items.length ? items.map(e => {
-        const ch = CHAPTERS.find(c => c.n === e.ch);
-        return `<article class="diary-item tone-${ch.tone}">
-          <div class="di-meta">${esc(ch.label)} · ${esc(e.day)} · ${esc(e.title)}</div>
-          ${D.diary[e.id] && D.diary[e.id].a ? `<div class="di-q">${esc(D.diary[e.id].q)}</div><div class="di-a">${esc(D.diary[e.id].a)}</div>` : ''}
-          ${M[e.id] ? M[e.id].q.map((q, i) => M[e.id].a[i] ? `<div class="di-q">📖 ${esc(q)}</div><div class="di-a">${esc(M[e.id].a[i])}</div>` : '').join('') : ''}
-          ${D.verse && D.verse[e.id] ? `<div class="di-v">마음에 남은 말씀 · ${esc((Bible.verses(D.verse[e.id])[0] || {}).label || '')}</div>` : ''}
-        </article>`;
-      }).join('') : `<p class="empty">아직 적은 일기가 없어요.</p>`}`;
+      <div class="page-head"><button class="back">←</button><h1>📔 묵상 노트</h1></div>
+      <p class="page-note">매일 적은 일기와 말씀 묵상이 여기 모여요. 이 폰에만 저장되고, 아무도 볼 수 없어요.</p>
+      ${list.length ? `<div class="export">
+        <button class="btn" id="ex-img">🖼 노트 이미지로 저장</button>
+        <div class="row"><button class="btn ghost" id="ex-copy">📋 글로 복사</button><button class="btn ghost" id="ex-txt">💾 파일(.txt)</button></div>
+      </div>` : ''}
+      ${list.length ? list.map(x => `
+        <article class="diary-item tone-${x.ch.tone}">
+          <div class="di-meta">${esc(x.ch.label)} · ${esc(Core.dateLabel(x.e.date))} ${esc(x.e.day)}</div>
+          <div class="di-title">${esc(x.e.title)} <small>${esc(x.e.read || '')}</small></div>
+          ${x.v ? `<div class="di-verse">“${esc(x.v.text)}” <small>${esc(x.v.label)}</small></div>` : ''}
+          ${x.qa.map(q => `<div class="di-q">${q.who === '말씀 묵상' ? '📖 ' : ''}${esc(q.q)}</div><div class="di-a">${esc(q.a)}</div>`).join('')}
+          ${x.mission ? `<div class="di-m">미션 · ${esc(x.mission)}</div>` : ''}
+        </article>`).join('') : `<p class="empty">아직 적은 묵상이 없어요.</p>`}`;
     root.querySelector('.back').onclick = home;
+    const img = root.querySelector('#ex-img');
+    if (img) img.onclick = async () => {
+      img.disabled = true; img.textContent = '노트를 그리는 중…';
+      const ps = await Note.pages();
+      img.disabled = false; img.textContent = '🖼 노트 이미지로 저장';
+      noteSheet(ps);
+    };
+    const cp = root.querySelector('#ex-copy');
+    if (cp) cp.onclick = async () => Player.toast((await Note.copy()) ? '복사했어요. 메모장이나 카톡에 붙여 넣어 보세요' : '복사가 안 되는 브라우저예요. 파일로 저장해 주세요');
+    const tx = root.querySelector('#ex-txt');
+    if (tx) tx.onclick = () => {
+      const a = document.createElement('a');
+      a.href = Note.txtUrl(); a.download = `묵상노트-${Core.data.nickname || '나'}.txt`;
+      document.body.appendChild(a); a.click(); a.remove();
+      if (Core.isKakao) Player.toast('카톡 안에서는 파일 저장이 안 될 수 있어요. 글로 복사를 써 주세요');
+    };
     bindTestReset(root);
+  }
+
+  // 노트 이미지 보기·공유·저장
+  function noteSheet(ps) {
+    const sheet = document.createElement('div');
+    sheet.className = 'sheet-back';
+    const urls = ps.map(p => p.cv.toDataURL('image/png'));
+    sheet.innerHTML = `<div class="sheet save">
+      <div class="sheet-title">나의 묵상 노트 · ${ps.length}장</div>
+      <div class="sheet-note">${Core.isIOS ? "이미지를 <b>길게 눌러</b> '사진 앱에 저장'을 고르세요." : '이미지를 <b>길게 눌러</b> 저장하세요.'}</div>
+      ${urls.map((u, i) => `<img src="${u}" alt="${esc(ps[i].chap.label)} 묵상 노트" class="note-img">`).join('')}
+      <button class="btn" id="ns-share">한꺼번에 공유</button>
+      <button class="btn ghost" id="ns-close">닫기</button>
+    </div>`;
+    document.body.appendChild(sheet);
+    sheet.querySelector('#ns-close').onclick = () => sheet.remove();
+    sheet.onclick = ev => { if (ev.target === sheet) sheet.remove(); };
+    sheet.querySelector('#ns-share').onclick = async () => {
+      const files = await Promise.all(ps.map(async (p, i) => new File([await Card.toBlob(p.cv)], `묵상노트-${i + 1}.png`, { type: 'image/png' })));
+      if (navigator.canShare && navigator.canShare({ files })) {
+        try { await navigator.share({ files }); } catch (e) { /* 취소 */ }
+      } else Player.toast('여기서는 바로 공유가 안 돼요. 이미지를 길게 눌러 저장해 주세요');
+    };
   }
 
   /* ---------- 카드 도감 ---------- */

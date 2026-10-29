@@ -23,6 +23,7 @@
       <button class="exit" aria-label="나가기">✕</button>
       <button class="snd" aria-label="소리">${Sound.on ? '🔊' : '🔇'}</button>
       <div class="oil-pop" hidden></div>
+      <div class="gem-hud" hidden>✦ <b>0</b>/<span>0</span></div>
       <div class="overlay" hidden></div>
       <div class="dialog">
         <div class="name"></div>
@@ -43,8 +44,16 @@
       actions: root.querySelector('.actions'),
       next: root.querySelector('.next'),
       title: root.querySelector('.titlecard'),
-      oil: root.querySelector('.oil-pop')
+      oil: root.querySelector('.oil-pop'),
+      gemHud: root.querySelector('.gem-hud')
     };
+    // 대사 속 빛나는 낱말(빛 조각) 줍기
+    el.text.addEventListener('click', e => {
+      const g = e.target.closest('.gem');
+      if (!g || g.classList.contains('got')) return;
+      e.stopPropagation();
+      collectGem(g);
+    });
     el.dialog.addEventListener('click', e => { if (!e.target.closest('button')) onTap(); });
     el.stage.addEventListener('click', e => { if (!e.target.closest('[data-hot],.hot-mark')) onTap(); });
     root.querySelector('.exit').addEventListener('click', () => {
@@ -69,19 +78,92 @@
     el.next.classList.add('on');
     return new Promise(r => { tapWait = r; });
   }
-  function typeText(text) {
+  // [[낱말]] → 빛 조각(누르면 주움), *낱말* → 강조
+  function segments(text) {
+    const out = [];
+    const re = /\[\[([^\]]+)\]\]|\*([^*]+)\*/g;
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > last) out.push({ k: 't', s: text.slice(last, m.index) });
+      out.push(m[1] ? { k: 'gem', s: m[1] } : { k: 'em', s: m[2] });
+      last = re.lastIndex;
+    }
+    if (last < text.length) out.push({ k: 't', s: text.slice(last) });
+    return out;
+  }
+  function segHTML(segs, n) {
+    let html = '', left = n;
+    for (const g of segs) {
+      if (left <= 0) break;
+      const chars = Array.from(g.s), part = chars.slice(0, left).join('');
+      left -= chars.length;
+      if (g.k === 't') html += esc(part);
+      else if (g.k === 'em') html += `<b class="em">${esc(part)}</b>`;
+      else {
+        const got = gotGems().includes(g.s);
+        html += `<span class="gem${got ? ' got' : ''}" data-w="${esc(g.s)}">${esc(part)}</span>`;
+      }
+    }
+    return html;
+  }
+  function typeText(text, who) {
     return new Promise(res => {
-      el.text.textContent = '';
+      const segs = segments(text);
+      const total = segs.reduce((a, g) => a + Array.from(g.s).length, 0);
+      const plain = segs.map(g => g.s).join('');
+      el.text.innerHTML = '';
       let i = 0, timer;
-      const chars = Array.from(text);
-      const finish = () => { clearInterval(timer); el.text.textContent = text; typing = null; res(); };
+      const finish = () => { clearInterval(timer); el.text.innerHTML = segHTML(segs, total); typing = null; res(); };
       typing = finish;
       timer = setInterval(() => {
         i++;
-        el.text.textContent = chars.slice(0, i).join('');
-        if (i >= chars.length) finish();
-      }, 26);
+        el.text.innerHTML = segHTML(segs, i);
+        const ch = Array.from(plain)[i - 1];
+        if (i % 2 && ch && ch.trim() && !/[.,…!?'"“”]/.test(ch)) Sound.blip(who);
+        if (i >= total) finish();
+      }, 30);
     });
+  }
+  // 빛 조각
+  const gotGems = () => ((Core.data.gems || {})[ep.id] || []);
+  let gemTotal = 0;
+  function countGems(steps) {
+    const all = new Set();
+    const scan = t => { for (const m of String(t || '').matchAll(/\[\[([^\]]+)\]\]/g)) all.add(m[1]); };
+    for (const s of steps) {
+      scan(s.text); scan(s.prompt);
+      (s.spots || []).forEach(sp => sp.lines.forEach(l => scan(l.text)));
+      (s.options || []).forEach(o => o.lines.forEach(l => scan(l.text)));
+    }
+    return all.size;
+  }
+  function updateGemHud() {
+    el.gemHud.hidden = !gemTotal;
+    el.gemHud.querySelector('b').textContent = gotGems().length;
+    el.gemHud.querySelector('span').textContent = gemTotal;
+  }
+  function collectGem(span) {
+    const D = Core.data;
+    D.gems = D.gems || {};
+    const list = D.gems[ep.id] = D.gems[ep.id] || [];
+    if (!list.includes(span.dataset.w)) list.push(span.dataset.w);
+    Core.save();
+    span.classList.add('got');
+    Sound.sfx('gem');
+    if (navigator.vibrate) navigator.vibrate(20);
+    const r = span.getBoundingClientRect(), h = el.gemHud.getBoundingClientRect(), rr = el.root.getBoundingClientRect();
+    const fly = document.createElement('div');
+    fly.className = 'gem-fly'; fly.textContent = '✦';
+    fly.style.left = (r.left - rr.left + r.width / 2) + 'px'; fly.style.top = (r.top - rr.top) + 'px';
+    el.root.appendChild(fly);
+    requestAnimationFrame(() => { fly.style.left = (h.left - rr.left + 12) + 'px'; fly.style.top = (h.top - rr.top + 6) + 'px'; fly.style.opacity = '0.2'; });
+    setTimeout(() => { fly.remove(); updateGemHud(); el.gemHud.classList.remove('bump'); void el.gemHud.offsetWidth; el.gemHud.classList.add('bump'); }, 650);
+  }
+  // 말하는 인물을 그림에서 살짝 움직이게
+  function setSpeaking(who) {
+    el.scene.querySelectorAll('.who.speaking').forEach(n => n.classList.remove('speaking'));
+    if (!who) return;
+    el.scene.querySelectorAll(`[data-who="${CSS.escape(who)}"]`).forEach(n => n.classList.add('speaking'));
   }
   function setSpeaker(who) {
     el.dialog.classList.toggle('narr', !who);
@@ -91,8 +173,12 @@
   }
   async function say(who, text) {
     setSpeaker(who);
+    setSpeaking(who);
     el.actions.innerHTML = '';
-    await typeText(Script.fill(text, ep.id));
+    const t = Script.fill(text, ep.id);
+    await typeText(t, who);
+    // 다 나온 직후의 연타는 잠깐 무시 (읽을 틈)
+    await new Promise(r => setTimeout(r, window.__fast ? 0 : Math.min(900, 220 + Array.from(t).length * 11)));
     await waitTap();
   }
   async function sayLines(lines) {
@@ -221,12 +307,26 @@
     scene: s => setScene(s.name),
     say: s => say(s.who, s.text),
     async fx(s) {
-      el.stage.classList.add('fx-' + s.name);
-      await new Promise(r => setTimeout(r, 1500));
+      const once = { '흔들림': 650, '번쩍': 800, '두근': 900 };
+      const cls = 'fx-' + s.name;
+      const target = s.name === '흔들림' ? el.root : el.stage;
+      target.classList.remove(cls); void target.offsetWidth;
+      target.classList.add(cls);
+      if (s.name === '흔들림') { Sound.sfx('thump'); if (navigator.vibrate) navigator.vibrate(120); }
+      if (s.name === '번쩍') Sound.sfx('angel');
+      if (s.name === '영광') Sound.sfx('angel');
+      if (once[s.name]) { await new Promise(r => setTimeout(r, once[s.name])); target.classList.remove(cls); }
+      else await new Promise(r => setTimeout(r, 1300));
+    },
+    async sfx(s) {
+      const KO = { 망치: 'hammer', 군중: 'crowd', 문: 'door', 발소리: 'steps', 심장: 'heart', 노크: 'knock', 바람: 'wind', 양: 'sheep', 아기: 'baby', 천사: 'angel', 불: 'fire', 별: 'star', 종: 'verse' };
+      Sound.sfx(KO[s.name] || s.name);
+      await new Promise(r => setTimeout(r, 250));
     },
     async verse(s) {
       clearDialog('');
       Sound.sfx('verse');
+      if (!s.text) s.text = Bible.verses(s.ref.split('·')[0].trim()).map(v => v.text).join(' ');
       await cardThenTap(`
         <div class="card verse">
           <div class="verse-ref">${esc(s.ref)}</div>
@@ -315,7 +415,7 @@
           <div class="card mission">
             <div class="mission-tag">오늘의 미션</div>
             <div class="mission-text">${esc(Script.fill(s.text, ep.id))}</div>
-            <div class="mission-help">다음 편을 열면 ${esc(josa(ep.host || '', '이가'))} 했는지 물어볼 거야.<br>했든 못 했든, 정직하게만 답하면 등불 기름을 받아.</div>
+            <div class="mission-help">${nextHost() ? `다음 편을 열면 ${esc(josa(nextHost(), '이가'))} 했는지 물어볼 거야.` : '나의 기록에서 스스로 체크할 수 있어.'}<br>했든 못 했든, 정직하게만 답하면 등불 기름을 받아.</div>
             <button class="btn">미션 받기</button>
           </div>`, 'center');
         ov.querySelector('button').onclick = () => { hideOverlay(); res(); };
@@ -330,7 +430,7 @@
         fn(box, {
           done: res,
           say: async (who, text) => { await say(who, text); if (my === runId) clearDialog(''); }
-        });
+        }, s.arg);
       });
       hideOverlay();
     },
@@ -447,6 +547,11 @@
     });
   };
 
+  function nextHost() {
+    const list = Core.mainEpisodes(), i = list.findIndex(e => e.id === ep.id);
+    return list[i + 1] ? list[i + 1].host : '';
+  }
+
   /* ---------- 지난 미션 묻기 ---------- */
   async function missionCheck(prev) {
     const D = Core.data;
@@ -500,6 +605,13 @@
     D.done[ep.id] = D.done[ep.id] || Date.now();
     D.doneOn = D.doneOn || {};
     if (!D.doneOn[ep.id]) D.doneOn[ep.id] = Core.nowKST().date;
+    D.gemBonus = D.gemBonus || {};
+    let gemLine = '';
+    if (gemTotal) {
+      const got = gotGems().length;
+      if (got >= gemTotal && !D.gemBonus[ep.id]) { D.gemBonus[ep.id] = 1; D.oil = (D.oil || 0) + 1; gemLine = `✦ 빛 조각 ${got}/${gemTotal} 다 모았어! 기름 +1`; }
+      else gemLine = `✦ 빛 조각 ${got}/${gemTotal}` + (got < gemTotal ? ' · 다시 보기로 마저 모을 수 있어' : '');
+    }
     Core.save();
     const newBadges = Fame.checkNew();
     const after = Core.starCount(), total = Core.starTotal();
@@ -519,7 +631,7 @@
       <div class="card done">
         <div class="done-star">${Art.bigStar(before / total, 150)}</div>
         <div class="done-title">${first ? '별이 조금 더 밝아졌어' : '다시 보기 끝'}</div>
-        <div class="done-sub">별빛 ${after} / ${total}${first ? ` · 카드 No.${Card.cardNo(ep.id)} 획득` : ''}</div>
+        <div class="done-sub">별빛 ${after} / ${total}${first ? ` · 카드 No.${Card.cardNo(ep.id)} 획득` : ''}${gemLine ? `<br><span class="gem-line">${esc(gemLine)}</span>` : ''}</div>
         ${newBadges.length ? `<div class="new-badges">${newBadges.map(b => `<div class="nb"><span>${b.icon}</span><b>${esc(b.name)}</b><small>새 배지</small></div>`).join('')}</div>` : ''}
         <button class="btn" data-v="card">인증 카드 보기</button>
         <button class="btn ghost" data-v="home">홈으로</button>
@@ -553,6 +665,8 @@
       return;
     }
     const steps = Script.parse(src);
+    gemTotal = countGems(steps);
+    updateGemHud();
     // 대본에 '묵상:'이 따로 없으면 맨 끝에 말씀 묵상을 넣는다
     if (ep.read && !steps.some(s => s.t === 'meditate')) steps.push({ t: 'meditate' });
     // 첫 장면을 미리 깔아 둔다

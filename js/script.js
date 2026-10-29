@@ -55,7 +55,8 @@
       if ((m = line.match(/^성경읽기\s*[:：]\s*(.*)$/))) { steps.push({ t: 'read', ref: m[1].trim() }); continue; }
       if ((m = line.match(/^메모\s*[:：]\s*(.*)$/))) { steps.push({ t: 'note', text: m[1].trim() }); continue; }
       if ((m = line.match(/^효과\s*[:：]\s*(.*)$/))) { steps.push({ t: 'fx', name: m[1].trim() }); continue; }
-      if ((m = line.match(/^게임\s*[:：]\s*(.*)$/))) { steps.push({ t: 'game', name: m[1].trim() }); continue; }
+      if ((m = line.match(/^게임\s*[:：]\s*(.*)$/))) { const [name, ...arg] = m[1].trim().split(/\s+/); steps.push({ t: 'game', name, arg: arg.join(' ') }); continue; }
+      if ((m = line.match(/^소리\s*[:：]\s*(.*)$/))) { steps.push({ t: 'sfx', name: m[1].trim() }); continue; }
       if ((m = line.match(/^미션\s*[:：]\s*(.*)$/))) { steps.push({ t: 'mission', text: m[1].trim() }); continue; }
       if (/^이름입력\s*[:：]?/.test(line)) { steps.push({ t: 'nickname' }); continue; }
       if (/^묵상\s*[:：]?\s*$/.test(line)) { steps.push({ t: 'meditate' }); continue; }

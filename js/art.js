@@ -35,7 +35,8 @@
     const kind = o.kind || 'man';
     const flip = o.flip ? -1 : 1;
     const hot = o.hot ? ` data-hot="${o.hot}"` : '';
-    let g = `<g${hot} transform="translate(${o.x},${o.y}) scale(${s * flip},${s})">`;
+    const who = o.who ? ` data-who="${o.who}"` : '';
+    let g = `<g class="who"${hot}${who}><g transform="translate(${o.x},${o.y}) scale(${s * flip},${s})">`;
     g += `<ellipse cx="0" cy="0" rx="26" ry="5" fill="#000" opacity=".28"/>`;
     // 뒤로 늘어진 머릿수건 / 베일
     if (kind === 'woman') g += `<path d="M-15,-94 Q0,-114 15,-94 L24,-26 Q0,-20 -24,-26 Z" fill="${cloth}"/>`;
@@ -66,7 +67,7 @@
     } else {
       g += `<path d="M14,${top + 14} Q20,${top + 34} 13,${top + 46}" stroke="#000" stroke-opacity=".15" stroke-width="7" stroke-linecap="round" fill="none"/>`;
     }
-    g += `</g>`;
+    g += `</g></g>`;
     return g;
   }
 
@@ -163,7 +164,7 @@
     <rect x="0" y="396" width="${W}" height="14" fill="#3a3150"/>
     <rect x="0" y="396" width="${W}" height="3" fill="#fff" opacity=".05"/>
     <g data-hot="등잔">${lampShape(196, 397, 1, 'roof-lamp')}</g>
-    ${person({ x: 130, y: 486, h: 156, robe: '#4e4566', cloth: '#a79fbd', skin: '#9d7558', beard: '#e8e4f0' })}`;
+    ${person({ x: 130, y: 486, h: 156, robe: '#4e4566', cloth: '#a79fbd', skin: '#9d7558', beard: '#e8e4f0', who: '사가랴' })}`;
 
   // 1-1: 떠나는 날 새벽, 사가랴의 집 앞
   scenes['새벽집'] = () => `
@@ -185,10 +186,10 @@
     <rect x="276" y="300" width="22" height="24" rx="2" fill="#120e1c"/>
     <rect x="0" y="430" width="${W}" height="110" fill="#2a2235"/>
     <path d="M0,430 L360,430" stroke="#fff" stroke-opacity=".05" stroke-width="2"/>
-    ${person({ x: 70, y: 492, h: 150, robe: '#5d4f78', cloth: '#bcb2cf', skin: '#a27a5c', beard: '#ece8f2', lamp: true })}
-    ${person({ x: 186, y: 486, h: 134, kind: 'woman', robe: '#7d5f7e', cloth: '#c9b8cf', skin: '#a8805f', hot: '엘리사벳', flip: true })}
-    ${person({ x: 250, y: 500, h: 84, kind: 'child', robe: '#8b6a4f', skin: '#b38b66', hot: '꼬마', wave: true })}
-    ${person({ x: 318, y: 480, h: 122, kind: 'woman', robe: '#544463', cloth: '#8f8099', skin: '#9d7a5e', hot: '이웃 아주머니', flip: true })}`;
+    ${person({ x: 70, y: 492, h: 150, robe: '#5d4f78', cloth: '#bcb2cf', skin: '#a27a5c', beard: '#ece8f2', lamp: true, who: '사가랴' })}
+    ${person({ x: 186, y: 486, h: 134, kind: 'woman', robe: '#7d5f7e', cloth: '#c9b8cf', skin: '#a8805f', hot: '엘리사벳', who: '엘리사벳', flip: true })}
+    ${person({ x: 250, y: 500, h: 84, kind: 'child', robe: '#8b6a4f', skin: '#b38b66', hot: '꼬마', who: '꼬마', wave: true })}
+    ${person({ x: 318, y: 480, h: 122, kind: 'woman', robe: '#544463', cloth: '#8f8099', skin: '#9d7a5e', hot: '이웃 아주머니', who: '이웃', flip: true })}`;
 
   // 1-1: 예루살렘으로 올라가는 길
   scenes['길'] = () => `
@@ -209,7 +210,7 @@
     ${person({ x: 240, y: 362, h: 32, kind: 'woman', robe: '#4a3b4f', cloth: '#a698ad' })}
     ${person({ x: 228, y: 384, h: 44, robe: '#3d3450', cloth: '#a397b1' })}
     ${person({ x: 260, y: 394, h: 46, robe: '#4b3d55', cloth: '#b0a3b5', flip: true })}
-    ${person({ x: 112, y: 488, h: 150, robe: '#5d4f78', cloth: '#bcb2cf', skin: '#a27a5c', beard: '#ece8f2' })}
+    ${person({ x: 112, y: 488, h: 150, robe: '#5d4f78', cloth: '#bcb2cf', skin: '#a27a5c', beard: '#ece8f2', who: '사가랴' })}
     ${person({ x: 214, y: 470, h: 120, robe: '#6c5a74', cloth: '#d4c8d6', skin: '#a8805f', flip: true })}`;
 
   // 1-1 끝: 해 질 녘 성전
@@ -227,9 +228,9 @@
     <path d="M128,440 L128,270 Q180,226 232,270 L232,440 Z" fill="#3a2530"/>
     <path d="M140,440 L140,278 Q180,242 220,278 L220,440 Z" fill="#ffcf8a" opacity=".22"/>
     <rect x="0" y="436" width="${W}" height="104" fill="#5c3c45"/>
-    ${person({ x: 64, y: 498, h: 142, robe: '#efe8dc', cloth: '#f7f2e8', skin: '#a77d5e', beard: '#4a3428' })}
+    ${person({ x: 64, y: 498, h: 142, robe: '#efe8dc', cloth: '#f7f2e8', skin: '#a77d5e', beard: '#4a3428', who: '제사장' })}
     ${person({ x: 290, y: 494, h: 140, robe: '#eae2d4', cloth: '#f5efe3', skin: '#a07658', flip: true })}
-    ${person({ x: 176, y: 506, h: 150, robe: '#e4dccd', cloth: '#f3ede2', skin: '#a27a5c', beard: '#ece8f2' })}`;
+    ${person({ x: 176, y: 506, h: 150, robe: '#e4dccd', cloth: '#f3ede2', skin: '#a27a5c', beard: '#ece8f2', who: '사가랴' })}`;
 
   // 1-2: 이른 아침 성전 앞뜰 (제비뽑기)
   const PRIEST = { robe: '#efe9dc', cloth: '#f7f3ea' };
@@ -250,7 +251,7 @@
     <rect x="18" y="416" width="324" height="12" fill="#bfa984"/>
     <rect x="0" y="428" width="${W}" height="112" fill="#a8927a"/>
     <!-- 뒤쪽 제사장들 -->
-    ${person({ x: 236, y: 432, h: 54, ...PRIEST })}${person({ x: 214, y: 436, h: 56, ...PRIEST, flip: true })}${person({ x: 120, y: 434, h: 54, ...PRIEST })}
+    ${person({ x: 236, y: 432, h: 54, ...PRIEST, who: '제사장' })}${person({ x: 214, y: 436, h: 56, ...PRIEST, flip: true })}${person({ x: 120, y: 434, h: 54, ...PRIEST })}
     <!-- 제비 항아리 -->
     <g data-hot="제비 항아리">
       <rect x="30" y="452" width="70" height="40" fill="#8e7a62"/>
@@ -258,8 +259,8 @@
       <path d="M50,446 L80,446 L78,438 Q92,420 88,404 Q84,388 65,386 Q46,388 42,404 Q38,420 52,438 Z" fill="#9b6a43"/>
       <rect x="51" y="380" width="28" height="7" fill="#6b4529"/>
     </g>
-    ${person({ x: 162, y: 504, h: 152, ...PRIEST, skin: '#a27a5c', beard: '#ece8f2' })}
-    ${person({ x: 270, y: 500, h: 138, ...PRIEST, skin: '#b38b66', hot: '젊은 제사장', flip: true })}`;
+    ${person({ x: 162, y: 504, h: 152, ...PRIEST, skin: '#a27a5c', beard: '#ece8f2', who: '사가랴' })}
+    ${person({ x: 270, y: 500, h: 138, ...PRIEST, skin: '#b38b66', hot: '젊은 제사장', who: '젊은 제사장', flip: true })}`;
 
   // 1-2: 성소 안 (등잔대·떡상·분향단·휘장)
   scenes['성소'] = () => `
@@ -307,7 +308,209 @@
       <path d="M250,160 Q232,170 228,200 L216,388 Q250,398 284,388 L272,200 Q268,170 250,160 Z" fill="#fffaf0" opacity=".55"/>
       <circle cx="250" cy="150" r="15" fill="#fffdf6" opacity=".85"/>
     </g>
-    ${person({ x: 112, y: 500, h: 156, robe: '#efe9dc', cloth: '#f7f3ea', skin: '#a27a5c', beard: '#ece8f2' })}`;
+    ${person({ x: 112, y: 500, h: 156, robe: '#efe9dc', cloth: '#f7f3ea', skin: '#a27a5c', beard: '#ece8f2', who: '사가랴' })}`;
+
+  /* ---------- 공통 소품 ---------- */
+  const ZEC = { robe: '#5d4f78', cloth: '#bcb2cf', skin: '#a27a5c', beard: '#ece8f2', who: '사가랴' };
+  const ELI = { kind: 'woman', robe: '#7d5f7e', cloth: '#c9b8cf', skin: '#a8805f', who: '엘리사벳' };
+  const JOS = { robe: '#6a5a48', cloth: '#c9b48e', skin: '#b08560', beard: '#3a2a1e', who: '요셉' };
+  const MAR = { kind: 'woman', robe: '#8a7a9a', cloth: '#5f7fc9', skin: '#b88b66', who: '마리아' };
+  const GRA = { robe: '#6b5a40', cloth: '#a89a7a', skin: '#9d7558', beard: '#e8e4dc', who: '할아버지' };
+  const BOY = { kind: 'child', robe: '#7a6a4a', skin: '#b38b66', who: '나' };
+  const SHP = { robe: '#5a4a3a', cloth: '#8f8270', skin: '#9d7a5e', who: '목자' };
+  function sheep(x, y, sc, flip) {
+    const f = flip ? -1 : 1;
+    return `<g transform="translate(${x},${y}) scale(${sc * f},${sc})"><ellipse cx="0" cy="-14" rx="22" ry="14" fill="#ece6d8"/><circle cx="-14" cy="-22" r="9" fill="#ece6d8"/><circle cx="10" cy="-24" r="10" fill="#f4efe4"/><ellipse cx="24" cy="-18" rx="8" ry="6" fill="#3a3028"/><rect x="-12" y="-4" width="4" height="10" fill="#3a3028"/><rect x="8" y="-4" width="4" height="10" fill="#3a3028"/></g>`;
+  }
+  function fire(x, y) {
+    return `<g transform="translate(${x},${y})"><circle cx="0" cy="-20" r="80" fill="url(#lampglow)" class="glow"/><path d="M-26,0 L26,-6 M-24,-6 L24,0" stroke="#4a2e1e" stroke-width="7"/><path class="flame" d="M-14,-4 Q-18,-34 0,-56 Q18,-34 14,-4 Z" fill="#ff9a3c"/><path class="flame" d="M-7,-4 Q-9,-24 0,-38 Q9,-24 7,-4 Z" fill="#ffe08a"/></g>`;
+  }
+  function bigStarSvg(x, y, r, id) {
+    return `<g ${id ? `id="${id}"` : ''} transform="translate(${x},${y})"><circle r="${r * 3}" fill="url(#starglow)"/><path d="M0,-${r} Q${r * .08},-${r * .08} ${r},0 Q${r * .08},${r * .08} 0,${r} Q-${r * .08},${r * .08} -${r},0 Q-${r * .08},-${r * .08} 0,-${r} Z" fill="#fff6dc"/></g>`;
+  }
+  const STAR = () => `<radialGradient id="starglow"><stop offset="0" stop-color="#fff3c4" stop-opacity=".45"/><stop offset=".3" stop-color="#ffe7a8" stop-opacity=".12"/><stop offset="1" stop-color="#ffe7a8" stop-opacity="0"/></radialGradient>`;
+  const ANGEL_DEF = `<radialGradient id="angelglow"><stop offset="0" stop-color="#fffbe8" stop-opacity=".95"/><stop offset=".35" stop-color="#ffe9a8" stop-opacity=".45"/><stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/></radialGradient>`;
+  function angel(x, y, sc, id, op) {
+    return `<g ${id ? `id="${id}"` : ''} class="who" data-who="천사" opacity="${op == null ? 0 : op}"><g transform="translate(${x},${y}) scale(${sc})">
+      <circle cx="0" cy="-90" r="120" fill="url(#angelglow)"/>
+      <path d="M-4,-160 Q-60,-200 -74,-254 Q-36,-200 -10,-174 Z" fill="#fffaf0" opacity=".35"/>
+      <path d="M4,-160 Q60,-200 74,-254 Q36,-200 10,-174 Z" fill="#fffaf0" opacity=".35"/>
+      <path d="M0,-190 Q-18,-180 -22,-150 L-34,38 Q0,48 34,38 L22,-150 Q18,-180 0,-190 Z" fill="#fffaf0" opacity=".55"/>
+      <circle cx="0" cy="-200" r="15" fill="#fffdf6" opacity=".85"/></g></g>`;
+  }
+  function interior(id, top, bottom) {
+    return `<defs>${sky(id, [[0, top], [1, bottom]])}${LAMP_DEF}${STAR()}${ANGEL_DEF}</defs><rect width="${W}" height="${H}" fill="url(#${id})"/>`;
+  }
+
+  /* ---------- 1장 ---------- */
+  // 1-3: 성소 + 처음부터 천사
+  scenes['성소천사'] = () => scenes['성소']().replace('<g id="angel" opacity="0">', '<g id="angel" class="who" data-who="천사" opacity="1">');
+  // 1-5: 밤, 사가랴의 집 안 (서판)
+  scenes['집안'] = () => `${interior('s7', '#1a1424', '#3a2a2e')}
+    <rect x="0" y="0" width="${W}" height="380" fill="#3a2c34"/>
+    <rect x="0" y="0" width="${W}" height="380" fill="url(#lampglow)" opacity=".25"/>
+    <rect x="40" y="110" width="70" height="80" fill="#0e1430"/><rect x="40" y="110" width="70" height="80" fill="none" stroke="#5a4250" stroke-width="8"/>
+    ${stars(41, 6, 0, 0, 0)}<circle cx="62" cy="134" r="1.5" fill="#fff"/><circle cx="88" cy="160" r="1.2" fill="#fff" opacity=".6"/>
+    <rect x="0" y="380" width="${W}" height="160" fill="#2a1e22"/>
+    <rect x="110" y="368" width="150" height="14" fill="#6a4a32"/><rect x="122" y="382" width="10" height="70" fill="#5a3e2a"/><rect x="238" y="382" width="10" height="70" fill="#5a3e2a"/>
+    <g data-hot="서판"><rect x="150" y="352" width="56" height="18" rx="2" fill="#c9b48e" transform="rotate(-6 178 360)"/><path d="M158,360 L196,356" stroke="#5a3a1a" stroke-width="2"/></g>
+    <g data-hot="등잔">${lampShape(238, 368, 0.9)}</g>
+    ${person({ x: 80, y: 500, h: 150, ...ZEC })}
+    ${person({ x: 290, y: 496, h: 136, ...ELI, flip: true })}`;
+  // 1-6: 새벽 지붕, 별이 또렷해짐
+  scenes['지붕새벽'] = () => `
+    <defs>${sky('s8', [[0, '#0b1030'], [0.5, '#2a2f5e'], [0.85, '#7a5a7a'], [1, '#c48a7a']])}${LAMP_DEF}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s8)"/>
+    ${stars(11, 18, 240, 0.1, 0.45)}
+    <g data-hot="별">${bigStarSvg(290, 80, 12, 'farstar2')}</g>
+    <path d="M0,300 Q70,262 150,286 T300,270 T360,280 L360,360 L0,360 Z" fill="#2a2a4a"/>
+    ${house(10, 300, 52, 50, '#2e3050', { win: [[10, 18, 1]] })}${house(118, 296, 60, 56, '#30344f', { win: [[12, 20, 1], [38, 20, 0]] })}
+    <rect x="224" y="290" width="112" height="118" fill="#3c3450"/><rect x="220" y="284" width="120" height="8" fill="#4a4060"/>
+    <path d="M262,408 L262,350 Q279,330 296,350 L296,408 Z" fill="#ffcf8a" opacity=".55"/>
+    <rect x="0" y="400" width="${W}" height="140" fill="#3a3048"/><rect x="0" y="396" width="${W}" height="14" fill="#4a3f5e"/>
+    ${person({ x: 110, y: 488, h: 154, ...ZEC })}
+    ${person({ x: 200, y: 486, h: 136, ...ELI })}`;
+
+  /* ---------- 2장: 나사렛, 요셉 ---------- */
+  scenes['작업장'] = () => `
+    <defs>${sky('s9', [[0, '#2a2650'], [0.5, '#7a5a78'], [0.85, '#d08a6a'], [1, '#e8a87a']])}${LAMP_DEF}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s9)"/>
+    <path d="M0,280 Q120,240 240,270 T360,260 L360,360 L0,360 Z" fill="#5a4a5e"/>
+    <path d="M10,180 L180,120 L350,180 L350,200 L10,200 Z" fill="#4a3a32"/>
+    <rect x="30" y="200" width="300" height="230" fill="#6a5040"/><rect x="30" y="200" width="300" height="230" fill="#000" opacity=".25"/>
+    <rect x="30" y="200" width="10" height="230" fill="#4a3428"/><rect x="320" y="200" width="10" height="230" fill="#4a3428"/>
+    <g data-hot="연장">${[60, 80, 100, 120].map((x, i) => `<rect x="${x}" y="220" width="6" height="${40 + i * 6}" fill="#9a7a5a"/>`).join('')}<rect x="56" y="214" width="76" height="6" fill="#4a3428"/></g>
+    <g data-hot="문틀"><rect x="236" y="250" width="14" height="170" fill="#c99a6a"/><rect x="296" y="250" width="14" height="170" fill="#c99a6a"/><rect x="236" y="240" width="74" height="14" fill="#d8aa78"/></g>
+    <g data-hot="작업대"><rect x="90" y="370" width="140" height="16" fill="#b07a46"/><rect x="100" y="386" width="10" height="44" fill="#8a5a32"/><rect x="210" y="386" width="10" height="44" fill="#8a5a32"/><rect x="120" y="358" width="70" height="12" fill="#d8aa78"/></g>
+    <rect x="0" y="430" width="${W}" height="110" fill="#5a4234"/>
+    ${person({ x: 170, y: 500, h: 152, ...JOS })}`;
+  scenes['나사렛길'] = () => `
+    <defs>${sky('s10', [[0, '#7a9ac8'], [0.7, '#d8c8b0'], [1, '#e8d8bc']])}${LAMP_DEF}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s10)"/>
+    <path d="M0,250 Q90,210 180,240 T360,226 L360,330 L0,330 Z" fill="#9aa07a"/>
+    ${house(0, 240, 110, 190, '#c8a882', { win: [[30, 50, 0], [70, 50, 0]] })}${house(250, 230, 110, 200, '#bd9c78', { win: [[20, 60, 0]] })}
+    <rect x="0" y="430" width="${W}" height="110" fill="#c2a882"/>
+    <path d="M140,540 Q170,470 180,430 L200,430 Q210,470 240,540 Z" fill="#d8c2a0"/>
+    ${person({ x: 52, y: 470, h: 120, kind: 'woman', robe: '#7a6a5a', cloth: '#b0a08a', hot: '빨래하는 아주머니', who: '이웃' })}
+    ${person({ x: 310, y: 470, h: 124, robe: '#6a5a4a', cloth: '#a89a8a', beard: '#5a4a3a', hot: '수군대는 아저씨', who: '이웃2', flip: true })}
+    ${person({ x: 160, y: 506, h: 150, ...JOS })}
+    ${person({ x: 222, y: 502, h: 136, ...MAR, flip: true })}`;
+  scenes['요셉밤'] = () => `${interior('s11', '#0e0c1a', '#241c22')}
+    <rect x="0" y="0" width="${W}" height="390" fill="#221a26"/>
+    <circle cx="200" cy="330" r="200" fill="url(#lampglow)" opacity=".5"/>
+    <rect x="250" y="90" width="66" height="76" fill="#0a1030"/>${stars(5, 0, 0, 0, 0)}<circle cx="270" cy="114" r="1.6" fill="#fff"/><circle cx="296" cy="140" r="1.2" fill="#fff"/>
+    <rect x="0" y="390" width="${W}" height="150" fill="#1e1618"/>
+    <rect x="130" y="376" width="160" height="14" fill="#6a4a32"/><rect x="140" y="390" width="10" height="60" fill="#5a3e2a"/><rect x="270" y="390" width="10" height="60" fill="#5a3e2a"/>
+    <g data-hot="두루마리"><rect x="168" y="360" width="80" height="16" rx="3" fill="#e8dcc0"/><circle cx="168" cy="368" r="9" fill="#b08a5a"/><circle cx="248" cy="368" r="9" fill="#b08a5a"/></g>
+    ${lampShape(282, 376, 0.8)}
+    ${person({ x: 100, y: 500, h: 152, ...JOS })}`;
+  scenes['꿈'] = () => `
+    <defs>${sky('s12', [[0, '#050418'], [0.6, '#1a1450'], [1, '#2a2068']])}${STAR()}${ANGEL_DEF}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s12)"/>
+    ${stars(77, 60, 540, 0.15, 0.8)}
+    <circle cx="180" cy="230" r="150" fill="url(#angelglow)" opacity=".3"/>
+    ${angel(190, 380, 1, 'angel', 0)}
+    <g opacity=".75">${person({ x: 110, y: 500, h: 130, ...JOS })}</g>`;
+  scenes['새집'] = () => `
+    <defs>${sky('s13', [[0, '#1e2250'], [0.6, '#6a5a8a'], [1, '#c89a8a']])}${LAMP_DEF}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s13)"/>
+    ${stars(31, 12, 200, 0.2, 0.6)}
+    <rect x="40" y="200" width="260" height="232" fill="#a58a6a"/><rect x="34" y="192" width="272" height="10" fill="#bda080"/>
+    <g data-hot="문"><rect x="140" y="300" width="64" height="132" fill="#8a6040"/><rect x="146" y="306" width="52" height="126" fill="#c08a58"/><circle cx="190" cy="370" r="3" fill="#4a3020"/></g>
+    <g data-hot="창문"><rect x="230" y="250" width="40" height="40" fill="#ffcf8a"/><rect x="230" y="250" width="40" height="40" fill="none" stroke="#6a4a30" stroke-width="4"/></g>
+    <rect x="0" y="430" width="${W}" height="110" fill="#5a4a46"/>
+    ${person({ x: 90, y: 500, h: 152, ...JOS })}
+    ${person({ x: 270, y: 498, h: 136, ...MAR, flip: true })}`;
+
+  /* ---------- 3장: 마리아 ---------- */
+  scenes['마리아집'] = () => `
+    <defs>${sky('s14', [[0, '#f0b0a0'], [0.5, '#f8d0b0'], [1, '#fce8c8']])}${LAMP_DEF}${STAR()}${ANGEL_DEF}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s14)"/>
+    <path d="M0,260 Q100,220 200,250 T360,236 L360,340 L0,340 Z" fill="#c8b090"/>
+    <rect x="20" y="180" width="200" height="250" fill="#e0c8a4"/><rect x="14" y="172" width="212" height="10" fill="#eedcbc"/>
+    <path d="M90,430 L90,330 Q120,300 150,330 L150,430 Z" fill="#6a4a3a"/>
+    <g data-hot="물동이"><path d="M268,430 Q252,400 262,380 L290,380 Q300,400 284,430 Z" fill="#b8784a"/><ellipse cx="276" cy="380" rx="14" ry="4" fill="#8a5a3a"/></g>
+    <g data-hot="무화과나무"><rect x="310" y="300" width="10" height="130" fill="#6a4a30"/><circle cx="315" cy="280" r="40" fill="#7a9a5a"/><circle cx="295" cy="300" r="26" fill="#6a8a4a"/></g>
+    <rect x="0" y="430" width="${W}" height="110" fill="#d8c09a"/>
+    ${angel(250, 470, 0.95, 'angel', 0)}
+    ${person({ x: 140, y: 500, h: 140, ...MAR })}`;
+  scenes['산길'] = () => `
+    <defs>${sky('s15', [[0, '#8ab0d8'], [0.6, '#e8d0b8'], [1, '#f0dcc0']])}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s15)"/>
+    <path d="M0,230 L80,170 L150,220 L230,150 L300,210 L360,180 L360,330 L0,330 Z" fill="#a8a0a0"/>
+    <path d="M0,300 Q120,250 230,290 T360,280 L360,540 L0,540 Z" fill="#a8a070"/>
+    <path d="M60,540 Q120,450 200,400 Q260,360 300,300 L314,304 Q278,370 214,414 Q140,466 96,540 Z" fill="#d8c8a0"/>
+    ${person({ x: 296, y: 312, h: 36, kind: 'woman', robe: '#6a5a6a', cloth: '#9a8a9a' })}${person({ x: 310, y: 316, h: 38, robe: '#5a4a3a', cloth: '#a89a8a' })}
+    ${person({ x: 150, y: 500, h: 142, ...MAR })}`;
+  scenes['유대집'] = () => `
+    <defs>${sky('s16', [[0, '#9ab8e0'], [0.7, '#e8dcc8'], [1, '#f0e2c8']])}${LAMP_DEF}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s16)"/>
+    <path d="M0,300 Q100,270 200,292 T360,284 L360,420 L0,420 Z" fill="#a8a088"/>
+    <rect x="30" y="200" width="200" height="232" fill="#c8b098"/><rect x="26" y="192" width="208" height="10" fill="#d8c0a8"/>
+    <g data-hot="대문"><rect x="104" y="318" width="58" height="114" fill="#a88a70"/><path d="M112,432 L112,342 Q133,322 154,342 L154,432 Z" fill="#4a3428"/></g>
+    <rect x="252" y="246" width="108" height="186" fill="#b8a088"/>
+    <rect x="0" y="430" width="${W}" height="110" fill="#b8a080"/>
+    ${person({ x: 70, y: 496, h: 148, ...ZEC })}
+    ${person({ x: 186, y: 494, h: 134, ...ELI })}
+    ${person({ x: 296, y: 500, h: 138, ...MAR, flip: true })}`;
+  scenes['할례'] = () => scenes['유대집']().replace(`${person({ x: 296, y: 500, h: 138, ...MAR, flip: true })}`,
+    `${person({ x: 250, y: 470, h: 112, robe: '#6a5a6a', cloth: '#a89aa8', beard: '#6a5a4a', who: '친척', flip: true })}${person({ x: 300, y: 480, h: 118, kind: 'woman', robe: '#8a6a5a', cloth: '#b8a08a', who: '친척', flip: true })}${person({ x: 330, y: 500, h: 124, robe: '#5a4a5a', cloth: '#9a8a9a', beard: '#4a3a2a', who: '친척', flip: true })}`);
+  scenes['언덕노을'] = () => `
+    <defs>${sky('s17', [[0, '#4a3070'], [0.4, '#c06080'], [0.75, '#f0a070'], [1, '#f8c890']])}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s17)"/>
+    <circle cx="180" cy="330" r="70" fill="#ffe0a0" opacity=".8"/>
+    <path d="M0,340 Q90,300 180,330 T360,320 L360,540 L0,540 Z" fill="#6a4a5a"/>
+    <path d="M0,420 Q120,380 240,410 T360,400 L360,540 L0,540 Z" fill="#4a3448"/>
+    ${person({ x: 140, y: 470, h: 150, ...MAR, wave: true })}
+    ${person({ x: 236, y: 474, h: 134, ...ELI, flip: true })}`;
+
+  /* ---------- 4장: 들판, 베들레헴 ---------- */
+  scenes['들판'] = () => `
+    <defs>${sky('s18', [[0, '#03040e'], [0.6, '#0e1430'], [1, '#1a2040']])}${LAMP_DEF}${STAR()}${ANGEL_DEF}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s18)"/>
+    ${stars(91, 50, 300, 0.15, 0.7)}
+    <g data-hot="별">${bigStarSvg(270, 70, 7, 'farstar')}</g>
+    <g class="angels" opacity="0">${angel(90, 260, 0.5, null, 1)}${angel(180, 220, 0.62, null, 1)}${angel(270, 260, 0.5, null, 1)}${angel(40, 200, 0.35, null, 0.8)}${angel(320, 190, 0.38, null, 0.8)}</g>
+    <path d="M0,320 Q100,290 200,312 T360,300 L360,540 L0,540 Z" fill="#141a2a"/>
+    ${house(250, 300, 30, 16, '#1e2236', { win: [[10, 4, 1]] })}${house(284, 296, 26, 20, '#1e2236', { win: [[8, 6, 1]] })}
+    <g data-hot="양 떼">${sheep(40, 410, 0.8)}${sheep(90, 420, 0.7, true)}${sheep(300, 420, 0.75)}${sheep(330, 440, 0.6, true)}</g>
+    <g data-hot="모닥불">${fire(190, 440)}</g>
+    ${person({ x: 110, y: 500, h: 146, ...GRA })}
+    ${person({ x: 268, y: 498, h: 140, ...SHP, flip: true })}
+    ${person({ x: 196, y: 512, h: 96, ...BOY })}`;
+  scenes['베들레헴'] = () => `
+    <defs>${sky('s19', [[0, '#1a1a40'], [0.55, '#6a4a6a'], [1, '#c07a5a']])}${LAMP_DEF}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s19)"/>
+    ${house(0, 200, 120, 230, '#5a4a4a', { win: [[30, 40, 1], [80, 40, 1], [30, 110, 1]] })}
+    ${house(240, 180, 120, 250, '#4e4046', { win: [[20, 50, 1], [70, 50, 1]] })}
+    <g data-hot="여관"><rect x="122" y="250" width="116" height="180" fill="#6a5250"/><rect x="150" y="320" width="58" height="110" fill="#ffcf8a" opacity=".85"/><rect x="120" y="244" width="120" height="8" fill="#7a6260"/><text x="180" y="290" text-anchor="middle" font-size="13" fill="#ffe0b0">여관</text></g>
+    <rect x="0" y="430" width="${W}" height="110" fill="#4a3a36"/>
+    <g data-hot="사람들">${person({ x: 30, y: 456, h: 100, robe: '#4a3a4a', cloth: '#8a7a8a' })}${person({ x: 64, y: 462, h: 104, kind: 'woman', robe: '#5a4a3a', cloth: '#9a8a7a' })}${person({ x: 300, y: 460, h: 102, robe: '#3a3a4a', cloth: '#7a7a8a', flip: true })}</g>
+    <g data-hot="로마 군인">${person({ x: 334, y: 470, h: 118, robe: '#8a2a2a', cloth: '#b0a090', who: '군인', flip: true })}</g>
+    <g data-hot="어떤 부부" opacity=".85">${person({ x: 250, y: 400, h: 70, robe: '#3a3048', cloth: '#5a5070' })}${person({ x: 270, y: 400, h: 62, kind: 'woman', robe: '#3a3048', cloth: '#4a5a8a' })}</g>
+    ${person({ x: 180, y: 486, h: 120, robe: '#6a4a3a', cloth: '#a88a6a', beard: '#3a2a1a', who: '여관 주인' })}
+    ${person({ x: 110, y: 512, h: 94, ...BOY })}`;
+  scenes['마구간'] = () => `${interior('s20', '#140e0c', '#2e2018')}
+    <path d="M0,0 L360,0 L360,140 Q180,60 0,140 Z" fill="#0a0806"/>
+    <circle cx="180" cy="360" r="190" fill="url(#lampglow)" opacity=".55"/>
+    <rect x="0" y="410" width="${W}" height="130" fill="#3a2a1a"/>
+    <path d="M0,420 Q60,410 120,420 T240,418 T360,422 L360,440 L0,440 Z" fill="#c8a050" opacity=".5"/>
+    <g opacity=".8"><ellipse cx="60" cy="350" rx="44" ry="26" fill="#3a2a20"/><circle cx="24" cy="334" r="16" fill="#3a2a20"/><ellipse cx="320" cy="356" rx="40" ry="24" fill="#4a3a2a"/><path d="M344,326 L356,304 L352,330 Z" fill="#4a3a2a"/></g>
+    <g data-hot="구유"><path d="M140,400 L220,400 L210,440 L150,440 Z" fill="#7a5a3a"/><path d="M134,392 L226,392 L220,404 L140,404 Z" fill="#9a7a4a"/><path d="M144,394 Q180,380 216,394" stroke="#d8b860" stroke-width="5" fill="none"/>
+      <ellipse cx="180" cy="388" rx="26" ry="11" fill="#f4eee0"/><circle cx="160" cy="386" r="8" fill="#e8c8a8"/><path d="M168,380 Q182,376 200,382" stroke="#e0d8c4" stroke-width="2" fill="none"/>
+      <circle cx="170" cy="386" r="40" fill="url(#starglow)"/></g>
+    ${lampShape(300, 300, 0.8)}
+    ${person({ x: 96, y: 500, h: 132, ...MAR })}
+    ${person({ x: 262, y: 504, h: 150, ...JOS, flip: true })}`;
+  scenes['들판새벽'] = () => `
+    <defs>${sky('s21', [[0, '#2a3060'], [0.5, '#a07a9a'], [0.8, '#f0b090'], [1, '#f8d8a8']])}${STAR()}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s21)"/>
+    ${bigStarSvg(290, 70, 9)}
+    <path d="M0,320 Q100,290 200,312 T360,300 L360,540 L0,540 Z" fill="#5a5a50"/>
+    ${sheep(50, 420, 0.8)}${sheep(300, 430, 0.75, true)}
+    ${person({ x: 110, y: 500, h: 146, ...GRA, wave: true })}
+    ${person({ x: 260, y: 498, h: 140, ...SHP, wave: true, flip: true })}
+    ${person({ x: 190, y: 512, h: 98, ...BOY, wave: true })}`;
 
   function render(name) {
     const fn = scenes[name];
