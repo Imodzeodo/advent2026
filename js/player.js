@@ -680,6 +680,12 @@
       box && box.classList.add('pulse');
     }, 700);
     ov.querySelector('[data-v=card]').onclick = () => App.card(ep.id);
+    if (ep.id === 'end') {
+      const fin = document.createElement('button');
+      fin.className = 'btn big finale-go'; fin.textContent = '🌟 27일의 기록 보기';
+      fin.onclick = () => App.finale();
+      ov.querySelector('.done-sub').after(fin);
+    }
     ov.querySelector('[data-v=home]').onclick = () => App.home();
   }
 

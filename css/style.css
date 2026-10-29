@@ -501,3 +501,34 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .dialog.has-pt .name { left: 98px; }
 .dialog.choosing ~ .portrait, .overlay.in ~ .portrait { display: none; }
 @media (prefers-reduced-motion: reduce) { .scene-layer svg { animation: none; } .scene-layer { transition: opacity .3s; } }
+
+/* ---------- 엔딩: 27일의 기록 ---------- */
+.page.finale { background: radial-gradient(120% 60% at 50% 0%, #2a2150, #070a1a 70%); text-align: center; padding-bottom: 60px; }
+.finale section { margin: 0 0 56px; opacity: 0; transform: translateY(30px); transition: opacity 1.2s, transform 1.2s; }
+.finale section.in { opacity: 1; transform: none; }
+.finale h2 { font-family: var(--serif); font-size: 22px; color: var(--gold); margin: 0 0 14px; }
+.fin-hero { min-height: 82vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.fin-hero h1 { font-family: var(--serif); font-size: 34px; margin: 10px 0 4px; }
+.fin-star svg { animation: breathe 4s ease-in-out infinite; }
+.fin-sub { color: #ffe3a3; font-size: 17px; margin: 0; }
+.fin-scroll { color: var(--dim); font-size: 13px; margin-top: 40px; animation: bob 1.4s infinite; }
+.fin-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.fin-tile { aspect-ratio: 1; border-radius: 10px; background: rgba(255, 255, 255, .05); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transform: scale(.4) rotate(-12deg); }
+.in .fin-tile { animation: deal .6s cubic-bezier(.3, 1.5, .5, 1) forwards; animation-delay: var(--d); }
+.fin-tile span { font-size: 26px; }
+.fin-tile small { font-size: 9px; color: var(--dim); }
+.fin-tile.got { background: rgba(255, 220, 150, .14); border: 1px solid rgba(255, 210, 122, .5); }
+.fin-tile.hidden-t.got { background: rgba(180, 140, 255, .2); border-color: #b48cff; }
+@keyframes deal { to { opacity: 1; transform: none; } }
+.fin-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.fin-stats div { background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 12px; padding: 10px 2px; }
+.fin-stats span { display: block; font-size: 20px; }
+.fin-stats b { display: block; font-size: 18px; color: #fff; margin-top: 2px; }
+.fin-stats small { font-size: 11px; color: var(--dim); }
+.finale .vq { text-align: left; }
+.fin-letter { text-align: left; white-space: pre-wrap; font-family: var(--serif); font-size: 16.5px; line-height: 1.95; background: #f8f1e0; color: #2d2010; border-radius: 14px; padding: 22px 20px; box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
+.fin-from { text-align: right; margin-top: 14px; color: #6b5536; }
+.fin-credits p { line-height: 1.9; color: #e8e2f2; }
+.fin-small { font-size: 12px; color: var(--dim) !important; }
+.fin-last { font-family: var(--serif); margin-top: 30px; color: #ffe3a3 !important; }
+.finale-go { margin: 16px 0 6px; animation: glowpulse 2.4s ease-in-out infinite; }

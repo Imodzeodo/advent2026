@@ -70,7 +70,7 @@
       ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록이 저장되지 않아요(사생활 보호 모드일 수 있어요). 일반 모드로 열어 주세요.</div>` : ''}
       ${nightLine()}
       ${backupNudge()}
-      ${!started ? `<button class="btn big start" id="start">시작하기</button>` : noteCard()}
+      ${!started ? `<button class="btn big start" id="start">시작하기</button>` : D.done.end ? `<button class="btn big finale-go" id="finale">🌟 27일의 기록 다시 보기</button>` : noteCard()}
       ${list}
       <footer class="home-foot">
         ${started ? `<div class="menu">
@@ -99,6 +99,7 @@
     const fm = root.querySelector('#fame'); if (fm) fm.onclick = fame;
     const co = root.querySelector('#code'); if (co) co.onclick = codePage;
     const vv = root.querySelector('#verses'); if (vv) vv.onclick = versePage;
+    const fi = root.querySelector('#finale'); if (fi) fi.onclick = finale;
     const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => { settings(); setTimeout(() => { const b = document.getElementById('bk-make'); if (b) b.scrollIntoView({ block: 'center' }); }, 100); };
     const nc = root.querySelector('.note-card'); if (nc) nc.onclick = () => go(nc.dataset.id);
     root.querySelector('#snd').onclick = e => { e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇'; };
@@ -224,6 +225,62 @@
         try { await navigator.share({ files }); } catch (e) { /* 취소 */ }
       } else Player.toast('여기서는 바로 공유가 안 돼요. 이미지를 길게 눌러 저장해 주세요');
     };
+  }
+
+  /* ---------- 엔딩: 27일의 기록 ---------- */
+  function finale() {
+    const D = Core.data;
+    const root = show('finale', 'page finale');
+    Sound.music('silent');
+    const list = Core.mainEpisodes();
+    const n = o => Object.keys(o || {}).length;
+    const stats = [
+      ['⭐', '별빛', `${Core.starCount()}/${Core.starTotal()}`],
+      ['✅', '미션 완료', Fame.missionYes()],
+      ['🤍', '정직한 답', Object.values(D.missionAns || {}).filter(v => v === 'no').length],
+      ['📔', '일기', Object.values(D.diary || {}).filter(x => x && x.a).length],
+      ['📖', '말씀 묵상', Object.values(D.medi || {}).filter(m => m.a.some(Boolean)).length],
+      ['✦', '빛 조각', Object.values(D.gems || {}).reduce((a, g) => a + g.length, 0)],
+      ['🪔', '등불 기름', D.oil || 0],
+      ['🏅', '배지', `${n(D.badges)}/${Fame.BADGES.length}`]
+    ];
+    const marked = [];
+    for (const e of list) for (const r of Bible.marks(e.id)) { const v = Bible.verses(r)[0]; if (v) marked.push(v); }
+    const picks = marked.length ? [0, Math.floor(marked.length / 3), Math.floor(marked.length * 2 / 3), marked.length - 1].filter((x, i, a) => a.indexOf(x) === i).map(i => marked[i]) : [Bible.verses('눅 2:14')[0]];
+    const letter = window.LETTER ? Script.fill(LETTER.text, '') : '';
+    const tiles = list.map((e, i) => {
+      const ch = CHAPTERS.find(c => c.n === e.ch);
+      const got = !!D.done[e.id];
+      return `<div class="fin-tile tone-${ch.tone}${got ? ' got' : ''}" style="--d:${i * 70}ms"><span>${got ? (e.card ? e.card.emoji : '⭐') : '·'}</span><small>${i + 1}</small></div>`;
+    }).join('') + (window.CODES || []).map(c => `<div class="fin-tile hidden-t${D.codes && D.codes[c.n] ? ' got' : ''}" style="--d:${(27 + c.n) * 70}ms"><span>${D.codes && D.codes[c.n] ? '🕯️' : '·'}</span><small>H${c.n}</small></div>`).join('');
+    root.innerHTML = `
+      <section class="fin-hero reveal">
+        <div class="fin-star">${Art.bigStar(Math.max(0.3, Core.starCount() / Core.starTotal()), 230)}</div>
+        <h1>그 밤을 향하여</h1>
+        <p class="fin-sub">${esc(D.nickname || '친구')}의 스물일곱 날</p>
+        <p class="fin-scroll">아래로 천천히 내려 봐 ↓</p>
+      </section>
+      <section class="reveal"><h2>모은 카드</h2><div class="fin-grid">${tiles}</div></section>
+      <section class="reveal"><h2>4주의 기록</h2><div class="fin-stats">${stats.map(s => `<div><span>${s[0]}</span><b>${esc(String(s[2]))}</b><small>${s[1]}</small></div>`).join('')}</div></section>
+      <section class="reveal"><h2>네가 붙든 말씀</h2>${picks.map(v => `<blockquote class="vq">${esc(v.text)}<cite>${esc(v.label)}</cite></blockquote>`).join('')}</section>
+      ${letter ? `<section class="reveal"><h2>편지</h2><div class="fin-letter">${esc(letter)}<div class="fin-from">${esc(LETTER.from)} 드림</div></div></section>` : ''}
+      <section class="reveal fin-credits">
+        <h2>함께한 사람들</h2>
+        <p><b>사가랴 · 엘리사벳 · 요셉 · 마리아</b><br>할아버지 목자와 들판의 목자들<br>그리고 등불을 든 <b>${esc(D.nickname || '너')}</b></p>
+        <p>2026 연동교회 고등부 대림절</p>
+        <p class="fin-small">성경 본문: 성경전서 개역개정판 © 대한성서공회<br>음악: 곧 오소서 임마누엘 · 기쁘다 구주 오셨네 · 고요한 밤 거룩한 밤 (옛 찬송 선율)</p>
+        <p class="fin-last">"목자들은 자기들에게 이르던 바와 같이<br>듣고 본 그 모든 것으로 인하여<br>하나님께 영광을 돌리고 찬송하며 돌아가니라"<br><small>누가복음 2:20</small></p>
+      </section>
+      <section class="reveal fin-end">
+        <button class="btn big" id="fin-card">🌟 완주 카드 만들기</button>
+        <button class="link-btn" id="fin-home">홈으로</button>
+      </section>`;
+    // 내려가면 하나씩 나타나기
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); if (e.target.querySelector('.fin-grid')) Sound.sfx('star'); io.unobserve(e.target); } }), { threshold: 0.2 });
+    root.querySelectorAll('.reveal').forEach(s => io.observe(s));
+    root.querySelector('#fin-card').onclick = () => card('FIN');
+    root.querySelector('#fin-home').onclick = home;
+    setTimeout(() => Sound.sfx('angel'), 400);
   }
 
   /* ---------- 말씀 모음: 묵상 때 표시한 구절들 ---------- */
@@ -448,12 +505,12 @@
   async function card(epId) {
     const D = Core.data;
     const root = show('cardview', 'page');
-    const isH = /^H\d$/.test(epId);
-    const hasDiary = !isH && !!(D.diary[epId] && D.diary[epId].a);
-    const hasMission = !isH && !!D.mission[epId];
+    const isH = /^H\d$/.test(epId), isF = epId === 'FIN';
+    const hasDiary = !isH && !isF && !!(D.diary[epId] && D.diary[epId].a);
+    const hasMission = !isH && !isF && !!D.mission[epId];
     const opt = { withDiary: false, missionDone: !!D.missionDone[epId] };
     root.innerHTML = `
-      <div class="page-head"><button class="back">←</button><h1>${isH ? '🕯️ 히든 카드 ' + epId[1] : '카드 No.' + Card.cardNo(epId)}</h1></div>
+      <div class="page-head"><button class="back">←</button><h1>${isF ? '🌟 완주 카드' : isH ? '🕯️ 히든 카드 ' + epId[1] : '카드 No.' + Card.cardNo(epId)}</h1></div>
       <div class="card-preview"><div class="loading">그리는 중…</div></div>
       <div class="card-opts">
         ${hasDiary ? `<label class="tg"><input type="checkbox" id="o-diary"> 내 묵상 한 줄 넣기</label>` : ''}
@@ -466,7 +523,7 @@
     root.querySelector('#home').onclick = home;
     let cv;
     const redraw = async () => {
-      cv = isH ? await Card.drawHidden(+epId[1]) : await Card.draw(epId, opt);
+      cv = isF ? await Card.drawFinale() : isH ? await Card.drawHidden(+epId[1]) : await Card.draw(epId, opt);
       const box = root.querySelector('.card-preview');
       box.innerHTML = '';
       const img = new Image();
@@ -514,6 +571,6 @@
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
-  window.App = { home, card, diary, go, cards, fame, codePage, versePage };
+  window.App = { home, card, diary, go, cards, fame, codePage, versePage, finale };
   home();
 })();

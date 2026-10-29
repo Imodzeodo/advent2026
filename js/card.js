@@ -324,10 +324,56 @@
     return cv;
   }
 
+  /* ---------- 완주 카드 (엔딩) ---------- */
+  async function drawFinale() {
+    const D = Core.data, W = 1080, H = 1350, P = 34;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    try { await Promise.all([document.fonts.load(`700 60px ${SERIF}`), document.fonts.load(`400 40px ${SANS}`)]); } catch (e) { /* 기본 글꼴 */ }
+    ctx.fillStyle = grad(ctx, 0, 0, W, H, STYLE.end.frame); rr(ctx, 0, 0, W, H, 54); ctx.fill();
+    ctx.save(); rr(ctx, P, P, W - 2 * P, H - 2 * P, 32); ctx.clip();
+    ctx.fillStyle = grad(ctx, 0, 0, 0, H, ['#0a0c22', '#2a2150', '#7a5a3a']); ctx.fillRect(0, 0, W, H);
+    const r = seeded(2025);
+    for (let i = 0; i < 140; i++) { ctx.fillStyle = `rgba(255,245,220,${0.08 + r() * 0.4})`; ctx.beginPath(); ctx.arc(r() * W, r() * H * 0.7, 1 + r() * 2, 0, Math.PI * 2); ctx.fill(); }
+    // 큰 별
+    const b = Core.starCount() / Core.starTotal(), sx = W / 2, sy = 250;
+    const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 300); g.addColorStop(0, `rgba(255,246,216,${0.4 + 0.5 * b})`); g.addColorStop(1, 'rgba(255,210,122,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, 300, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.translate(sx, sy); ctx.scale(1.8, 1.8); ctx.fillStyle = '#fff3c4';
+    ctx.beginPath(); ctx.moveTo(0, -60); ctx.quadraticCurveTo(5, -5, 60, 0); ctx.quadraticCurveTo(5, 5, 0, 60); ctx.quadraticCurveTo(-5, 5, -60, 0); ctx.quadraticCurveTo(-5, -5, 0, -60); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffe3a3'; ctx.font = `700 34px ${SANS}`; ctx.fillText('대림절 27일 완주', W / 2, P + 70);
+    ctx.fillStyle = '#fff'; ctx.font = `700 78px ${SERIF}`; ctx.fillText('그 밤을 향하여', W / 2, 520);
+    ctx.font = `400 40px ${SANS}`; ctx.fillStyle = 'rgba(255,255,255,.9)';
+    ctx.fillText(`${D.nickname || '친구'}${D.ban ? ' · ' + D.ban : ''}`, W / 2, 586);
+    // 카드 27장 상징
+    const list = Core.mainEpisodes(), cols = 9, cw = 96, ch = 104, gx = (W - cols * cw) / 2, gy = 640;
+    ctx.font = `52px ${EMOJI}`; ctx.textBaseline = 'middle';
+    list.forEach((e, i) => {
+      const x = gx + (i % cols) * cw + cw / 2, y = gy + Math.floor(i / cols) * ch + ch / 2;
+      const got = !!D.done[e.id];
+      ctx.fillStyle = got ? 'rgba(255,230,170,.16)' : 'rgba(255,255,255,.05)'; rr(ctx, x - 42, y - 46, 84, 92, 14); ctx.fill();
+      ctx.globalAlpha = got ? 1 : 0.25; ctx.fillStyle = '#fff'; ctx.fillText(got ? (e.card ? e.card.emoji : '⭐') : '·', x, y); ctx.globalAlpha = 1;
+    });
+    ctx.textBaseline = 'alphabetic';
+    // 숫자
+    const yes = Fame.missionYes(), medi = Object.values(D.medi || {}).filter(m => m.a.some(Boolean)).length;
+    ctx.font = `400 34px ${SANS}`; ctx.fillStyle = '#ffe3a3';
+    ctx.fillText(`별빛 ${Core.starCount()}/${Core.starTotal()}  ·  미션 ${yes}  ·  말씀 묵상 ${medi}  ·  기름 ${D.oil || 0}`, W / 2, 1010);
+    const v = Bible.verses('눅 2:20')[0];
+    ctx.font = `400 34px ${SERIF}`; ctx.fillStyle = '#fff8e6';
+    let y = 1090; for (const l of clamp(wrap(ctx, '“' + v.text + '”', W - 220), 3)) { ctx.fillText(l, W / 2, y); y += 50; }
+    ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.7)';
+    ctx.fillText('누가복음 2:20 · 2026. 12. 25. 연동교회 고등부 대림절', W / 2, H - P - 50);
+    ctx.restore();
+    return cv;
+  }
+
   const toBlob = cv => new Promise(res => cv.toBlob(res, 'image/png'));
   async function share(cv, epId) {
     const blob = await toBlob(cv);
-    const file = new File([blob], /^H\d$/.test(epId) ? `그밤-히든${epId[1]}.png` : `그밤-No${cardNo(epId)}.png`, { type: 'image/png' });
+    const file = new File([blob], epId === 'FIN' ? '그밤-완주.png' : /^H\d$/.test(epId) ? `그밤-히든${epId[1]}.png` : `그밤-No${cardNo(epId)}.png`, { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file] }); return 'shared'; }
       catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
@@ -335,5 +381,5 @@
     return 'fallback';
   }
 
-  window.Card = { draw, drawHidden, share, toBlob, STYLE, cardNo };
+  window.Card = { draw, drawHidden, drawFinale, share, toBlob, STYLE, cardNo };
 })();
