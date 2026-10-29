@@ -155,11 +155,11 @@
     for (const l of clamp(wrap(ctx, ep.title, iw - 190), 2)) { ctx.fillText(l, ix + 4, y); y += 76; }
     ctx.font = `400 30px ${SANS}`;
     ctx.fillStyle = 'rgba(255,255,255,.7)';
-    ctx.fillText(Core.dateLabel(ep.date, true) + (ep.read ? '  ·  ' + ep.read : ''), ix + 4, y - 18);
+    ctx.fillText(Core.dateLabel(ep.date, true) + (ep.read ? '  ·  ' + Bible.full(ep.read.split(';')[0]) : ''), ix + 4, y - 18);
     y += 34;
 
     // 7) 구절 (학생이 고른 구절, 없으면 이 편의 대표 구절)
-    const picked = D.verse && D.verse[epId];
+    const picked = Bible.marks(epId)[0];
     const v = Bible.verses(picked || (ep.card && ep.card.key))[0];
     const ans = D.diary[epId] && D.diary[epId].a;
     const quote = opt.withDiary && ans ? { text: ans, label: '— 나의 묵상' } : v ? { text: v.text, label: (picked ? '내 마음에 남은 말씀 · ' : '') + v.label } : null;
@@ -185,7 +185,7 @@
     if (D.mission[epId]) {
       const room = H - P - 96 - y;
       ctx.font = `400 30px ${SANS}`;
-      const ml = clamp(wrap(ctx, D.mission[epId], iw - 20), Math.max(0, Math.floor((room - 46) / 42)));
+      const ml = clamp(wrap(ctx, Bible.full(D.mission[epId]), iw - 20), Math.max(0, Math.floor((room - 46) / 42)));
       if (ml.length) {
         ctx.fillStyle = S.ink;
         ctx.font = `700 28px ${SANS}`;

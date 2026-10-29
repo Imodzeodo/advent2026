@@ -22,7 +22,16 @@
     });
     return out;
   }
-  window.Bible = { verses, BOOK };
+  // "눅 1:5-7; 시 85:10" → "누가복음 1:5-7; 시편 85:10" (대사 속 "(마 2장)"도)
+  const ABBR = Object.keys(BOOK).sort((a, b) => b.length - a.length).join('|');
+  const RE = new RegExp('(^|[^가-힣])(' + ABBR + ')\\s?(\\d+)(?=[:장])', 'g');
+  function full(s) { return String(s == null ? '' : s).replace(RE, (m, pre, b, n) => pre + BOOK[b] + ' ' + n); }
+  // 표시해 둔 구절(여러 개) — 예전 저장 형식(문자열)도 받아 준다
+  function marks(epId) {
+    const v = (Core.data.verse || {})[epId];
+    return !v ? [] : Array.isArray(v) ? v : [v];
+  }
+  window.Bible = { verses, BOOK, full, marks };
 
   /* ---------- 기록 계산 ---------- */
   const main = () => Core.mainEpisodes();

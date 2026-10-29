@@ -8,13 +8,13 @@
   // 한 편에 남긴 기록 모으기
   function entry(e) {
     const D = Core.data;
-    const v = D.verse && D.verse[e.id] ? Bible.verses(D.verse[e.id])[0] : null;
+    const vs = Bible.marks(e.id).map(r => Bible.verses(r)[0]).filter(Boolean);
     const qa = [];
     if (D.diary[e.id] && D.diary[e.id].a) qa.push({ who: e.host || '', q: D.diary[e.id].q, a: D.diary[e.id].a });
     const M = (D.medi || {})[e.id];
-    if (M) M.q.forEach((q, i) => { if (M.a[i]) qa.push({ who: '말씀 묵상', q, a: M.a[i] }); });
-    const has = !!(D.done[e.id] || qa.length || v);
-    return has ? { e, ch: CHAPTERS.find(c => c.n === e.ch), v, qa, mission: D.mission[e.id], st: Fame.missionStatus(e) } : null;
+    if (M) M.q.forEach((q, i) => { if (M.a[i]) qa.push({ who: '말씀 묵상', q: Bible.full(q), a: M.a[i] }); });
+    const has = !!(D.done[e.id] || qa.length || vs.length);
+    return has ? { e, ch: CHAPTERS.find(c => c.n === e.ch), vs, read: Bible.full(e.read || ''), qa, mission: Bible.full(D.mission[e.id] || ''), st: Fame.missionStatus(e) } : null;
   }
   const entries = () => Core.mainEpisodes().map(entry).filter(Boolean);
 
@@ -25,8 +25,8 @@
     let lastCh = null;
     for (const x of entries()) {
       if (x.ch !== lastCh) { out += `\n━━━━━━━━━━━━━━━━\n${x.ch.label} 「${x.ch.title}」\n━━━━━━━━━━━━━━━━\n`; lastCh = x.ch; }
-      out += `\n▸ ${Core.dateLabel(x.e.date)} ${x.e.day} · ${x.e.title}\n  본문: ${x.e.read || ''}\n`;
-      if (x.v) out += `  마음에 남은 말씀: "${x.v.text}" (${x.v.label})\n`;
+      out += `\n▸ ${Core.dateLabel(x.e.date)} ${x.e.day} · ${x.e.title}\n  본문: ${x.read}\n`;
+      for (const v of x.vs) out += `  마음에 남은 말씀: "${v.text}" (${v.label})\n`;
       for (const q of x.qa) out += `  Q. ${q.q}\n  A. ${q.a}\n`;
       if (x.mission) out += `  미션: ${x.mission}${ST[x.st] ? ' — ' + ST[x.st] : ''}\n`;
     }
@@ -92,15 +92,15 @@
         ctx.fillStyle = ink; ctx.font = `700 30px ${SANS}`;
         ctx.fillText(`${Core.dateLabel(x.e.date)} · ${x.e.day}`, L, y + 40);
         ctx.textAlign = 'right'; ctx.font = `400 26px ${SANS}`; ctx.fillStyle = '#7a6548';
-        ctx.fillText(x.e.read || '', W - R, y + 40); ctx.textAlign = 'left';
+        ctx.fillText(x.read.split(';')[0], W - R, y + 40); ctx.textAlign = 'left';
       }
       y += 58;
       text(x.e.title, `700 46px ${SERIF}`, '#2d2010', L, 70);
-      if (x.v) {
+      for (const v of x.vs) {
         y += 12;
         const y0 = y;
-        const n = text(`“${x.v.text}”`, `400 34px ${SERIF}`, '#4a3418', L + 30, 52, TW - 40);
-        text(x.v.label, `400 26px ${SANS}`, ink, L + 30, 40);
+        text(`“${v.text}”`, `400 34px ${SERIF}`, '#4a3418', L + 30, 52, TW - 40);
+        text(v.label, `400 26px ${SANS}`, ink, L + 30, 40);
         if (draw) { ctx.fillStyle = ink; ctx.fillRect(L + 6, y0 + 16, 6, y - y0 - 6); }
         y += 6;
       }

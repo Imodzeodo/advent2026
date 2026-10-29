@@ -88,6 +88,7 @@
      {일기:1-0?A|B}        → 답이 있으면 A($ 자리에 답), 없으면 B
   */
   function fill(text, epId) {
+    if (window.Bible) text = Bible.full(text);
     const d = window.Core.data;
     const clip = s => (s.length > 40 ? s.slice(0, 40) + '…' : s);
     return text.replace(/\{([^{}]*)\}/g, (all, inner) => {

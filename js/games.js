@@ -185,10 +185,21 @@
     box.innerHTML = head(P.title, P.help) + `<div class="tap-field f-${P.field}"><div class="tap-goal"></div></div><div class="hold-bar"><i></i></div>`;
     const field = box.querySelector('.tap-field'), bar = box.querySelector('.hold-bar i');
     let left = P.n, shown = 0;
+    const used = [];
+    const place = () => {
+      let best = null, bestD = -1;
+      for (let k = 0; k < 40; k++) {
+        const c = { x: rnd(12, 88), y: rnd(16, 80) };
+        const d = used.length ? Math.min(...used.map(u => Math.hypot((u.x - c.x) * 1.4, u.y - c.y))) : 99;
+        if (d > bestD) { best = c; bestD = d; }
+        if (d > 22) break;
+      }
+      used.push(best); return best;
+    };
     const spawn = () => {
       const b = document.createElement('button');
       b.className = 'tap-it'; b.textContent = P.icon; b.dataset.hp = P.hits;
-      b.style.left = rnd(8, 82) + '%'; b.style.top = rnd(10, 72) + '%';
+      const p = place(); b.style.left = p.x + '%'; b.style.top = p.y + '%';
       b.onclick = () => {
         b.dataset.hp--; Sound.sfx(P.sfx); if (navigator.vibrate) navigator.vibrate(12);
         b.classList.remove('hit'); void b.offsetWidth; b.classList.add('hit');
@@ -206,29 +217,50 @@
   /* ---- 손가락으로 따라 쓰기 (서판) ---- */
   G['따라쓰기'] = (box, api, word) => {
     word = word || '요한';
-    box.innerHTML = head('서판에 쓰기', `손가락으로 <b>${word}</b>를 따라 써 봐`) + `<div class="tablet"><canvas width="600" height="300"></canvas></div><button class="btn small ghost tr-skip">다 썼어</button>`;
-    const cv = box.querySelector('canvas'), ctx = cv.getContext('2d');
-    const draw0 = () => {
-      ctx.fillStyle = '#d8c9a4'; ctx.fillRect(0, 0, 600, 300);
-      ctx.font = `700 ${word.length > 3 ? 120 : 170}px "Gowun Batang", serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = 'rgba(80,55,25,.22)'; ctx.fillText(word, 300, 160);
-    };
-    draw0();
-    let drawing = false, lastP = null, ink = 0, finished = false;
+    box.innerHTML = head('서판에 쓰기', `손가락으로 <b>${word}</b>를 따라 써 봐`) +
+      `<div class="tablet"><canvas width="600" height="300"></canvas></div><div class="hold-bar"><i></i></div><button class="btn small ghost tr-skip" hidden>다 썼어</button>`;
+    const cv = box.querySelector('canvas'), ctx = cv.getContext('2d'), bar = box.querySelector('.hold-bar i');
+    const font = `700 ${word.length > 3 ? 120 : 170}px "Gowun Batang", serif`;
+    ctx.fillStyle = '#d8c9a4'; ctx.fillRect(0, 0, 600, 300);
+    ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(80,55,25,.22)'; ctx.fillText(word, 300, 160);
+    // 글자 모양 위의 점들을 목표로 삼는다
+    const mask = document.createElement('canvas'); mask.width = 600; mask.height = 300;
+    const mx = mask.getContext('2d'); mx.font = font; mx.textAlign = 'center'; mx.textBaseline = 'middle'; mx.fillStyle = '#000'; mx.fillText(word, 300, 160);
+    const px = mx.getImageData(0, 0, 600, 300).data, targets = [];
+    for (let y = 4; y < 300; y += 9) for (let x = 4; x < 600; x += 9) if (px[(y * 600 + x) * 4 + 3] > 120) targets.push({ x, y, hit: false });
+    let hits = 0, drawing = false, lastP = null, finished = false;
+    const need = Math.ceil(targets.length * 0.7);
     const pos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * 600, y: (e.clientY - r.top) / r.height * 300 }; };
-    cv.addEventListener('pointerdown', e => { drawing = true; lastP = pos(e); cv.setPointerCapture(e.pointerId); e.preventDefault(); });
+    const mark = (a, b) => {
+      const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 6));
+      for (let k = 0; k <= steps; k++) {
+        const x = a.x + (b.x - a.x) * k / steps, y = a.y + (b.y - a.y) * k / steps;
+        for (const t of targets) if (!t.hit && (t.x - x) ** 2 + (t.y - y) ** 2 < 15 * 15) { t.hit = true; hits++; }
+      }
+      bar.style.width = Math.min(100, hits / need * 100) + '%';
+      if (hits >= need) done();
+    };
+    cv.addEventListener('pointerdown', e => { drawing = true; lastP = pos(e); cv.setPointerCapture(e.pointerId); e.preventDefault(); mark(lastP, lastP); });
     cv.addEventListener('pointermove', e => {
       if (!drawing || finished) return;
       const p = pos(e);
       ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 14; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(lastP.x, lastP.y); ctx.lineTo(p.x, p.y); ctx.stroke();
-      ink += Math.hypot(p.x - lastP.x, p.y - lastP.y); lastP = p;
+      mark(lastP, p); lastP = p;
       if (Math.random() < 0.08) Sound.sfx('plane');
-      if (ink > 260 * word.length) done();
     });
     cv.addEventListener('pointerup', () => { drawing = false; });
-    const done = () => { if (finished) return; finished = true; Sound.sfx('gem'); box.querySelector('.game-help').textContent = '서판에 적었다.'; setTimeout(api.done, 900); };
-    box.querySelector('.tr-skip').onclick = done;
+    // 손가락이 불편한 학생을 위해 20초 뒤 '다 썼어' 버튼
+    const skip = box.querySelector('.tr-skip');
+    setTimeout(() => { if (!finished) skip.hidden = false; }, 20000);
+    skip.onclick = () => done();
+    function done() {
+      if (finished) return; finished = true;
+      ctx.fillStyle = 'rgba(58,36,16,.9)'; ctx.font = font; ctx.fillText(word, 300, 160);
+      Sound.sfx('gem'); box.querySelector('.game-help').textContent = '서판에 적었다.';
+      setTimeout(api.done, 1000);
+    }
   };
 
   /* ---- 어둠 속 등불로 찾기 ---- */
@@ -362,13 +394,19 @@
   G['별잇기'] = (box, api) => {
     const pts = [[150, 30], [175, 95], [245, 100], [190, 140], [210, 210], [150, 170], [90, 210], [110, 140], [55, 100], [125, 95]];
     box.innerHTML = head('별 잇기', '1번부터 차례로 별을 눌러 이어 봐') + `<svg viewBox="0 0 300 240" class="constel"><polyline class="cl" points="" fill="none" stroke="#ffe3a3" stroke-width="2.5"/>${pts.map((p, i) => `<g class="cs" data-i="${i}"><circle cx="${p[0]}" cy="${p[1]}" r="16" fill="transparent"/><circle cx="${p[0]}" cy="${p[1]}" r="5" fill="#fff"/><text x="${p[0] + 9}" y="${p[1] - 8}" fill="#cfd6ff" font-size="11">${i + 1}</text></g>`).join('')}</svg>`;
-    let n = 0; const line = box.querySelector('.cl'), got = [];
+    let n = 0, closed = false; const line = box.querySelector('.cl'), got = [];
+    const help = box.querySelector('.game-help');
     box.querySelectorAll('.cs').forEach(g => g.addEventListener('click', () => {
-      if (+g.dataset.i !== n) { Sound.sfx('tap'); return; }
-      got.push(pts[n].join(',')); n++;
-      line.setAttribute('points', got.join(' ') + (n === pts.length ? ' ' + pts[0].join(',') : ''));
-      g.classList.add('on'); Sound.sfx('gem');
-      if (n === pts.length) { box.querySelector('.game-help').textContent = '별 하나가 그려졌다.'; Sound.sfx('star'); setTimeout(api.done, 1200); }
+      if (closed) return;
+      const i = +g.dataset.i;
+      // 10번까지 이은 뒤에는 1번을 눌러야 닫힌다
+      const want = n < pts.length ? n : 0;
+      if (i !== want) { Sound.sfx('tap'); return; }
+      if (n < pts.length) { got.push(pts[n].join(',')); n++; g.classList.add('on'); Sound.sfx('gem'); }
+      else { got.push(pts[0].join(',')); closed = true; }
+      line.setAttribute('points', got.join(' '));
+      if (n === pts.length && !closed) { help.innerHTML = '마지막으로 <b>1번 별</b>을 눌러 이어 줘'; box.querySelector('.cs[data-i="0"]').classList.add('again'); }
+      if (closed) { help.textContent = '별 하나가 그려졌다.'; Sound.sfx('star'); setTimeout(api.done, 1200); }
     }));
   };
 

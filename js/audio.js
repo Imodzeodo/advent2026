@@ -34,17 +34,36 @@
   }
 
   // 첫 터치에서 소리를 깨운다 (모바일 브라우저 규칙)
+  // 다른 앱에 다녀오면 아이폰은 소리 장치가 '멈춘 채 살아 있는' 경우가 있어서, 다음 터치 때 새로 만든다
+  let stale = false, lastWake = 0;
+  function rebuild() {
+    if (timer) clearInterval(timer);
+    timer = null; current = null;
+    try { ctx && ctx.close(); } catch (e) { /* 무시 */ }
+    ctx = null;
+  }
   function unlock() {
     if (!on()) return;
+    if (stale) { stale = false; rebuild(); }
+    const wasRunning = ctx && ctx.state === 'running';
     init();
-    if (ctx && ctx.state !== 'running') ctx.resume();
-    if (wanted && !current) startMusic(wanted);
+    if (!ctx) return;
+    const go = () => { if (wanted && !current && ctx && ctx.state === 'running') startMusic(wanted); };
+    if (!wasRunning) lastWake = Date.now();
+    if (ctx.state !== 'running') ctx.resume().then(go).catch(() => {}); else go();
   }
-  ['pointerdown', 'touchend', 'keydown'].forEach(ev => window.addEventListener(ev, unlock, { passive: true }));
+  ['pointerdown', 'touchend', 'keydown'].forEach(ev => window.addEventListener(ev, unlock, { passive: true, capture: true }));
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
-    if (document.hidden) ctx.suspend(); else if (on()) ctx.resume();
+    if (document.hidden) {
+      stopMusic();
+      try { ctx.suspend(); } catch (e) { /* 무시 */ }
+      if (Core.isIOS) stale = true;
+    } else if (on() && !stale) {
+      ctx.resume().then(() => { if (wanted && !current) startMusic(wanted); }).catch(() => {});
+    }
   });
+  window.addEventListener('pageshow', e => { if (e.persisted) stale = true; });
 
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
 
@@ -235,6 +254,12 @@
     if (!on() || !ctx || ctx.state !== 'running') return;
     if (current !== name) startMusic(name);
   }
+  // 🔊 버튼: 방금 그 터치로 소리가 깨어난 거라면 끄지 않는다
+  function toggle() {
+    if (on() && Date.now() - lastWake < 700) return true;
+    setOn(!on());
+    return on();
+  }
   function setOn(v) {
     Core.data.sound = v;
     Core.save();
@@ -244,5 +269,5 @@
 
   // 장 분위기 → 곡
   const TONE_SONG = { ch0: 'night', ch1: 'veni', ch2: 'calm', ch3: 'joy', ch4: 'silent', end: 'silent', home: 'night' };
-  window.Sound = { sfx, blip, music, setOn, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
+  window.Sound = { sfx, blip, music, setOn, toggle, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
 })();

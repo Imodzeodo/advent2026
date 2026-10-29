@@ -475,3 +475,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .di-verse small { display: block; font-family: var(--sans); font-size: 11.5px; color: var(--gold); }
 .di-m { font-size: 12.5px; color: var(--dim); margin-top: 10px; }
 .note-img { width: 100%; border-radius: 10px; margin: 8px 0; display: block; }
+
+/* 피드백 반영 */
+.link-btn { display: block; margin: 6px auto 0; background: none; border: 0; color: var(--dim); font-size: 14px; padding: 10px 18px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.tap-it.done { pointer-events: none; }
+.cs.again circle:nth-child(2) { animation: twinkle 1s infinite; fill: #ffe08a; }
+.vgroup { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; margin: 10px 0; background: rgba(255, 255, 255, .03); }
+.vq { margin: 10px 0 0; padding-left: 12px; border-left: 3px solid var(--gold); font-family: var(--serif); font-size: 16px; line-height: 1.75; }
+.vq cite { display: block; font-style: normal; font-family: var(--sans); font-size: 12px; color: var(--gold); margin-top: 2px; }

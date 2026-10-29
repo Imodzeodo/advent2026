@@ -63,8 +63,7 @@
       }
     });
     root.querySelector('.snd').addEventListener('click', e => {
-      Sound.setOn(!Sound.on);
-      e.currentTarget.textContent = Sound.on ? '🔊' : '🔇';
+      e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇';
     });
     window.addEventListener('resize', placeHotMarks);
   }
@@ -291,7 +290,7 @@
   /* ---------- 단계별 처리 ---------- */
   const run = {
     async title(s) {
-      el.title.innerHTML = s.parts.map((p, i) => `<div class="t${i}">${esc(p)}</div>`).join('');
+      el.title.innerHTML = s.parts.map((p, i) => `<div class="t${i}">${esc(Bible.full(p))}</div>`).join('');
       el.title.hidden = false;
       Sound.sfx('title');
       void el.title.offsetWidth; el.title.classList.add('in');
@@ -329,7 +328,7 @@
       if (!s.text) s.text = Bible.verses(s.ref.split('·')[0].trim()).map(v => v.text).join(' ');
       await cardThenTap(`
         <div class="card verse">
-          <div class="verse-ref">${esc(s.ref)}</div>
+          <div class="verse-ref">${esc(Bible.full(s.ref))}</div>
           <div class="verse-text">${esc(s.text)}</div>
           <div class="verse-src">성경전서 개역개정판</div>
           <div class="tap-hint">탭해서 계속</div>
@@ -352,7 +351,7 @@
           <div class="card read">
             <div class="read-icon">📖</div>
             <div class="read-title">성경 펴서 읽기</div>
-            <div class="read-ref">${esc(s.ref)}</div>
+            <div class="read-ref">${esc(Bible.full(s.ref))}</div>
             <div class="read-help">성경책이나 성경 앱을 열어 읽어 보세요.</div>
             <div class="row"><button class="btn ghost" data-v="later">나중에 읽을게</button><button class="btn" data-v="done">읽었어</button></div>
           </div>`, 'center');
@@ -489,23 +488,23 @@
     D.medi = D.medi || {};
     const prev = D.medi[ep.id] || {};
     const qs = ep.medi && ep.medi.length ? ep.medi : ['오늘 말씀에서 가장 마음에 남는 부분은 어디야?', '그 말씀이 오늘 나에게 하는 말은 뭘까?'];
-    const refLabel = ep.read.replace(/(\S+?)\s(\d+:)/g, (m, b, c) => (Bible.BOOK[b] || b) + ' ' + c);
-    let picked = (D.verse && D.verse[ep.id]) || null;
+    const refLabel = Bible.full(ep.read);
+    const picked = new Set(Bible.marks(ep.id));
     const result = await new Promise(res => {
       const ov = showOverlay(`
         <div class="card medi">
           <div class="medi-scroll">
             <div class="medi-tag">말씀 묵상</div>
             <div class="medi-ref">${esc(refLabel)}</div>
-            <div class="medi-help">천천히 읽어 봐. 마음에 남는 구절은 눌러서 표시해 둘 수 있어.</div>
+            <div class="medi-help">천천히 읽어 봐. 마음에 남는 구절은 눌러서 표시해 둬. 여러 개도 돼. 홈의 <b>📖 말씀 모음</b>에 모여.</div>
             <div class="medi-list">${list.map(v => `
               ${v.heading ? `<div class="mh">${esc(v.heading)}</div>` : ''}
-              <button class="mv${v.ref === picked ? ' on' : ''}" data-ref="${esc(v.ref)}"><sup>${v.v}</sup>${esc(v.text)}</button>`).join('')}
+              <button class="mv${picked.has(v.ref) ? ' on' : ''}" data-ref="${esc(v.ref)}"><sup>${v.v}</sup>${esc(v.text)}</button>`).join('')}
             </div>
             <div class="medi-src">성경전서 개역개정판 © 대한성서공회</div>
             <div class="medi-qs">${qs.map((q, i) => `
               <div class="mq">
-                <div class="mq-q"><b>${i + 1}</b>${esc(q)}</div>
+                <div class="mq-q"><b>${i + 1}</b>${esc(Bible.full(q))}</div>
                 <textarea rows="2" maxlength="300" data-i="${i}" placeholder="생각나는 대로 적어 봐">${esc((prev.a && prev.a[i]) || '')}</textarea>
               </div>`).join('')}
             </div>
@@ -516,11 +515,9 @@
           </div>
         </div>`, 'center input medi');
       ov.querySelectorAll('.mv').forEach(btn => btn.onclick = () => {
-        const on = !btn.classList.contains('on');
-        ov.querySelectorAll('.mv').forEach(x => x.classList.remove('on'));
-        btn.classList.toggle('on', on);
-        picked = on ? btn.dataset.ref : null;
-        Sound.sfx('select');
+        const on = btn.classList.toggle('on');
+        if (on) picked.add(btn.dataset.ref); else picked.delete(btn.dataset.ref);
+        Sound.sfx(on ? 'gem' : 'select');
       });
       // 적는 칸이 키보드에 가리지 않게
       ov.querySelectorAll('textarea').forEach(t => t.addEventListener('focus', () => setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)));
@@ -530,12 +527,13 @@
     });
     hideOverlay();
     D.verse = D.verse || {};
-    if (picked) D.verse[ep.id] = picked; else delete D.verse[ep.id];
+    const order = list.map(v => v.ref).filter(r => picked.has(r));
+    if (order.length) D.verse[ep.id] = order; else delete D.verse[ep.id];
     if (result.a.some(Boolean)) D.medi[ep.id] = { q: qs, a: result.a };
     Core.save();
     if (!result.done) return;
     Sound.sfx('verse');
-    const v = picked && list.find(x => x.ref === picked);
+    const v = order.length && list.find(x => x.ref === order[0]);
     await new Promise(res => {
       const ov = showOverlay(`
         <div class="card verse">
@@ -634,7 +632,7 @@
         <div class="done-sub">별빛 ${after} / ${total}${first ? ` · 카드 No.${Card.cardNo(ep.id)} 획득` : ''}${gemLine ? `<br><span class="gem-line">${esc(gemLine)}</span>` : ''}</div>
         ${newBadges.length ? `<div class="new-badges">${newBadges.map(b => `<div class="nb"><span>${b.icon}</span><b>${esc(b.name)}</b><small>새 배지</small></div>`).join('')}</div>` : ''}
         <button class="btn" data-v="card">인증 카드 보기</button>
-        <button class="btn ghost" data-v="home">홈으로</button>
+        <button class="link-btn" data-v="home">홈으로</button>
       </div>`, 'center full');
     setTimeout(() => {
       if (my !== runId) return;

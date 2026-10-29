@@ -77,7 +77,8 @@
           <button class="btn ghost" id="fame">📜 나의 기록</button>
           <button class="btn ghost" id="code">🔑 주일 암호 <small>${Object.keys(D.codes || {}).length}/4</small></button>
           <button class="btn ghost" id="diary">📔 묵상 노트</button>
-          <button class="btn ghost wide" id="settings">⚙️ 설정</button>
+          <button class="btn ghost" id="verses">📖 말씀 모음 <small>${Object.values(D.verse || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 1), 0)}</small></button>
+          <button class="btn ghost" id="settings">⚙️ 설정</button>
         </div>` : ''}
         <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
       </footer>`;
@@ -96,8 +97,9 @@
     const cd = root.querySelector('#cards'); if (cd) cd.onclick = cards;
     const fm = root.querySelector('#fame'); if (fm) fm.onclick = fame;
     const co = root.querySelector('#code'); if (co) co.onclick = codePage;
+    const vv = root.querySelector('#verses'); if (vv) vv.onclick = versePage;
     const nc = root.querySelector('.note-card'); if (nc) nc.onclick = () => go(nc.dataset.id);
-    root.querySelector('#snd').onclick = e => { Sound.setOn(!Sound.on); e.currentTarget.textContent = Sound.on ? '🔊' : '🔇'; };
+    root.querySelector('#snd').onclick = e => { e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇'; };
     bindTestReset(root);
   }
 
@@ -167,8 +169,8 @@
       ${list.length ? list.map(x => `
         <article class="diary-item tone-${x.ch.tone}">
           <div class="di-meta">${esc(x.ch.label)} · ${esc(Core.dateLabel(x.e.date))} ${esc(x.e.day)}</div>
-          <div class="di-title">${esc(x.e.title)} <small>${esc(x.e.read || '')}</small></div>
-          ${x.v ? `<div class="di-verse">“${esc(x.v.text)}” <small>${esc(x.v.label)}</small></div>` : ''}
+          <div class="di-title">${esc(x.e.title)} <small>${esc(x.read)}</small></div>
+          ${x.vs.map(v => `<div class="di-verse">“${esc(v.text)}” <small>${esc(v.label)}</small></div>`).join('')}
           ${x.qa.map(q => `<div class="di-q">${q.who === '말씀 묵상' ? '📖 ' : ''}${esc(q.q)}</div><div class="di-a">${esc(q.a)}</div>`).join('')}
           ${x.mission ? `<div class="di-m">미션 · ${esc(x.mission)}</div>` : ''}
         </article>`).join('') : `<p class="empty">아직 적은 묵상이 없어요.</p>`}`;
@@ -213,6 +215,32 @@
         try { await navigator.share({ files }); } catch (e) { /* 취소 */ }
       } else Player.toast('여기서는 바로 공유가 안 돼요. 이미지를 길게 눌러 저장해 주세요');
     };
+  }
+
+  /* ---------- 말씀 모음: 묵상 때 표시한 구절들 ---------- */
+  function versePage() {
+    const root = show('verses', 'page');
+    const groups = Core.mainEpisodes().map(e => ({ e, vs: Bible.marks(e.id).map(r => Bible.verses(r)[0]).filter(Boolean) })).filter(g => g.vs.length);
+    const total = groups.reduce((a, g) => a + g.vs.length, 0);
+    root.innerHTML = `
+      ${testBanner()}
+      <div class="page-head"><button class="back">←</button><h1>📖 말씀 모음</h1><span class="head-count">${total}절</span></div>
+      <p class="page-note">말씀 묵상에서 마음에 남아 표시한 구절들이에요. 표시를 바꾸려면 그 편을 다시 보기 하면 돼요.</p>
+      ${total ? `<button class="btn ghost" id="vcopy">📋 모두 복사</button>` : ''}
+      ${groups.length ? groups.map(g => {
+        const ch = CHAPTERS.find(c => c.n === g.e.ch);
+        return `<section class="vgroup tone-${ch.tone}">
+          <div class="di-meta">${esc(ch.label)} · ${esc(Core.dateLabel(g.e.date))} · ${esc(g.e.title)}</div>
+          ${g.vs.map(v => `<blockquote class="vq">${esc(v.text)}<cite>${esc(v.label)}</cite></blockquote>`).join('')}
+        </section>`;
+      }).join('') : `<p class="empty">아직 표시한 구절이 없어요.<br>매일 끝의 말씀 묵상에서 구절을 눌러 보세요.</p>`}`;
+    root.querySelector('.back').onclick = home;
+    const c = root.querySelector('#vcopy');
+    if (c) c.onclick = async () => {
+      const t = groups.map(g => `[${g.e.title}]\n` + g.vs.map(v => `"${v.text}" (${v.label})`).join('\n')).join('\n\n') + '\n\n성경전서 개역개정판 © 대한성서공회';
+      try { await navigator.clipboard.writeText(t); Player.toast('복사했어요'); } catch (e) { Player.toast('복사가 안 되는 브라우저예요'); }
+    };
+    bindTestReset(root);
   }
 
   /* ---------- 카드 도감 ---------- */
@@ -380,7 +408,7 @@
       </div>
       <button class="btn big" id="share">카톡으로 공유</button>
       <button class="btn ghost" id="save">이미지 저장</button>
-      <button class="btn ghost" id="home">홈으로</button>`;
+      <button class="link-btn" id="home">홈으로</button>`;
     root.querySelector('.back').onclick = cards;
     root.querySelector('#home').onclick = home;
     let cv;
@@ -428,6 +456,6 @@
     sheet.onclick = ev => { if (ev.target === sheet) sheet.remove(); };
   }
 
-  window.App = { home, card, diary, go, cards, fame, codePage };
+  window.App = { home, card, diary, go, cards, fame, codePage, versePage };
   home();
 })();
