@@ -255,7 +255,7 @@
     const marked = [];
     for (const e of list) for (const r of Bible.marks(e.id)) { const v = Bible.verses(r)[0]; if (v) marked.push(v); }
     const picks = marked.length ? [0, Math.floor(marked.length / 3), Math.floor(marked.length * 2 / 3), marked.length - 1].filter((x, i, a) => a.indexOf(x) === i).map(i => marked[i]) : [Bible.verses('눅 2:14')[0]];
-    const letter = window.LETTER ? Script.fill(LETTER.text, '') : '';
+    const letters = (window.LETTERS || []).map(l => ({ ...l, text: Script.fill(l.text, '') }));
     const tiles = list.map((e, i) => {
       const ch = CHAPTERS.find(c => c.n === e.ch);
       const got = !!D.done[e.id];
@@ -271,7 +271,12 @@
       <section class="reveal"><h2>모은 카드</h2><div class="fin-grid">${tiles}</div></section>
       <section class="reveal"><h2>4주의 기록</h2><div class="fin-stats">${stats.map(s => `<div><span>${s[0]}</span><b>${esc(String(s[2]))}</b><small>${s[1]}</small></div>`).join('')}</div></section>
       <section class="reveal"><h2>네가 붙든 말씀</h2>${picks.map(v => `<blockquote class="vq">${esc(v.text)}<cite>${esc(v.label)}</cite></blockquote>`).join('')}</section>
-      ${letter ? `<section class="reveal"><h2>편지</h2><div class="fin-letter">${esc(letter)}<div class="fin-from">${esc(LETTER.from)} 드림</div></div></section>` : ''}
+      ${letters.length ? `<section class="reveal"><h2>그들이 남긴 편지</h2>${letters.map(l => `
+        <div class="fin-letter">
+          <div class="fin-lt-head"><span class="fin-pt">${Art.portrait(l.who, '웃음')}</span><b>${esc(l.who === '할아버지' ? '할아버지 목자' : l.who)}</b></div>
+          <div class="fin-lt-body">${esc(l.text)}</div>
+          <div class="fin-from">${esc(l.from)}</div>
+        </div>`).join('')}</section>` : ''}
       <section class="reveal fin-credits">
         <h2>함께한 사람들</h2>
         <p><b>사가랴 · 엘리사벳 · 요셉 · 마리아</b><br>할아버지 목자와 들판의 목자들<br>그리고 등불을 든 <b>${esc(D.nickname || '너')}</b></p>
