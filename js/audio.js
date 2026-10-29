@@ -370,7 +370,9 @@
     if (!buf || !ctx) return;
     const s = ctx.createBufferSource(); s.buffer = buf;
     const g = ctx.createGain(); g.gain.value = 1.1;
-    const w = ctx.createGain(); w.gain.value = 0.45;
+    // 천사·천군은 성전처럼 크게 울리고, 사람 목소리는 살짝만
+    const heavenly = /^v-(1-3|1-4|2-3|3-0|3-1|4-4|4-4c)$/.test(name);
+    const w = ctx.createGain(); w.gain.value = heavenly ? 0.45 : 0.12;
     s.connect(g); g.connect(master); g.connect(w); w.connect(reverb);
     const t = ctx.currentTime;
     musicBus.gain.cancelScheduledValues(t); musicBus.gain.setTargetAtTime(0.14, t, 0.3);
