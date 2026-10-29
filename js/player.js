@@ -123,7 +123,7 @@
         const ch = Array.from(plain)[i - 1];
         if (i % 2 && ch && ch.trim() && !/[.,…!?'"“”]/.test(ch)) Sound.blip(who);
         if (i >= total) finish();
-      }, 30);
+      }, { slow: 48, mid: 30, fast: 14 }[Core.data.textSpeed] || 30);
     });
   }
   // 빛 조각
@@ -352,6 +352,7 @@
       if (once[s.name]) { await new Promise(r => setTimeout(r, once[s.name])); target.classList.remove(cls); }
       else await new Promise(r => setTimeout(r, 1300));
     },
+    async voice(s) { Sound.voice(s.name); },
     async sfx(s) {
       const KO = { 망치: 'hammer', 군중: 'crowd', 문: 'door', 발소리: 'steps', 심장: 'heart', 노크: 'knock', 바람: 'wind', 양: 'sheep', 아기: 'baby', 천사: 'angel', 불: 'fire', 별: 'star', 종: 'verse' };
       Sound.sfx(KO[s.name] || s.name);
@@ -707,6 +708,7 @@
     }
     const steps = Script.parse(src);
     gemTotal = countGems(steps);
+    steps.filter(s => s.t === 'voice').forEach(s => Sound.preload(s.name));
     updateGemHud();
     // 대본에 '묵상:'이 따로 없으면 맨 끝에 말씀 묵상을 넣는다
     if (ep.read && !steps.some(s => s.t === 'meditate')) steps.push({ t: 'meditate' });

@@ -532,3 +532,19 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .fin-small { font-size: 12px; color: var(--dim) !important; }
 .fin-last { font-family: var(--serif); margin-top: 30px; color: #ffe3a3 !important; }
 .finale-go { margin: 16px 0 6px; animation: glowpulse 2.4s ease-in-out infinite; }
+
+/* ---------- 보기 설정 ---------- */
+.seg-label { font-size: 13px; color: var(--dim); margin: 14px 0 6px; }
+.seg { display: flex; background: rgba(255, 255, 255, .05); border-radius: 12px; padding: 4px; gap: 4px; }
+.seg button { flex: 1; border: 0; background: none; padding: 10px 4px; border-radius: 9px; color: var(--dim); font-size: 14.5px; cursor: pointer; }
+.seg button.on { background: var(--gold); color: #2a1a05; font-weight: 700; }
+html.fs-l .dialog .text { font-size: 19.5px; max-height: 128px; }
+html.fs-xl .dialog .text { font-size: 22px; max-height: 140px; }
+html.fs-l .verse-text, html.fs-l .mv, html.fs-l .ask-q, html.fs-l .mission-text { font-size: 20.5px; }
+html.fs-xl .verse-text, html.fs-xl .mv, html.fs-xl .ask-q, html.fs-xl .mission-text { font-size: 23px; }
+html.fs-xl .stage, html.fs-xl .overlay:not(.input):not(.full) { bottom: calc(220px + var(--safe-b)); }
+html.fs-xl .dialog { height: calc(220px + var(--safe-b)); }
+html.fs-xl .portrait { bottom: calc(220px + var(--safe-b) - 18px); }
+html.no-motion .scene-layer svg { animation: none; }
+html.no-motion .scene-layer { transform: none !important; }
+html.no-motion .who.speaking { animation: none; }

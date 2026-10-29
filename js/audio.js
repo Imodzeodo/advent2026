@@ -39,6 +39,7 @@
   let stale = false, lastWake = 0;
   function rebuild() {
     stopAmb();
+    for (const k in vcache) delete vcache[k];
     if (timer) clearInterval(timer);
     timer = null; current = null;
     try { ctx && ctx.close(); } catch (e) { /* 무시 */ }
@@ -353,5 +354,28 @@
 
   // 장 분위기 → 곡
   const TONE_SONG = { ch0: 'night', ch1: 'veni', ch2: 'calm', ch3: 'joy', ch4: 'silent', end: 'silent', home: 'night' };
-  window.Sound = { sfx, blip, music, ambience, setOn, toggle, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
+  /* ---------- 핵심 장면 음성 (audio/*.mp3, 잔향을 입혀서) ---------- */
+  const vcache = {};
+  function preload(name) {
+    if (!ctx) return Promise.resolve(null);
+    if (!vcache[name]) {
+      vcache[name] = fetch('audio/' + name + '.mp3').then(r => r.ok ? r.arrayBuffer() : null)
+        .then(b => b && new Promise((res, rej) => ctx.decodeAudioData(b, res, rej))).catch(() => null);
+    }
+    return vcache[name];
+  }
+  async function voice(name) {
+    if (!on() || !ctx || ctx.state !== 'running') return;
+    const buf = await preload(name);
+    if (!buf || !ctx) return;
+    const s = ctx.createBufferSource(); s.buffer = buf;
+    const g = ctx.createGain(); g.gain.value = 1.1;
+    const w = ctx.createGain(); w.gain.value = 0.45;
+    s.connect(g); g.connect(master); g.connect(w); w.connect(reverb);
+    const t = ctx.currentTime;
+    musicBus.gain.cancelScheduledValues(t); musicBus.gain.setTargetAtTime(0.14, t, 0.3);
+    musicBus.gain.setTargetAtTime(0.5, t + buf.duration + 0.3, 0.8);
+    s.start(t + 0.05);
+  }
+  window.Sound = { sfx, blip, music, ambience, voice, preload: n => preload(n), setOn, toggle, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
 })();

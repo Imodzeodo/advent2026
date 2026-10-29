@@ -3,6 +3,14 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const app = document.getElementById('app');
 
+  // 글자 크기·움직임 설정을 화면 전체에 적용
+  function applyPrefs() {
+    const D = Core.data, h = document.documentElement;
+    h.classList.toggle('fs-l', D.textSize === 'l');
+    h.classList.toggle('fs-xl', D.textSize === 'xl');
+    h.classList.toggle('no-motion', D.motion === false);
+  }
+  applyPrefs();
   function show(id, cls) {
     if (id !== 'play') { Sound.music('night'); Sound.ambience(null); }
     app.innerHTML = `<div id="${id}" class="screen ${cls || ''}"></div>`;
@@ -440,6 +448,14 @@
       <label class="lbl">반 (선택)</label><input class="in-ban" maxlength="12" value="${esc(D.ban)}">
       <button class="btn" id="save">저장</button>
       <hr>
+      <h2 class="sec">👀 보기 편하게</h2>
+      <div class="seg-label">글자 크기</div>
+      <div class="seg" data-k="textSize">${[['m', '보통'], ['l', '크게'], ['xl', '아주 크게']].map(([v, t]) => `<button data-v="${v}" class="${(D.textSize || 'm') === v ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="seg-label">글자 나오는 속도</div>
+      <div class="seg" data-k="textSpeed">${[['slow', '천천히'], ['mid', '보통'], ['fast', '빠르게']].map(([v, t]) => `<button data-v="${v}" class="${(D.textSpeed || 'mid') === v ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="seg-label">화면 움직임 (카메라·떠다니는 빛)</div>
+      <div class="seg" data-k="motion">${[['on', '켜기'], ['off', '끄기']].map(([v, t]) => `<button data-v="${v}" class="${(D.motion === false ? 'off' : 'on') === v ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <hr>
       <h2 class="sec">📦 기록 백업</h2>
       <p class="page-note">기록은 이 브라우저에만 있어요. 폰을 바꾸거나, 카톡 캐시를 지우거나, '홈 화면에 추가'로 옮기면 처음부터 시작돼요.<br><b>백업 코드</b>를 만들어 카톡 나와의 채팅에 보내 두면, 언제든 그대로 되살릴 수 있어요.${D.lastBackup ? `<br>마지막 백업: ${new Date(D.lastBackup).toLocaleDateString('ko-KR')}` : ''}</p>
       <button class="btn" id="bk-make">백업 코드 만들기</button>
@@ -462,6 +478,13 @@
       D.nickname = n; D.ban = root.querySelector('.in-ban').value.trim();
       Core.save(); Player.toast('저장했어요');
     };
+    root.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.onclick = () => {
+      const k = seg.dataset.k, v = b.dataset.v;
+      D[k] = k === 'motion' ? v === 'on' : v;
+      Core.save(); applyPrefs();
+      seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      Sound.sfx('select');
+    }));
     // 백업 만들기
     let code = '';
     root.querySelector('#bk-make').onclick = async () => {

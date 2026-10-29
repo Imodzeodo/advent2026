@@ -43,7 +43,7 @@
   const COUNT = { flies: 22, embers: 26, incense: 14, dust: 30, pollen: 26, sparkle: 34 };
 
   function set(scene) {
-    const p = PRESET[scene];
+    const p = Core.data.motion === false ? null : PRESET[scene];
     kind = p ? p[0] : null; origin = p && p[1] != null ? [p[1], p[2]] : null;
     parts = [];
     resize();
