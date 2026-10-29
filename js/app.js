@@ -69,6 +69,7 @@
       </header>
       ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록이 저장되지 않아요(사생활 보호 모드일 수 있어요). 일반 모드로 열어 주세요.</div>` : ''}
       ${nightLine()}
+      ${backupNudge()}
       ${!started ? `<button class="btn big start" id="start">시작하기</button>` : noteCard()}
       ${list}
       <footer class="home-foot">
@@ -98,6 +99,7 @@
     const fm = root.querySelector('#fame'); if (fm) fm.onclick = fame;
     const co = root.querySelector('#code'); if (co) co.onclick = codePage;
     const vv = root.querySelector('#verses'); if (vv) vv.onclick = versePage;
+    const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => { settings(); setTimeout(() => { const b = document.getElementById('bk-make'); if (b) b.scrollIntoView({ block: 'center' }); }, 100); };
     const nc = root.querySelector('.note-card'); if (nc) nc.onclick = () => go(nc.dataset.id);
     root.querySelector('#snd').onclick = e => { e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇'; };
     bindTestReset(root);
@@ -115,6 +117,13 @@
       <span class="note-text">“${esc(e.note)}”</span>
       <span class="note-go">이야기 열기 →</span>${more}
     </button>`;
+  }
+  function backupNudge() {
+    const D = Core.data, n = Core.starCount();
+    if (n < 3) return '';
+    const days = D.lastBackup ? (Date.now() - D.lastBackup) / 864e5 : 99;
+    if (days < 7) return '';
+    return `<button class="nudge" id="nudge">📦 기록을 지켜 두자: <b>백업 코드</b> 만들기 (${D.lastBackup ? Math.floor(days) + '일 전 백업' : '아직 백업 안 함'})</button>`;
   }
   // 지금 한국 시간이 밤이면 한 줄
   function nightLine() {
@@ -374,7 +383,20 @@
       <label class="lbl">반 (선택)</label><input class="in-ban" maxlength="12" value="${esc(D.ban)}">
       <button class="btn" id="save">저장</button>
       <hr>
-      <p class="page-note">기록은 이 브라우저에만 있어요. 다른 브라우저나 다른 폰에서 열면 처음부터 시작돼요.</p>
+      <h2 class="sec">📦 기록 백업</h2>
+      <p class="page-note">기록은 이 브라우저에만 있어요. 폰을 바꾸거나, 카톡 캐시를 지우거나, '홈 화면에 추가'로 옮기면 처음부터 시작돼요.<br><b>백업 코드</b>를 만들어 카톡 나와의 채팅에 보내 두면, 언제든 그대로 되살릴 수 있어요.${D.lastBackup ? `<br>마지막 백업: ${new Date(D.lastBackup).toLocaleDateString('ko-KR')}` : ''}</p>
+      <button class="btn" id="bk-make">백업 코드 만들기</button>
+      <div class="bk-out" hidden>
+        <textarea class="bk-code" rows="4" readonly></textarea>
+        <div class="row"><button class="btn ghost" id="bk-copy">📋 복사</button><button class="btn ghost" id="bk-file">💾 파일로</button></div>
+        <p class="page-note">복사한 코드를 카톡 '나와의 채팅'에 붙여 넣어 두세요.</p>
+      </div>
+      <button class="btn ghost" id="bk-load">백업 불러오기</button>
+      <div class="bk-in" hidden>
+        <textarea class="bk-paste" rows="4" placeholder="'그밤백업1'로 시작하는 코드를 붙여 넣어 줘"></textarea>
+        <div class="row"><label class="btn ghost bk-filebtn">📂 파일 고르기<input type="file" accept=".txt,text/plain" hidden></label><button class="btn" id="bk-apply">이 기록으로 바꾸기</button></div>
+      </div>
+      <hr>
       <button class="btn danger ghost" id="wipe">모든 기록 지우기</button>`;
     root.querySelector('.back').onclick = home;
     root.querySelector('#save').onclick = () => {
@@ -382,6 +404,37 @@
       if (!n) return Player.toast('닉네임을 적어 줘');
       D.nickname = n; D.ban = root.querySelector('.in-ban').value.trim();
       Core.save(); Player.toast('저장했어요');
+    };
+    // 백업 만들기
+    let code = '';
+    root.querySelector('#bk-make').onclick = async () => {
+      code = await Backup.make();
+      root.querySelector('.bk-out').hidden = false;
+      root.querySelector('.bk-code').value = code;
+      Player.toast('백업 코드를 만들었어요');
+    };
+    root.querySelector('#bk-copy').onclick = async () => {
+      const ta = root.querySelector('.bk-code');
+      try { await navigator.clipboard.writeText(code); Player.toast('복사했어요. 카톡 나와의 채팅에 붙여 넣어 두세요'); }
+      catch (e) { ta.focus(); ta.select(); Player.toast('코드를 길게 눌러 전체 선택 → 복사해 주세요'); }
+    };
+    root.querySelector('#bk-file').onclick = () => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
+      a.download = `그밤-백업-${D.nickname || '나'}.txt`;
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+    // 불러오기
+    root.querySelector('#bk-load').onclick = () => { root.querySelector('.bk-in').hidden = false; };
+    root.querySelector('.bk-filebtn input').onchange = async e => {
+      const f = e.target.files[0]; if (f) root.querySelector('.bk-paste').value = await f.text();
+    };
+    root.querySelector('#bk-apply').onclick = async () => {
+      try {
+        const obj = await Backup.read(root.querySelector('.bk-paste').value);
+        if (!confirm(`이 백업으로 바꿀까요?\n${Backup.summary(obj)}\n\n지금 이 브라우저의 기록은 백업 내용으로 바뀌어요.`)) return;
+        Core.replace(obj); Player.toast('기록을 되살렸어요'); home();
+      } catch (err) { Player.toast(err.message || '코드를 읽을 수 없어요'); }
     };
     root.querySelector('#wipe').onclick = () => {
       if (confirm('일기, 별빛, 기름까지 모두 지워져요. 정말 지울까요?') && confirm('되돌릴 수 없어요. 지울까요?')) {
@@ -454,6 +507,11 @@
     document.body.appendChild(sheet);
     sheet.querySelector('button').onclick = () => sheet.remove();
     sheet.onclick = ev => { if (ev.target === sheet) sheet.remove(); };
+  }
+
+  // 오프라인 지원(배포 주소에서만)
+  if ('serviceWorker' in navigator && /github\.io$/.test(location.hostname)) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
   window.App = { home, card, diary, go, cards, fame, codePage, versePage };

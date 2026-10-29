@@ -1,0 +1,11 @@
+{
+  "name": "그 밤을 향하여",
+  "short_name": "그 밤",
+  "description": "2026 연동교회 고등부 대림절 스토리 게임",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070a1a",
+  "theme_color": "#070a1a",
+  "icons": [{ "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
+}

@@ -72,12 +72,21 @@
     data = blank();
     save();
   }
+  // 백업 불러오기
+  function replace(obj) {
+    const keepSound = data.sound;
+    data = Object.assign(blank(), obj);
+    if (keepSound != null) data.sound = keepSound;
+    save();
+  }
+  // 브라우저가 저장 공간을 함부로 비우지 않게 부탁 (안드로이드 크롬 등)
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* 무시 */ }
 
   window.Core = {
     params, IS_TEST, PREVIEW_ALL, TEST_DATE,
     nowKST, isOpen, dateLabel,
     get data() { return data; },
-    save, reset,
+    save, reset, replace,
     get canSave() { return canSave; },
     epById: id => window.EPISODES.find(e => e.id === id),
     // 인트로를 뺀 본편(별 계산용)
