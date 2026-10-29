@@ -1,0 +1,83 @@
+/* 성경 구절 꺼내기 + 나의 기록(배지·연속 기록·미션 기록) */
+(function () {
+  const BOOK = { '마': '마태복음', '막': '마가복음', '눅': '누가복음', '요': '요한복음', '사': '이사야', '시': '시편', '삼하': '사무엘하' };
+
+  // "눅 1:5-7; 시 85:10" → [{ ref, label, v, text, heading }]
+  function verses(refs) {
+    const out = [];
+    String(refs || '').split(';').forEach(part => {
+      const m = part.trim().match(/^(\S+?)\s*(\d+):([\d,\s-]+)$/);
+      if (!m) return;
+      const [, book, ch, list] = m;
+      list.split(',').forEach(seg => {
+        const [a, b] = seg.trim().split('-').map(Number);
+        for (let v = a; v <= (b || a); v++) {
+          const key = `${book} ${ch}:${v}`;
+          const raw = window.BIBLE && window.BIBLE[key];
+          if (raw == null) continue;
+          const [text, heading] = Array.isArray(raw) ? raw : [raw, null];
+          out.push({ ref: key, label: `${BOOK[book] || book} ${ch}:${v}`, book, ch: +ch, v, text, heading });
+        }
+      });
+    });
+    return out;
+  }
+  window.Bible = { verses, BOOK };
+
+  /* ---------- 기록 계산 ---------- */
+  const main = () => Core.mainEpisodes();
+  const D = () => Core.data;
+  const onTime = e => D().doneOn && D().doneOn[e.id] === e.date;
+
+  function streaks() {
+    let cur = 0, best = 0;
+    for (const e of main()) {
+      if (!Core.isOpen(e) && !D().done[e.id]) break;
+      if (onTime(e)) { cur++; best = Math.max(best, cur); } else if (Core.nowKST().date > e.date || D().done[e.id]) cur = 0;
+    }
+    return { cur, best };
+  }
+  const missionYes = () => main().filter(e => D().missionAns[e.id] === 'yes' || D().missionDone[e.id]).length;
+  const chapterDone = n => main().filter(e => e.ch === n).every(e => D().done[e.id]);
+  const count = obj => Object.values(obj || {}).filter(x => x && (x.a == null || x.a)).length;
+
+  const BADGES = [
+    { id: 'first', icon: '🪔', name: '첫 등불', desc: '첫 이야기를 끝냈어요', ok: () => Core.starCount() >= 1 },
+    { id: 'ch1', icon: '🕯️', name: '문지기', desc: '1장 소망을 다 걸었어요', ok: () => chapterDone(1) },
+    { id: 'ch2', icon: '⚖️', name: '의로운 사람', desc: '2장 평화를 다 걸었어요', ok: () => chapterDone(2) },
+    { id: 'ch3', icon: '🎶', name: '기쁨의 노래', desc: '3장 기쁨을 다 걸었어요', ok: () => chapterDone(3) },
+    { id: 'ch4', icon: '🐑', name: '들판의 목동', desc: '4장 사랑을 다 걸었어요', ok: () => chapterDone(4) },
+    { id: 'end', icon: '⭐', name: '그 밤을 본 사람', desc: '성탄 엔딩을 봤어요', ok: () => !!D().done['end'] },
+    { id: 'streak3', icon: '🔥', name: '사흘 연속', desc: '그날 편을 그날에, 3번 연속', ok: () => streaks().best >= 3 },
+    { id: 'streak7', icon: '🏅', name: '한 주 개근', desc: '그날 편을 그날에, 7번 연속', ok: () => streaks().best >= 7 },
+    { id: 'all', icon: '👑', name: '대림절 개근', desc: '27편 모두 그날에', ok: () => main().every(onTime) },
+    { id: 'honest', icon: '🤍', name: '정직한 문지기', desc: '"못 했어"라고 정직하게 답했어요', ok: () => Object.values(D().missionAns).includes('no') },
+    { id: 'm5', icon: '✅', name: '미션 다섯', desc: '미션 5개 완료', ok: () => missionYes() >= 5 },
+    { id: 'm15', icon: '🏆', name: '미션 열다섯', desc: '미션 15개 완료', ok: () => missionYes() >= 15 },
+    { id: 'diary10', icon: '📔', name: '일기 작가', desc: '일기 10편을 썼어요', ok: () => count(D().diary) >= 10 },
+    { id: 'verse10', icon: '📖', name: '말씀 수집가', desc: '마음에 남은 구절 10개', ok: () => Object.keys(D().verse || {}).length >= 10 },
+    { id: 'oil10', icon: '🫙', name: '기름 가득', desc: '등불 기름 10방울', ok: () => (D().oil || 0) >= 10 }
+  ];
+
+  // 새로 딴 배지 목록을 돌려주고 저장
+  function checkNew() {
+    const d = D();
+    d.badges = d.badges || {};
+    const got = [];
+    for (const b of BADGES) {
+      if (!d.badges[b.id] && b.ok()) { d.badges[b.id] = Date.now(); got.push(b); }
+    }
+    if (got.length) Core.save();
+    return got;
+  }
+
+  function missionStatus(e) {
+    const d = D();
+    if (d.missionAns[e.id] === 'yes' || d.missionDone[e.id]) return 'yes';
+    if (d.missionAns[e.id] === 'no') return 'no';
+    if (d.mission[e.id]) return 'wait';
+    return 'none';
+  }
+
+  window.Fame = { BADGES, checkNew, streaks, missionYes, missionStatus, onTime };
+})();

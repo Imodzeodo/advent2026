@@ -44,6 +44,10 @@
     mission: {},     // { epId: 미션 문장 }
     missionAns: {},  // { epId: 'yes' | 'no' }  다음 편 시작에서 답한 것
     missionDone: {}, // { epId: true } 카드에서 '완료'로 표시
+    doneOn: {},      // { epId: 'YYYY-MM-DD' } 처음 끝낸 날(한국 시간)
+    verse: {},       // { epId: '눅 1:6' } 말씀 묵상에서 고른 구절
+    badges: {},      // { badgeId: timestamp }
+    sound: true,
     oil: 0
   });
 

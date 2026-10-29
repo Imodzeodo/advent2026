@@ -21,6 +21,7 @@
     root.innerHTML = `
       <div class="stage"><div class="scene-layer"></div><div class="hot-layer"></div></div>
       <button class="exit" aria-label="나가기">✕</button>
+      <button class="snd" aria-label="소리">${Sound.on ? '🔊' : '🔇'}</button>
       <div class="oil-pop" hidden></div>
       <div class="overlay" hidden></div>
       <div class="dialog">
@@ -52,13 +53,17 @@
         App.home();
       }
     });
+    root.querySelector('.snd').addEventListener('click', e => {
+      Sound.setOn(!Sound.on);
+      e.currentTarget.textContent = Sound.on ? '🔊' : '🔇';
+    });
     window.addEventListener('resize', placeHotMarks);
   }
 
   /* ---------- 탭 진행 ---------- */
   function onTap() {
     if (typing) { typing(); return; }
-    if (tapWait) { const r = tapWait; tapWait = null; el.next.classList.remove('on'); r(); }
+    if (tapWait) { const r = tapWait; tapWait = null; el.next.classList.remove('on'); Sound.sfx('tap'); r(); }
   }
   function waitTap() {
     el.next.classList.add('on');
@@ -124,6 +129,7 @@
   function setScene(name) {
     return new Promise(res => {
       el.scene.classList.add('fade');
+      Sound.sfx('page');
       setTimeout(() => {
         el.scene.innerHTML = Art.render(name);
         el.hot.innerHTML = '';
@@ -201,6 +207,7 @@
     async title(s) {
       el.title.innerHTML = s.parts.map((p, i) => `<div class="t${i}">${esc(p)}</div>`).join('');
       el.title.hidden = false;
+      Sound.sfx('title');
       void el.title.offsetWidth; el.title.classList.add('in');
       await new Promise(res => {
         const t = setTimeout(go, 2600);
@@ -219,6 +226,7 @@
     },
     async verse(s) {
       clearDialog('');
+      Sound.sfx('verse');
       await cardThenTap(`
         <div class="card verse">
           <div class="verse-ref">${esc(s.ref)}</div>
@@ -229,6 +237,7 @@
     },
     async note(s) {
       clearDialog('');
+      Sound.sfx('page');
       await cardThenTap(`
         <div class="card note">
           <div class="note-tag">그때 그곳</div>
@@ -259,6 +268,7 @@
         el.actions.querySelectorAll('button').forEach(b => b.onclick = () => res(Number(b.dataset.i)));
       });
       if (my !== runId) return;
+      Sound.sfx('select');
       const opt = s.options[pick];
       const D = Core.data;
       D.choice[ep.id] = D.choice[ep.id] || {};
@@ -299,6 +309,7 @@
       clearDialog('');
       Core.data.mission[ep.id] = s.text;
       Core.save();
+      Sound.sfx('mission');
       await new Promise(res => {
         const ov = showOverlay(`
           <div class="card mission">
@@ -368,6 +379,61 @@
     }
   };
 
+  /* ---------- 말씀 묵상 (편 끝) ---------- */
+  run.meditate = async function () {
+    const list = Bible.verses(ep.read);
+    if (!list.length) return;
+    clearDialog('');
+    Sound.sfx('verse');
+    const D = Core.data;
+    const refLabel = ep.read.replace(/(\S+?)\s(\d+:)/g, (m, b, c) => (Bible.BOOK[b] || b) + ' ' + c);
+    let picked = D.verse && D.verse[ep.id] || null;
+    const choice = await new Promise(res => {
+      const ov = showOverlay(`
+        <div class="card medi">
+          <div class="medi-tag">말씀 묵상</div>
+          <div class="medi-ref">${esc(refLabel)}</div>
+          <div class="medi-help">천천히 읽어 봐. 그리고 마음에 남는 구절을 <b>하나</b> 눌러 줘.</div>
+          <div class="medi-list">${list.map(v => `
+            ${v.heading ? `<div class="mh">${esc(v.heading)}</div>` : ''}
+            <button class="mv${v.ref === picked ? ' on' : ''}" data-ref="${esc(v.ref)}"><sup>${v.v}</sup>${esc(v.text)}</button>`).join('')}
+          </div>
+          <div class="row">
+            <button class="btn ghost" data-v="skip">그냥 넘어갈래</button>
+            <button class="btn" data-v="ok" ${picked ? '' : 'disabled'}>이 구절로 마무리</button>
+          </div>
+          <div class="medi-src">성경전서 개역개정판 © 대한성서공회</div>
+        </div>`, 'center input medi');
+      const ok = ov.querySelector('[data-v=ok]');
+      ov.querySelectorAll('.mv').forEach(b => b.onclick = () => {
+        ov.querySelectorAll('.mv').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        picked = b.dataset.ref;
+        ok.disabled = false;
+        Sound.sfx('select');
+      });
+      ok.onclick = () => res(picked);
+      ov.querySelector('[data-v=skip]').onclick = () => res(null);
+    });
+    hideOverlay();
+    if (!choice) return;
+    D.verse = D.verse || {};
+    D.verse[ep.id] = choice;
+    Core.save();
+    const v = list.find(x => x.ref === choice);
+    Sound.sfx('verse');
+    await new Promise(res => {
+      const ov = showOverlay(`
+        <div class="card verse">
+          <div class="verse-ref">오늘 내 마음에 남은 말씀 · ${esc(v.label)}</div>
+          <div class="verse-text">${esc(v.text)}</div>
+          <div class="medi-pray">이 말씀을 한 번 더 소리 내어 읽고,<br>하나님께 한 문장으로 기도해 볼까?</div>
+          <button class="btn">아멘</button>
+        </div>`, 'center');
+      ov.querySelector('button').onclick = () => { hideOverlay(); res(); };
+    });
+  };
+
   /* ---------- 지난 미션 묻기 ---------- */
   async function missionCheck(prev) {
     const D = Core.data;
@@ -394,6 +460,7 @@
   }
 
   function oilPop() {
+    Sound.sfx('oil');
     el.oil.innerHTML = `<b>+1</b> 등불 기름 <span>(모두 ${Core.data.oil})</span>`;
     el.oil.hidden = false;
     el.oil.classList.remove('show');
@@ -418,7 +485,10 @@
     const before = Core.starCount();
     const first = !D.done[ep.id];
     D.done[ep.id] = D.done[ep.id] || Date.now();
+    D.doneOn = D.doneOn || {};
+    if (!D.doneOn[ep.id]) D.doneOn[ep.id] = Core.nowKST().date;
     Core.save();
+    const newBadges = Fame.checkNew();
     const after = Core.starCount(), total = Core.starTotal();
     clearDialog('');
     if (ep.id === '0') {
@@ -436,12 +506,15 @@
       <div class="card done">
         <div class="done-star">${Art.bigStar(before / total, 150)}</div>
         <div class="done-title">${first ? '별이 조금 더 밝아졌어' : '다시 보기 끝'}</div>
-        <div class="done-sub">별빛 ${after} / ${total}</div>
-        <button class="btn" data-v="card">인증 카드 만들기</button>
+        <div class="done-sub">별빛 ${after} / ${total}${first ? ` · 카드 No.${Card.cardNo(ep.id)} 획득` : ''}</div>
+        ${newBadges.length ? `<div class="new-badges">${newBadges.map(b => `<div class="nb"><span>${b.icon}</span><b>${esc(b.name)}</b><small>새 배지</small></div>`).join('')}</div>` : ''}
+        <button class="btn" data-v="card">인증 카드 보기</button>
         <button class="btn ghost" data-v="home">홈으로</button>
       </div>`, 'center full');
     setTimeout(() => {
       if (my !== runId) return;
+      Sound.sfx('star');
+      if (newBadges.length) setTimeout(() => Sound.sfx('badge'), 900);
       const box = ov.querySelector('.done-star');
       if (box) box.innerHTML = Art.bigStar(after / total, 150);
       box && box.classList.add('pulse');
@@ -459,6 +532,7 @@
     mount(root);
     const chapter = CHAPTERS.find(c => c.n === ep.ch);
     root.className = 'screen tone-' + (chapter && chapter.tone || 'ch1');
+    Sound.music(Sound.forTone(chapter && chapter.tone));
     if (!src) {
       clearDialog('이 편은 아직 준비 중이에요.');
       el.actions.innerHTML = `<button class="btn small">홈으로</button>`;
@@ -466,6 +540,8 @@
       return;
     }
     const steps = Script.parse(src);
+    // 대본에 '묵상:'이 따로 없으면 맨 끝에 말씀 묵상을 넣는다
+    if (ep.read && !steps.some(s => s.t === 'meditate')) steps.push({ t: 'meditate' });
     // 첫 장면을 미리 깔아 둔다
     const firstScene = steps.find(s => s.t === 'scene');
     if (firstScene) el.scene.innerHTML = Art.render(firstScene.name);

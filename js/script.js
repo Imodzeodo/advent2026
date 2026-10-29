@@ -58,6 +58,7 @@
       if ((m = line.match(/^게임\s*[:：]\s*(.*)$/))) { steps.push({ t: 'game', name: m[1].trim() }); continue; }
       if ((m = line.match(/^미션\s*[:：]\s*(.*)$/))) { steps.push({ t: 'mission', text: m[1].trim() }); continue; }
       if (/^이름입력\s*[:：]?/.test(line)) { steps.push({ t: 'nickname' }); continue; }
+      if (/^묵상\s*[:：]?\s*$/.test(line)) { steps.push({ t: 'meditate' }); continue; }
       if (/^안내\s*[:：]?/.test(line)) { steps.push({ t: 'rules' }); continue; }
       if ((m = line.match(/^질문\s*[:：]\s*(.*)$/))) {
         const parts = splitBar(m[1]);

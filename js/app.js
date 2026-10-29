@@ -4,6 +4,7 @@
   const app = document.getElementById('app');
 
   function show(id, cls) {
+    if (id !== 'play') Sound.music('night');
     app.innerHTML = `<div id="${id}" class="screen ${cls || ''}"></div>`;
     window.scrollTo(0, 0);
     return document.getElementById(id);
@@ -55,6 +56,7 @@
 
     root.innerHTML = `
       ${testBanner()}
+      <button class="snd-home" id="snd">${Sound.on ? '🔊' : '🔇'}</button>
       <header class="home-head">
         <div class="home-star">${Art.bigStar(Math.max(0.04, b), 170)}</div>
         <h1>그 밤을 향하여</h1>
@@ -69,7 +71,12 @@
       ${!started ? `<button class="btn big start" id="start">시작하기</button>` : ''}
       ${list}
       <footer class="home-foot">
-        ${started ? `<div class="row"><button class="btn ghost" id="diary">📔 일기장</button><button class="btn ghost" id="settings">⚙️ 설정</button></div>` : ''}
+        ${started ? `<div class="menu">
+          <button class="btn ghost" id="cards">🃏 카드 도감 <small>${Core.starCount()}/${Core.starTotal()}</small></button>
+          <button class="btn ghost" id="fame">📜 나의 기록</button>
+          <button class="btn ghost" id="diary">📔 일기장</button>
+          <button class="btn ghost" id="settings">⚙️ 설정</button>
+        </div>` : ''}
         <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
       </footer>`;
 
@@ -84,6 +91,9 @@
     const s = root.querySelector('#start'); if (s) s.onclick = () => go('0');
     const d = root.querySelector('#diary'); if (d) d.onclick = diary;
     const st = root.querySelector('#settings'); if (st) st.onclick = settings;
+    const cd = root.querySelector('#cards'); if (cd) cd.onclick = cards;
+    const fm = root.querySelector('#fame'); if (fm) fm.onclick = fame;
+    root.querySelector('#snd').onclick = e => { Sound.setOn(!Sound.on); e.currentTarget.textContent = Sound.on ? '🔊' : '🔇'; };
     bindTestReset(root);
   }
 
@@ -137,6 +147,82 @@
     bindTestReset(root);
   }
 
+  /* ---------- 카드 도감 ---------- */
+  function cards() {
+    const D = Core.data;
+    const root = show('cards', 'page');
+    const list = Core.mainEpisodes();
+    const got = list.filter(e => D.done[e.id]).length;
+    root.innerHTML = `
+      ${testBanner()}
+      <div class="page-head"><button class="back">←</button><h1>🃏 카드 도감</h1><span class="head-count">${got} / ${list.length}</span></div>
+      <p class="page-note">한 편을 끝낼 때마다 카드 한 장. 그날 편을 그날 끝내면 <b>'그날 완료'</b> 리본이 붙어요.</p>
+      <div class="dex">${list.map(e => {
+        const ch = CHAPTERS.find(c => c.n === e.ch);
+        const no = Card.cardNo(e.id);
+        if (!D.done[e.id]) return `<div class="dx locked tone-${ch.tone}"><div class="dx-no">No.${no}</div><div class="dx-q">?</div><div class="dx-t">${esc(Core.dateLabel(e.date))}</div></div>`;
+        const art = e.card && e.card.scene ? Art.render(e.card.scene) : `<div class="dx-emoji">${e.card ? e.card.emoji : '⭐'}</div>`;
+        return `<button class="dx tone-${ch.tone}${Fame.onTime(e) ? ' ontime' : ''}" data-id="${e.id}">
+          <div class="dx-no">No.${no}</div>
+          <div class="dx-art">${art}<span class="dx-badge">${e.card ? e.card.emoji : ''}</span></div>
+          <div class="dx-t">${esc(e.title)}</div>
+        </button>`;
+      }).join('')}</div>`;
+    root.querySelector('.back').onclick = home;
+    root.querySelectorAll('button.dx').forEach(b => b.onclick = () => card(b.dataset.id));
+    bindTestReset(root);
+  }
+
+  /* ---------- 나의 기록 (미션 기록 · 배지 탭) ---------- */
+  let fameTab = 'mission';
+  function fame() {
+    const D = Core.data;
+    Fame.checkNew();
+    const root = show('fame', 'page');
+    const list = Core.mainEpisodes();
+    const s = Fame.streaks();
+    const mYes = Fame.missionYes();
+    const mGiven = list.filter(e => D.mission[e.id]).length;
+    const ST = { yes: ['✅', '했어'], no: ['🤍', '못 했어 (정직)'], wait: ['⏳', '다음 편에서 확인'], none: ['', ''] };
+    root.innerHTML = `
+      ${testBanner()}
+      <div class="page-head"><button class="back">←</button><h1>📜 나의 기록</h1></div>
+      <div class="fame-stats">
+        <div><b>${Core.starCount()}</b><span>별빛</span></div>
+        <div><b>${mYes}<small>/${mGiven}</small></b><span>미션 완료</span></div>
+        <div><b>${s.best}</b><span>최고 연속</span></div>
+        <div><b>${D.oil || 0}</b><span>등불 기름</span></div>
+      </div>
+      <div class="tabs">
+        <button class="tab${fameTab === 'mission' ? ' on' : ''}" data-tab="mission">미션 기록 <small>${mYes}/${mGiven}</small></button>
+        <button class="tab${fameTab === 'badge' ? ' on' : ''}" data-tab="badge">배지 <small>${Object.keys(D.badges || {}).length}/${Fame.BADGES.length}</small></button>
+      </div>
+      <section class="tabpane" data-pane="badge" ${fameTab === 'badge' ? '' : 'hidden'}>
+      <div class="badges">${Fame.BADGES.map(b => {
+        const has = D.badges && D.badges[b.id];
+        return `<div class="bd${has ? ' has' : ''}"><span>${has ? b.icon : '🔒'}</span><b>${esc(b.name)}</b><small>${esc(b.desc)}</small></div>`;
+      }).join('')}</div>
+      </section>
+      <section class="tabpane" data-pane="mission" ${fameTab === 'mission' ? '' : 'hidden'}>
+      <div class="mlog">${list.map(e => {
+        const st = Fame.missionStatus(e);
+        if (st === 'none' && !D.done[e.id]) return `<div class="ml off"><span class="ml-d">${esc(Core.dateLabel(e.date))}</span><span class="ml-t">${Core.isOpen(e) ? '아직 안 했어요' : '🔒'}</span></div>`;
+        return `<div class="ml ${st}"><span class="ml-d">${esc(Core.dateLabel(e.date))}${Fame.onTime(e) ? '<em>그날</em>' : ''}</span>
+          <span class="ml-t">${esc(D.mission[e.id] || '미션 없음')}</span>
+          <span class="ml-s">${ST[st][0]}<small>${ST[st][1]}</small></span></div>`;
+      }).join('')}</div>
+      <p class="page-note">미션 결과는 다음 편을 열 때 정직하게 답한 대로 기록돼요. 못 했다고 답해도 기름은 똑같이 받아요.</p>
+      </section>`;
+    root.querySelector('.back').onclick = home;
+    root.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+      fameTab = t.dataset.tab;
+      root.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+      root.querySelectorAll('.tabpane').forEach(p => { p.hidden = p.dataset.pane !== fameTab; });
+      Sound.sfx('select');
+    });
+    bindTestReset(root);
+  }
+
   /* ---------- 설정 ---------- */
   function settings() {
     const D = Core.data;
@@ -173,7 +259,7 @@
     const hasMission = !!D.mission[epId];
     const opt = { withDiary: false, missionDone: !!D.missionDone[epId] };
     root.innerHTML = `
-      <div class="page-head"><button class="back">←</button><h1>인증 카드</h1></div>
+      <div class="page-head"><button class="back">←</button><h1>카드 No.${Card.cardNo(epId)}</h1></div>
       <div class="card-preview"><div class="loading">그리는 중…</div></div>
       <div class="card-opts">
         ${hasDiary ? `<label class="tg"><input type="checkbox" id="o-diary"> 내 묵상 한 줄 넣기</label>` : ''}
@@ -182,7 +268,7 @@
       <button class="btn big" id="share">카톡으로 공유</button>
       <button class="btn ghost" id="save">이미지 저장</button>
       <button class="btn ghost" id="home">홈으로</button>`;
-    root.querySelector('.back').onclick = home;
+    root.querySelector('.back').onclick = cards;
     root.querySelector('#home').onclick = home;
     let cv;
     const redraw = async () => {
@@ -229,6 +315,6 @@
     sheet.onclick = ev => { if (ev.target === sheet) sheet.remove(); };
   }
 
-  window.App = { home, card, diary, go };
+  window.App = { home, card, diary, go, cards, fame };
   home();
 })();

@@ -46,6 +46,7 @@
         window.removeEventListener('pointerup', up);
         window.removeEventListener('pointercancel', up);
         lamp.classList.add('lit');
+        Sound.sfx('ignite');
         box.querySelector('.game-help').textContent = '불이 붙었어요!';
         if (navigator.vibrate) navigator.vibrate(30);
         setTimeout(api.done, 1100);
@@ -91,8 +92,10 @@
           btn.classList.add('gone');
           packed++;
           box.querySelector('#pk-n').textContent = `${packed} / ${need}`;
+          Sound.sfx('pop');
           if (navigator.vibrate) navigator.vibrate(15);
         } else {
+          Sound.sfx('boop');
           btn.classList.add('shake');
           setTimeout(() => btn.classList.remove('shake'), 500);
         }
