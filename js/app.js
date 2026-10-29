@@ -68,14 +68,16 @@
         </div>` : ''}
       </header>
       ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록이 저장되지 않아요(사생활 보호 모드일 수 있어요). 일반 모드로 열어 주세요.</div>` : ''}
-      ${!started ? `<button class="btn big start" id="start">시작하기</button>` : ''}
+      ${nightLine()}
+      ${!started ? `<button class="btn big start" id="start">시작하기</button>` : noteCard()}
       ${list}
       <footer class="home-foot">
         ${started ? `<div class="menu">
           <button class="btn ghost" id="cards">🃏 카드 도감 <small>${Core.starCount()}/${Core.starTotal()}</small></button>
           <button class="btn ghost" id="fame">📜 나의 기록</button>
+          <button class="btn ghost" id="code">🔑 주일 암호 <small>${Object.keys(D.codes || {}).length}/4</small></button>
           <button class="btn ghost" id="diary">📔 일기장</button>
-          <button class="btn ghost" id="settings">⚙️ 설정</button>
+          <button class="btn ghost wide" id="settings">⚙️ 설정</button>
         </div>` : ''}
         <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
       </footer>`;
@@ -93,8 +95,32 @@
     const st = root.querySelector('#settings'); if (st) st.onclick = settings;
     const cd = root.querySelector('#cards'); if (cd) cd.onclick = cards;
     const fm = root.querySelector('#fame'); if (fm) fm.onclick = fame;
+    const co = root.querySelector('#code'); if (co) co.onclick = codePage;
+    const nc = root.querySelector('.note-card'); if (nc) nc.onclick = () => go(nc.dataset.id);
     root.querySelector('#snd').onclick = e => { Sound.setOn(!Sound.on); e.currentTarget.textContent = Sound.on ? '🔊' : '🔇'; };
     bindTestReset(root);
+  }
+
+  // 오늘 열린 편(또는 가장 최근에 열렸는데 아직 안 한 편)의 인물 쪽지
+  function noteCard() {
+    const D = Core.data;
+    const open = Core.mainEpisodes().filter(e => Core.isOpen(e) && !D.done[e.id] && window.STORY[e.id]);
+    const e = open[open.length - 1];
+    if (!e || !e.note) return '';
+    const more = open.length > 1 ? `<span class="note-more">못 한 편이 ${open.length - 1}개 더 있어요</span>` : '';
+    return `<button class="note-card" data-id="${e.id}">
+      <span class="note-from">📩 ${esc(e.host)}의 쪽지 <em>${esc(Core.dateLabel(e.date))} ${esc(e.day)}</em></span>
+      <span class="note-text">“${esc(e.note)}”</span>
+      <span class="note-go">이야기 열기 →</span>${more}
+    </button>`;
+  }
+  // 지금 한국 시간이 밤이면 한 줄
+  function nightLine() {
+    const n = Core.nowKST();
+    if (n.date === '2026-12-24' && n.hour >= 18) return `<div class="night-line holy">✨ 오늘 밤이 바로 그 밤이야. 목자들이 들판에서 양을 지키던 그 밤.</div>`;
+    if (n.date === '2026-12-25') return `<div class="night-line holy">⭐ 메리 크리스마스! 구주가 나셨어.</div>`;
+    if (n.hour >= 19 || n.hour < 5) return `<div class="night-line">🌙 지금 밖도 밤이야. 잠깐 창밖 하늘을 올려다봐.</div>`;
+    return '';
   }
 
   function bindTestReset(root) {
@@ -130,7 +156,8 @@
   function diary() {
     const D = Core.data;
     const root = show('diary', 'page');
-    const items = EPISODES.filter(e => D.diary[e.id] && D.diary[e.id].a);
+    const M = D.medi || {};
+    const items = EPISODES.filter(e => (D.diary[e.id] && D.diary[e.id].a) || (M[e.id] && M[e.id].a.some(Boolean)));
     root.innerHTML = `
       ${testBanner()}
       <div class="page-head"><button class="back">←</button><h1>📔 일기장</h1></div>
@@ -139,8 +166,9 @@
         const ch = CHAPTERS.find(c => c.n === e.ch);
         return `<article class="diary-item tone-${ch.tone}">
           <div class="di-meta">${esc(ch.label)} · ${esc(e.day)} · ${esc(e.title)}</div>
-          <div class="di-q">${esc(D.diary[e.id].q)}</div>
-          <div class="di-a">${esc(D.diary[e.id].a)}</div>
+          ${D.diary[e.id] && D.diary[e.id].a ? `<div class="di-q">${esc(D.diary[e.id].q)}</div><div class="di-a">${esc(D.diary[e.id].a)}</div>` : ''}
+          ${M[e.id] ? M[e.id].q.map((q, i) => M[e.id].a[i] ? `<div class="di-q">📖 ${esc(q)}</div><div class="di-a">${esc(M[e.id].a[i])}</div>` : '').join('') : ''}
+          ${D.verse && D.verse[e.id] ? `<div class="di-v">마음에 남은 말씀 · ${esc((Bible.verses(D.verse[e.id])[0] || {}).label || '')}</div>` : ''}
         </article>`;
       }).join('') : `<p class="empty">아직 적은 일기가 없어요.</p>`}`;
     root.querySelector('.back').onclick = home;
@@ -167,9 +195,53 @@
           <div class="dx-art">${art}<span class="dx-badge">${e.card ? e.card.emoji : ''}</span></div>
           <div class="dx-t">${esc(e.title)}</div>
         </button>`;
-      }).join('')}</div>`;
+      }).join('')}</div>
+      <h2 class="sec">🕯️ 대림초 히든 카드 <small>${Object.keys(D.codes || {}).length} / 4</small></h2>
+      <p class="page-note">주일 예배 때 듣는 암호를 🔑 주일 암호에 넣으면 열려요.</p>
+      <div class="dex">${(window.CODES || []).map(c => D.codes && D.codes[c.n]
+        ? `<button class="dx hidden-card" data-id="H${c.n}"><div class="dx-no">HIDDEN ${c.n}</div><div class="dx-art"><div class="dx-emoji">${'🕯️'.repeat(c.n)}</div></div><div class="dx-t">${esc(c.title)}</div></button>`
+        : `<div class="dx locked"><div class="dx-no">HIDDEN ${c.n}</div><div class="dx-q">🔑</div><div class="dx-t">${esc(Core.dateLabel(c.from))} 주일</div></div>`).join('')}</div>`;
     root.querySelector('.back').onclick = home;
     root.querySelectorAll('button.dx').forEach(b => b.onclick = () => card(b.dataset.id));
+    bindTestReset(root);
+  }
+
+  /* ---------- 주일 암호 ---------- */
+  function codePage() {
+    const D = Core.data;
+    const root = show('codes', 'page');
+    const today = Core.nowKST().date;
+    root.innerHTML = `
+      ${testBanner()}
+      <div class="page-head"><button class="back">←</button><h1>🔑 주일 암호</h1></div>
+      <p class="page-note">주일 예배 때 전도사님이 알려 주는 암호를 넣으면, 그 주의 대림초가 켜진 <b>히든 카드</b>가 열려요.</p>
+      <div class="candles">${(window.CODES || []).map(c => `
+        <div class="cd${D.codes && D.codes[c.n] ? ' lit' : ''}${c.n === 3 ? ' pink' : ''}">
+          <i></i><b>${c.n}주</b><small>${esc(Core.dateLabel(c.from))}</small>
+        </div>`).join('')}
+      </div>
+      <input class="code-in" maxlength="20" placeholder="암호를 넣어 줘" autocomplete="off">
+      <button class="btn big" id="try">확인</button>
+      <p class="code-msg"></p>`;
+    root.querySelector('.back').onclick = home;
+    const inp = root.querySelector('.code-in'), msg = root.querySelector('.code-msg');
+    const go2 = () => {
+      const w = inp.value.trim();
+      if (!w) return;
+      const r = Fame.tryCode(w);
+      if (r.ok) {
+        Sound.sfx('badge');
+        Fame.checkNew();
+        Player.toast(r.isNew ? `${r.code.n}주 히든 카드를 찾았어!` : '이미 찾은 카드예요');
+        setTimeout(() => card('H' + r.code.n), 600);
+      } else {
+        Sound.sfx('boop');
+        inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
+        msg.textContent = r.early ? `이 암호는 ${Core.dateLabel(r.early.from)} 주일부터 쓸 수 있어요.` : '암호가 달라요. 예배 때 들은 말을 다시 떠올려 봐.';
+      }
+    };
+    root.querySelector('#try').onclick = go2;
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') go2(); });
     bindTestReset(root);
   }
 
@@ -255,11 +327,12 @@
   async function card(epId) {
     const D = Core.data;
     const root = show('cardview', 'page');
-    const hasDiary = !!(D.diary[epId] && D.diary[epId].a);
-    const hasMission = !!D.mission[epId];
+    const isH = /^H\d$/.test(epId);
+    const hasDiary = !isH && !!(D.diary[epId] && D.diary[epId].a);
+    const hasMission = !isH && !!D.mission[epId];
     const opt = { withDiary: false, missionDone: !!D.missionDone[epId] };
     root.innerHTML = `
-      <div class="page-head"><button class="back">←</button><h1>카드 No.${Card.cardNo(epId)}</h1></div>
+      <div class="page-head"><button class="back">←</button><h1>${isH ? '🕯️ 히든 카드 ' + epId[1] : '카드 No.' + Card.cardNo(epId)}</h1></div>
       <div class="card-preview"><div class="loading">그리는 중…</div></div>
       <div class="card-opts">
         ${hasDiary ? `<label class="tg"><input type="checkbox" id="o-diary"> 내 묵상 한 줄 넣기</label>` : ''}
@@ -272,7 +345,7 @@
     root.querySelector('#home').onclick = home;
     let cv;
     const redraw = async () => {
-      cv = await Card.draw(epId, opt);
+      cv = isH ? await Card.drawHidden(+epId[1]) : await Card.draw(epId, opt);
       const box = root.querySelector('.card-preview');
       box.innerHTML = '';
       const img = new Image();
@@ -315,6 +388,6 @@
     sheet.onclick = ev => { if (ev.target === sheet) sheet.remove(); };
   }
 
-  window.App = { home, card, diary, go, cards, fame };
+  window.App = { home, card, diary, go, cards, fame, codePage };
   home();
 })();

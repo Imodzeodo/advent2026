@@ -107,5 +107,67 @@
     });
   };
 
+  /* ---- 흔들기: 제비 항아리 ---- */
+  G['제비'] = (box, api) => {
+    const needPerm = typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function';
+    box.innerHTML = `
+      <div class="game-title">제비 뽑기</div>
+      <div class="game-help">폰을 <b>흔들어서</b> 항아리 속 제비를 섞어 봐</div>
+      <svg viewBox="-80 -100 160 170" class="jar">
+        <g class="jar-body">
+          <path d="M-34,-70 L34,-70 L30,-58 Q60,-30 56,10 Q52,52 0,56 Q-52,52 -56,10 Q-60,-30 -30,-58 Z" fill="#9b6a43"/>
+          <path d="M-36,-76 L36,-76 L34,-66 L-34,-66 Z" fill="#6b4529"/>
+          <path d="M-40,-10 Q0,4 40,-10" stroke="#c99a6a" stroke-width="4" fill="none"/>
+          <path d="M-44,14 Q0,28 44,14" stroke="#c99a6a" stroke-width="3" fill="none" opacity=".7"/>
+          <g class="jar-stones"><ellipse cx="-14" cy="-68" rx="9" ry="6" fill="#d9d2c2"/><ellipse cx="6" cy="-71" rx="8" ry="5.5" fill="#cfc6b3"/><ellipse cx="20" cy="-67" rx="7" ry="5" fill="#e3ddd0"/></g>
+        </g>
+        <g class="lot" opacity="0">
+          <ellipse cx="0" cy="0" rx="34" ry="20" fill="#efe9dc" stroke="#b9ab92" stroke-width="2"/>
+          <text x="0" y="6" text-anchor="middle" font-size="17" font-weight="700" fill="#5a3a1a">사가랴</text>
+        </g>
+      </svg>
+      <div class="hold-bar"><i class="sh-bar"></i></div>
+      ${needPerm ? `<button class="btn small sh-perm">흔들기 켜기</button>` : ''}
+      <div class="game-sub">흔들기가 안 되면 항아리를 여러 번 톡톡 눌러도 돼</div>`;
+    const jar = box.querySelector('.jar'), bar = box.querySelector('.sh-bar');
+    let p = 0, done = false, lastShake = 0, last = null;
+    const bump = amt => {
+      if (done) return;
+      p = Math.min(1, p + amt);
+      bar.style.width = (p * 100) + '%';
+      jar.classList.remove('wobble'); void jar.getBoundingClientRect(); jar.classList.add('wobble');
+      Sound.sfx('tap');
+      if (navigator.vibrate) navigator.vibrate(12);
+      if (p >= 1) finish();
+    };
+    function onMotion(e) {
+      const a = e.accelerationIncludingGravity || e.acceleration;
+      if (!a || a.x == null) return;
+      if (last) {
+        const d = Math.abs(a.x - last.x) + Math.abs(a.y - last.y) + Math.abs(a.z - last.z);
+        const now = Date.now();
+        if (d > 16 && now - lastShake > 140) { lastShake = now; bump(0.1); }
+      }
+      last = { x: a.x, y: a.y, z: a.z };
+    }
+    function listen() { window.addEventListener('devicemotion', onMotion); }
+    if (needPerm) {
+      box.querySelector('.sh-perm').onclick = e => {
+        e.currentTarget.remove();
+        DeviceMotionEvent.requestPermission().then(st => { if (st === 'granted') listen(); }).catch(() => {});
+      };
+    } else listen();
+    jar.addEventListener('click', () => bump(0.09));
+    function finish() {
+      done = true;
+      window.removeEventListener('devicemotion', onMotion);
+      jar.classList.add('out');
+      box.querySelector('.game-help').textContent = '돌 하나가 튀어나왔다!';
+      Sound.sfx('star');
+      if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+      setTimeout(api.done, 1800);
+    }
+  };
+
   window.Games = G;
 })();

@@ -245,10 +245,89 @@
     ctx.restore();
   }
 
+  /* ---------- 대림초 히든 카드 (주일 암호) ---------- */
+  async function drawHidden(n) {
+    const D = Core.data;
+    const code = CODES.find(c => c.n === n);
+    const W = 1080, H = 1350, P = 34;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    try { await Promise.all([document.fonts.load(`700 60px ${SERIF}`), document.fonts.load(`400 40px ${SANS}`)]); } catch (e) { /* 기본 글꼴 */ }
+    // 테두리: 보라와 금
+    ctx.fillStyle = grad(ctx, 0, 0, W, H, ['#fff2c4', '#b48cff', '#5a2d8a', '#e0b44a', '#fff2c4']);
+    rr(ctx, 0, 0, W, H, 54); ctx.fill();
+    ctx.save();
+    rr(ctx, P, P, W - 2 * P, H - 2 * P, 32); ctx.clip();
+    ctx.fillStyle = grad(ctx, 0, 0, 0, H, ['#120a24', '#2d1650', '#120a24']);
+    ctx.fillRect(0, 0, W, H);
+    const r = seeded(97 + n);
+    for (let i = 0; i < 120; i++) {
+      ctx.fillStyle = `rgba(255,240,210,${0.06 + r() * 0.3})`;
+      ctx.beginPath(); ctx.arc(r() * W, r() * H, 1 + r() * 2, 0, Math.PI * 2); ctx.fill();
+    }
+    // 대림 화환
+    const cx = W / 2, cy = 560;
+    for (let i = 0; i < 70; i++) {
+      const t = i / 70 * Math.PI * 2;
+      ctx.fillStyle = i % 3 ? '#2f6b3a' : '#3f8a4a';
+      ctx.beginPath(); ctx.ellipse(cx + Math.cos(t) * 300, cy + 120 + Math.sin(t) * 90, 46, 22, t, 0, Math.PI * 2); ctx.fill();
+    }
+    for (let i = 0; i < 9; i++) {
+      const t = i / 9 * Math.PI * 2 + 0.3;
+      ctx.fillStyle = '#c0283a';
+      ctx.beginPath(); ctx.arc(cx + Math.cos(t) * 290, cy + 120 + Math.sin(t) * 86, 11, 0, Math.PI * 2); ctx.fill();
+    }
+    // 초 넷: 보라·보라·분홍·보라, 켜진 개수 = n
+    const colors = ['#6b3fa0', '#6b3fa0', '#e58fb0', '#6b3fa0'];
+    const xs = [cx - 210, cx - 70, cx + 70, cx + 210];
+    const ys = [cy + 40, cy + 10, cy + 10, cy + 40];
+    xs.forEach((x, i) => {
+      const lit = i < n, top = ys[i] - 230;
+      if (lit) {
+        const g = ctx.createRadialGradient(x, top - 40, 0, x, top - 40, 150);
+        g.addColorStop(0, 'rgba(255,220,140,.55)'); g.addColorStop(1, 'rgba(255,220,140,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, top - 40, 150, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = grad(ctx, x - 38, 0, x + 38, 0, [colors[i], '#fff', colors[i]].map((c, k) => k === 1 ? 'rgba(255,255,255,.35)' : c));
+      ctx.fillStyle = colors[i];
+      rr(ctx, x - 38, top, 76, ys[i] - top, 10); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(x - 26, top + 8, 12, ys[i] - top - 16);
+      ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, top - 18); ctx.stroke();
+      if (lit) {
+        ctx.fillStyle = '#ffcf6b';
+        ctx.beginPath(); ctx.moveTo(x - 14, top - 18); ctx.quadraticCurveTo(x - 16, top - 60, x, top - 92); ctx.quadraticCurveTo(x + 16, top - 60, x + 14, top - 18); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fff6d8';
+        ctx.beginPath(); ctx.moveTo(x - 6, top - 20); ctx.quadraticCurveTo(x - 7, top - 44, x, top - 62); ctx.quadraticCurveTo(x + 7, top - 44, x + 6, top - 20); ctx.closePath(); ctx.fill();
+      }
+    });
+    // 글자
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffe3a3'; ctx.font = `700 38px ${SANS}`;
+    ctx.fillText(`HIDDEN ${n} / 4 · 주일 암호 카드`, cx, P + 76);
+    ctx.fillStyle = '#fff'; ctx.font = `700 76px ${SERIF}`;
+    ctx.fillText(code.title, cx, 890);
+    const v = Bible.verses(code.verse)[0];
+    if (v) {
+      ctx.font = `400 38px ${SERIF}`; ctx.fillStyle = '#fff8e6';
+      let y = 980;
+      for (const l of clamp(wrap(ctx, '“' + v.text + '”', W - 260), 4)) { ctx.fillText(l, cx, y); y += 56; }
+      ctx.font = `400 30px ${SANS}`; ctx.fillStyle = '#d9c6ff';
+      ctx.fillText(v.label, cx, y + 10);
+    }
+    ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#fff';
+    ctx.fillText(`${D.nickname || '친구'}${D.ban ? ' · ' + D.ban : ''}`, cx, H - P - 100);
+    ctx.font = `400 28px ${SANS}`; ctx.fillStyle = 'rgba(255,255,255,.7)';
+    ctx.fillText(`${Core.dateLabel(code.from, true)} 주일 · 그 밤을 향하여`, cx, H - P - 54);
+    ctx.restore();
+    return cv;
+  }
+
   const toBlob = cv => new Promise(res => cv.toBlob(res, 'image/png'));
   async function share(cv, epId) {
     const blob = await toBlob(cv);
-    const file = new File([blob], `그밤-No${cardNo(epId)}.png`, { type: 'image/png' });
+    const file = new File([blob], /^H\d$/.test(epId) ? `그밤-히든${epId[1]}.png` : `그밤-No${cardNo(epId)}.png`, { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file] }); return 'shared'; }
       catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
@@ -256,5 +335,5 @@
     return 'fallback';
   }
 
-  window.Card = { draw, share, toBlob, STYLE, cardNo };
+  window.Card = { draw, drawHidden, share, toBlob, STYLE, cardNo };
 })();

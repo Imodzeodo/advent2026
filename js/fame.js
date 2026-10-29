@@ -55,7 +55,8 @@
     { id: 'm5', icon: '✅', name: '미션 다섯', desc: '미션 5개 완료', ok: () => missionYes() >= 5 },
     { id: 'm15', icon: '🏆', name: '미션 열다섯', desc: '미션 15개 완료', ok: () => missionYes() >= 15 },
     { id: 'diary10', icon: '📔', name: '일기 작가', desc: '일기 10편을 썼어요', ok: () => count(D().diary) >= 10 },
-    { id: 'verse10', icon: '📖', name: '말씀 수집가', desc: '마음에 남은 구절 10개', ok: () => Object.keys(D().verse || {}).length >= 10 },
+    { id: 'medi10', icon: '📖', name: '말씀 묵상가', desc: '말씀 묵상을 10번 적었어요', ok: () => Object.values(D().medi || {}).filter(m => m.a.some(Boolean)).length >= 10 },
+    { id: 'codes4', icon: '🕯️', name: '네 개의 초', desc: '주일 암호 4개를 모두 찾았어요', ok: () => Object.keys(D().codes || {}).length >= 4 },
     { id: 'oil10', icon: '🫙', name: '기름 가득', desc: '등불 기름 10방울', ok: () => (D().oil || 0) >= 10 }
   ];
 
@@ -79,5 +80,24 @@
     return 'none';
   }
 
-  window.Fame = { BADGES, checkNew, streaks, missionYes, missionStatus, onTime };
+  // 주일 암호: 띄어쓰기·문장부호 무시, .dev/make-code.py 와 같은 방식
+  function codeHash(s) {
+    s = '그밤:' + String(s).normalize('NFC').toLowerCase().replace(/[\s.,!?~·\-'"]/g, '');
+    let h = 0x811c9dc5;
+    for (const b of new TextEncoder().encode(s)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(16).padStart(8, '0');
+  }
+  function tryCode(word) {
+    const today = Core.nowKST().date;
+    const h = codeHash(word);
+    const c = (window.CODES || []).find(x => x.hash === h);
+    if (!c) return { ok: false };
+    if (!Core.PREVIEW_ALL && today < c.from) return { ok: false, early: c };
+    const d = D(); d.codes = d.codes || {};
+    const isNew = !d.codes[c.n];
+    if (isNew) { d.codes[c.n] = Date.now(); Core.save(); }
+    return { ok: true, code: c, isNew };
+  }
+
+  window.Fame = { BADGES, checkNew, streaks, missionYes, missionStatus, onTime, tryCode, codeHash };
 })();

@@ -231,6 +231,84 @@
     ${person({ x: 290, y: 494, h: 140, robe: '#eae2d4', cloth: '#f5efe3', skin: '#a07658', flip: true })}
     ${person({ x: 176, y: 506, h: 150, robe: '#e4dccd', cloth: '#f3ede2', skin: '#a27a5c', beard: '#ece8f2' })}`;
 
+  // 1-2: 이른 아침 성전 앞뜰 (제비뽑기)
+  const PRIEST = { robe: '#efe9dc', cloth: '#f7f3ea' };
+  scenes['성전뜰'] = () => `
+    <defs>${sky('s5', [[0, '#34406e'], [0.45, '#9b86a6'], [0.8, '#e8bfa6'], [1, '#f3d8b8']])}${LAMP_DEF}</defs>
+    <rect width="${W}" height="${H}" fill="url(#s5)"/>
+    <!-- 성소 건물 -->
+    <rect x="50" y="110" width="260" height="300" fill="#dccaa8"/>
+    <rect x="50" y="110" width="260" height="300" fill="#7a5a8a" opacity=".12"/>
+    <rect x="42" y="98" width="276" height="16" fill="#eadbbd"/>
+    ${[70, 105, 255, 290].map(x => `<rect x="${x - 7}" y="150" width="14" height="250" fill="#efe2c6"/><rect x="${x - 10}" y="146" width="20" height="8" fill="#f6ecd6"/>`).join('')}
+    <g data-hot="성소 문">
+      <rect x="140" y="230" width="80" height="180" fill="#c9a24d"/>
+      <rect x="148" y="240" width="64" height="170" fill="#8a6524"/>
+      <path d="M148,410 L148,262 Q180,236 212,262 L212,410 Z" fill="#2a1a10"/>
+    </g>
+    <rect x="30" y="406" width="300" height="10" fill="#cdb894"/>
+    <rect x="18" y="416" width="324" height="12" fill="#bfa984"/>
+    <rect x="0" y="428" width="${W}" height="112" fill="#a8927a"/>
+    <!-- 뒤쪽 제사장들 -->
+    ${person({ x: 236, y: 432, h: 54, ...PRIEST })}${person({ x: 214, y: 436, h: 56, ...PRIEST, flip: true })}${person({ x: 120, y: 434, h: 54, ...PRIEST })}
+    <!-- 제비 항아리 -->
+    <g data-hot="제비 항아리">
+      <rect x="30" y="452" width="70" height="40" fill="#8e7a62"/>
+      <rect x="26" y="446" width="78" height="8" fill="#a8927a"/>
+      <path d="M50,446 L80,446 L78,438 Q92,420 88,404 Q84,388 65,386 Q46,388 42,404 Q38,420 52,438 Z" fill="#9b6a43"/>
+      <rect x="51" y="380" width="28" height="7" fill="#6b4529"/>
+    </g>
+    ${person({ x: 162, y: 504, h: 152, ...PRIEST, skin: '#a27a5c', beard: '#ece8f2' })}
+    ${person({ x: 270, y: 500, h: 138, ...PRIEST, skin: '#b38b66', hot: '젊은 제사장', flip: true })}`;
+
+  // 1-2: 성소 안 (등잔대·떡상·분향단·휘장)
+  scenes['성소'] = () => `
+    <defs>
+      ${sky('s6', [[0, '#0e0a12'], [1, '#2a1a1e']])}${LAMP_DEF}
+      <radialGradient id="angelglow"><stop offset="0" stop-color="#fffbe8" stop-opacity=".95"/><stop offset=".35" stop-color="#ffe9a8" stop-opacity=".45"/><stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/></radialGradient>
+      <linearGradient id="gold" x1="0" x2="1"><stop offset="0" stop-color="#8a6420"/><stop offset=".5" stop-color="#e2bd5c"/><stop offset="1" stop-color="#8a6420"/></linearGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="url(#s6)"/>
+    <!-- 휘장 -->
+    <g data-hot="휘장">
+      ${Array.from({ length: 12 }, (_, i) => `<rect x="${40 + i * 23.3}" y="70" width="24" height="320" fill="${['#26357a', '#4f2b66', '#7a1f2e'][i % 3]}"/>`).join('')}
+      ${Array.from({ length: 12 }, (_, i) => `<rect x="${40 + i * 23.3}" y="70" width="6" height="320" fill="#000" opacity=".25"/>`).join('')}
+      <rect x="34" y="62" width="292" height="10" fill="url(#gold)"/>
+    </g>
+    <rect x="0" y="390" width="${W}" height="150" fill="#24181a"/>
+    <rect x="0" y="388" width="${W}" height="4" fill="#4a3424"/>
+    <!-- 등잔대 -->
+    <g data-hot="등잔대">
+      <circle cx="62" cy="250" r="70" fill="url(#lampglow)" class="glow"/>
+      <rect x="58" y="250" width="8" height="150" fill="url(#gold)"/>
+      <path d="M40,404 L84,404 L74,392 L50,392 Z" fill="url(#gold)"/>
+      ${[16, 30, 44].map(r => `<path d="M${62 - r},252 Q${62 - r},${262 + r} 62,${266 + r} Q${62 + r},${262 + r} ${62 + r},252" stroke="#d4ab4c" stroke-width="5" fill="none"/>`).join('')}
+      ${[-44, -30, -16, 0, 16, 30, 44].map(d => `<path class="flame" d="M${62 + d - 3},250 Q${62 + d},236 ${62 + d + 3},250 Z" fill="#ffd36b"/>`).join('')}
+    </g>
+    <!-- 떡상 -->
+    <g data-hot="떡상">
+      <rect x="262" y="332" width="80" height="10" fill="url(#gold)"/>
+      <rect x="268" y="342" width="6" height="56" fill="#a57c2e"/><rect x="330" y="342" width="6" height="56" fill="#a57c2e"/>
+      ${[0, 1, 2, 3].map(i => `<ellipse cx="282" cy="${328 - i * 7}" rx="13" ry="4.5" fill="#d8a35e"/><ellipse cx="322" cy="${328 - i * 7}" rx="13" ry="4.5" fill="#d8a35e"/>`).join('')}
+    </g>
+    <!-- 분향단 -->
+    <g data-hot="분향단">
+      <path class="smoke" d="M180,300 C168,270 196,250 182,220 C170,196 194,176 186,150" stroke="#e9e1ff" stroke-opacity=".35" stroke-width="10" fill="none" stroke-linecap="round"/>
+      <rect x="160" y="310" width="40" height="80" fill="url(#gold)"/>
+      <rect x="154" y="302" width="52" height="10" fill="#e8c46a"/>
+      <rect x="152" y="296" width="8" height="8" fill="#e8c46a"/><rect x="200" y="296" width="8" height="8" fill="#e8c46a"/>
+      <circle cx="180" cy="300" r="22" fill="url(#lampglow)"/>
+    </g>
+    <!-- 분향단 오른편의 빛 (1-2 끝, 1-3) -->
+    <g id="angel" opacity="0">
+      <circle cx="250" cy="250" r="120" fill="url(#angelglow)"/>
+      <path d="M246,190 Q190,150 176,96 Q214,150 240,176 Z" fill="#fffaf0" opacity=".35"/>
+      <path d="M254,190 Q310,150 324,96 Q286,150 260,176 Z" fill="#fffaf0" opacity=".35"/>
+      <path d="M250,160 Q232,170 228,200 L216,388 Q250,398 284,388 L272,200 Q268,170 250,160 Z" fill="#fffaf0" opacity=".55"/>
+      <circle cx="250" cy="150" r="15" fill="#fffdf6" opacity=".85"/>
+    </g>
+    ${person({ x: 112, y: 500, h: 156, robe: '#efe9dc', cloth: '#f7f3ea', skin: '#a27a5c', beard: '#ece8f2' })}`;
+
   function render(name) {
     const fn = scenes[name];
     if (!fn) return `<svg viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#0b1026"/><text x="180" y="270" fill="#888" text-anchor="middle" font-size="14">장면 '${name}' 없음</text></svg>`;

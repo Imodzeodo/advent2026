@@ -379,55 +379,68 @@
     }
   };
 
-  /* ---------- 말씀 묵상 (편 끝) ---------- */
+  /* ---------- 말씀 묵상 (편 끝): 본문 읽기 → 질문에 적어 보기 ---------- */
   run.meditate = async function () {
     const list = Bible.verses(ep.read);
     if (!list.length) return;
     clearDialog('');
     Sound.sfx('verse');
     const D = Core.data;
+    D.medi = D.medi || {};
+    const prev = D.medi[ep.id] || {};
+    const qs = ep.medi && ep.medi.length ? ep.medi : ['오늘 말씀에서 가장 마음에 남는 부분은 어디야?', '그 말씀이 오늘 나에게 하는 말은 뭘까?'];
     const refLabel = ep.read.replace(/(\S+?)\s(\d+:)/g, (m, b, c) => (Bible.BOOK[b] || b) + ' ' + c);
-    let picked = D.verse && D.verse[ep.id] || null;
-    const choice = await new Promise(res => {
+    let picked = (D.verse && D.verse[ep.id]) || null;
+    const result = await new Promise(res => {
       const ov = showOverlay(`
         <div class="card medi">
-          <div class="medi-tag">말씀 묵상</div>
-          <div class="medi-ref">${esc(refLabel)}</div>
-          <div class="medi-help">천천히 읽어 봐. 그리고 마음에 남는 구절을 <b>하나</b> 눌러 줘.</div>
-          <div class="medi-list">${list.map(v => `
-            ${v.heading ? `<div class="mh">${esc(v.heading)}</div>` : ''}
-            <button class="mv${v.ref === picked ? ' on' : ''}" data-ref="${esc(v.ref)}"><sup>${v.v}</sup>${esc(v.text)}</button>`).join('')}
+          <div class="medi-scroll">
+            <div class="medi-tag">말씀 묵상</div>
+            <div class="medi-ref">${esc(refLabel)}</div>
+            <div class="medi-help">천천히 읽어 봐. 마음에 남는 구절은 눌러서 표시해 둘 수 있어.</div>
+            <div class="medi-list">${list.map(v => `
+              ${v.heading ? `<div class="mh">${esc(v.heading)}</div>` : ''}
+              <button class="mv${v.ref === picked ? ' on' : ''}" data-ref="${esc(v.ref)}"><sup>${v.v}</sup>${esc(v.text)}</button>`).join('')}
+            </div>
+            <div class="medi-src">성경전서 개역개정판 © 대한성서공회</div>
+            <div class="medi-qs">${qs.map((q, i) => `
+              <div class="mq">
+                <div class="mq-q"><b>${i + 1}</b>${esc(q)}</div>
+                <textarea rows="2" maxlength="300" data-i="${i}" placeholder="생각나는 대로 적어 봐">${esc((prev.a && prev.a[i]) || '')}</textarea>
+              </div>`).join('')}
+            </div>
           </div>
-          <div class="row">
-            <button class="btn ghost" data-v="skip">그냥 넘어갈래</button>
-            <button class="btn" data-v="ok" ${picked ? '' : 'disabled'}>이 구절로 마무리</button>
+          <div class="row medi-btns">
+            <button class="btn ghost" data-v="skip">다음에 적을래</button>
+            <button class="btn" data-v="ok">묵상 마치기</button>
           </div>
-          <div class="medi-src">성경전서 개역개정판 © 대한성서공회</div>
         </div>`, 'center input medi');
-      const ok = ov.querySelector('[data-v=ok]');
-      ov.querySelectorAll('.mv').forEach(b => b.onclick = () => {
+      ov.querySelectorAll('.mv').forEach(btn => btn.onclick = () => {
+        const on = !btn.classList.contains('on');
         ov.querySelectorAll('.mv').forEach(x => x.classList.remove('on'));
-        b.classList.add('on');
-        picked = b.dataset.ref;
-        ok.disabled = false;
+        btn.classList.toggle('on', on);
+        picked = on ? btn.dataset.ref : null;
         Sound.sfx('select');
       });
-      ok.onclick = () => res(picked);
-      ov.querySelector('[data-v=skip]').onclick = () => res(null);
+      // 적는 칸이 키보드에 가리지 않게
+      ov.querySelectorAll('textarea').forEach(t => t.addEventListener('focus', () => setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)));
+      const answers = () => [...ov.querySelectorAll('textarea')].map(t => t.value.trim());
+      ov.querySelector('[data-v=ok]').onclick = () => res({ a: answers(), done: true });
+      ov.querySelector('[data-v=skip]').onclick = () => res({ a: answers(), done: false });
     });
     hideOverlay();
-    if (!choice) return;
     D.verse = D.verse || {};
-    D.verse[ep.id] = choice;
+    if (picked) D.verse[ep.id] = picked; else delete D.verse[ep.id];
+    if (result.a.some(Boolean)) D.medi[ep.id] = { q: qs, a: result.a };
     Core.save();
-    const v = list.find(x => x.ref === choice);
+    if (!result.done) return;
     Sound.sfx('verse');
+    const v = picked && list.find(x => x.ref === picked);
     await new Promise(res => {
       const ov = showOverlay(`
         <div class="card verse">
-          <div class="verse-ref">오늘 내 마음에 남은 말씀 · ${esc(v.label)}</div>
-          <div class="verse-text">${esc(v.text)}</div>
-          <div class="medi-pray">이 말씀을 한 번 더 소리 내어 읽고,<br>하나님께 한 문장으로 기도해 볼까?</div>
+          ${v ? `<div class="verse-ref">오늘 내 마음에 남은 말씀 · ${esc(v.label)}</div><div class="verse-text">${esc(v.text)}</div>` : `<div class="verse-ref">${esc(refLabel)}</div>`}
+          <div class="medi-pray">${result.a.some(Boolean) ? '적은 생각은 일기장에 남았어.<br>' : ''}오늘 말씀을 붙들고 하나님께 한 문장으로 기도해 볼까?</div>
           <button class="btn">아멘</button>
         </div>`, 'center');
       ov.querySelector('button').onclick = () => { hideOverlay(); res(); };
