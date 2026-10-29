@@ -5,7 +5,7 @@
    - 「고요한 밤 거룩한 밤」(Gruber, 1818)                 → 4장·성탄
    - 그 밖: 종소리가 드문드문 울리는 잔잔한 배경(직접 만든 것) */
 (function () {
-  let ctx = null, master, musicBus, sfxBus, reverb;
+  let ctx = null, master, musicBus, sfxBus, ambBus, reverb;
   let current = null, wanted = null, timer = null;
   const on = () => Core.data.sound !== false;
 
@@ -19,6 +19,7 @@
     const comp = ctx.createDynamicsCompressor();
     master.connect(comp); comp.connect(ctx.destination);
     musicBus = ctx.createGain(); musicBus.gain.value = 0.5; musicBus.connect(master);
+    ambBus = ctx.createGain(); ambBus.gain.value = 0.55; ambBus.connect(master);
     sfxBus = ctx.createGain(); sfxBus.gain.value = 0.7; sfxBus.connect(master);
     // 잔향
     reverb = ctx.createConvolver();
@@ -37,6 +38,7 @@
   // 다른 앱에 다녀오면 아이폰은 소리 장치가 '멈춘 채 살아 있는' 경우가 있어서, 다음 터치 때 새로 만든다
   let stale = false, lastWake = 0;
   function rebuild() {
+    stopAmb();
     if (timer) clearInterval(timer);
     timer = null; current = null;
     try { ctx && ctx.close(); } catch (e) { /* 무시 */ }
@@ -48,7 +50,11 @@
     const wasRunning = ctx && ctx.state === 'running';
     init();
     if (!ctx) return;
-    const go = () => { if (wanted && !current && ctx && ctx.state === 'running') startMusic(wanted); };
+    const go = () => {
+      if (!ctx || ctx.state !== 'running') return;
+      if (wanted && !current) startMusic(wanted);
+      if (ambWanted && !ambCur) startAmb(ambWanted);
+    };
     if (!wasRunning) lastWake = Date.now();
     if (ctx.state !== 'running') ctx.resume().then(go).catch(() => {}); else go();
   }
@@ -56,11 +62,11 @@
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
     if (document.hidden) {
-      stopMusic();
+      stopMusic(); stopAmb();
       try { ctx.suspend(); } catch (e) { /* 무시 */ }
       if (Core.isIOS) stale = true;
     } else if (on() && !stale) {
-      ctx.resume().then(() => { if (wanted && !current) startMusic(wanted); }).catch(() => {});
+      ctx.resume().then(() => { if (wanted && !current) startMusic(wanted); if (ambWanted && !ambCur) startAmb(ambWanted); }).catch(() => {});
     }
   });
   window.addEventListener('pageshow', e => { if (e.persisted) stale = true; });
@@ -115,6 +121,13 @@
       o.start(t); o.stop(t + dur + 1.5);
     }));
   }
+  // 부드러운 베이스
+  function bass(m, t, vol) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = hz(m);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + 2.4);
+    o.connect(g); g.connect(out(musicBus, 1, 0.3)); o.start(t); o.stop(t + 2.5);
+  }
   function noise(t, dur, vol, from, to) {
     const len = Math.floor(ctx.sampleRate * dur), b = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -161,9 +174,19 @@
     timer = setInterval(() => {
       while (next < ctx.currentTime + 0.6) {
         const n = song.notes[i];
-        if (n.c) { flushPad(next); chord = n.c; chordStart = next; }
-        else {
-          if (n[0]) musicBox(n[0], next, song.vol);
+        if (n.c) {
+          flushPad(next); chord = n.c; chordStart = next;
+          bass(n.c[0] + 12, next, 0.07);
+        } else {
+          if (n[0]) {
+            musicBox(n[0], next, song.vol);
+            // 길게 끄는 음에는 3도 아래 화음을 살짝
+            if (n[1] >= 1 && chord) {
+              const pcs = chord.map(c => c % 12);
+              const h = [3, 4, 5].map(d => n[0] - d).find(x => pcs.includes(x % 12));
+              if (h) musicBox(h, next + 0.012, song.vol * 0.42);
+            }
+          }
           next += n[1] * song.beat;
         }
         i++;
@@ -185,6 +208,67 @@
       }
     }, 200);
   }
+  /* ---------- 장면별 배경 소리 ---------- */
+  const AMB = {
+    '밤하늘': 'night', '지붕': 'night', '지붕새벽': 'night', '새벽집': 'night', '새집': 'night', '들판': 'field', '들판새벽': 'day',
+    '성소': 'temple', '성소천사': 'temple', '성전뜰': 'crowd', '성전': 'crowd', '베들레헴': 'crowd',
+    '나사렛길': 'day', '마리아집': 'day', '유대집': 'day', '할례': 'crowd', '산길': 'wind', '길': 'day', '언덕노을': 'wind',
+    '집안': 'room', '요셉밤': 'room', '작업장': 'room', '마구간': 'stable', '꿈': 'dream'
+  };
+  let ambTimer = null, ambNodes = [], ambWanted = null, ambCur = null;
+  function loopNoise(vol, type, freq, q) {
+    const len = ctx.sampleRate * 3, b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = type === 'brown' ? last * 3.5 : w; }
+    const s = ctx.createBufferSource(); s.buffer = b; s.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = type === 'brown' ? 'lowpass' : 'bandpass'; f.frequency.value = freq; f.Q.value = q || 0.7;
+    const g = ctx.createGain(); g.gain.value = vol;
+    const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 0.07 + Math.random() * 0.08; lg.gain.value = vol * 0.6;
+    lfo.connect(lg); lg.connect(g.gain);
+    s.connect(f); f.connect(g); g.connect(ambBus); s.start(); lfo.start();
+    ambNodes.push(s, lfo);
+  }
+  function chirp(t, f0, f1, dur, vol) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
+    o.connect(g); g.connect(ambBus); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function startAmb(kind) {
+    stopAmb();
+    if (!ctx || !on() || !kind) return;
+    ambCur = kind;
+    const beds = { night: [0.05, 'brown', 380], field: [0.05, 'brown', 360], temple: [0.04, 'brown', 160], crowd: [0.05, 'pink', 700, 0.6], day: [0.03, 'brown', 500], wind: [0.07, 'pink', 520, 0.5], room: [0.03, 'brown', 220], stable: [0.035, 'brown', 240], dream: [0.02, 'brown', 300] };
+    const bd = beds[kind]; if (bd) loopNoise(bd[0], bd[1], bd[2], bd[3]);
+    if (kind === 'temple') {
+      // 성소의 낮은 울림 (장면이 바뀌면 같이 멈춤)
+      [110, 165].forEach(f => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; g.gain.value = 0.008; o.connect(g); g.connect(ambBus); o.start(); ambNodes.push(o); });
+    }
+    let next = ctx.currentTime + 0.5;
+    ambTimer = setInterval(() => {
+      const now = ctx.currentTime;
+      if (next > now + 0.6) return;
+      const t = Math.max(next, now + 0.05);
+      if (kind === 'night' || kind === 'field') { for (let k = 0; k < 3; k++) chirp(t + k * 0.07, 4300, 4100, 0.04, 0.012); next = t + 0.5 + Math.random() * 1.1; }
+      if (kind === 'field') { if (Math.random() < 0.25) for (let k = 0; k < 6; k++) noise(t + Math.random() * 0.8, 0.04, 0.03, 2600, 1300); if (Math.random() < 0.05) FX.sheep(t + 0.3); }
+      if (kind === 'day' || kind === 'wind') { if (Math.random() < 0.55) { const f = 2400 + Math.random() * 1600; chirp(t, f, f * 1.4, 0.07, 0.014); chirp(t + 0.11, f * 1.1, f * 1.5, 0.06, 0.012); } next = t + 1.6 + Math.random() * 2.8; }
+      if (kind === 'crowd') { noise(t, 0.9, 0.025, 500 + Math.random() * 500, 700); next = t + 0.6 + Math.random() * 0.8; }
+      if (kind === 'room' || kind === 'stable') { if (Math.random() < 0.3) noise(t, 0.05, 0.02, 2200, 1200); if (kind === 'stable' && Math.random() < 0.06) thud(t, 80, 0.06, 0.2); next = t + 1 + Math.random() * 2; }
+      if (kind === 'temple' || kind === 'dream') { bell((kind === 'dream' ? 84 : 76) + [0, 3, 7, 10][Math.floor(Math.random() * 4)], t, 0.018, ambBus); next = t + 3 + Math.random() * 4; }
+    }, 200);
+  }
+  function stopAmb() {
+    if (ambTimer) clearInterval(ambTimer);
+    ambTimer = null; ambCur = null;
+    ambNodes.forEach(n => { try { n.stop(); } catch (e) { /* 무시 */ } });
+    ambNodes = [];
+  }
+  function ambience(scene) {
+    ambWanted = AMB[scene] || null;
+    if (!on() || !ctx || ctx.state !== 'running') return;
+    if (ambCur !== ambWanted) startAmb(ambWanted);
+  }
+
   function stopMusic() {
     if (timer) clearInterval(timer);
     timer = null; current = null;
@@ -263,11 +347,11 @@
   function setOn(v) {
     Core.data.sound = v;
     Core.save();
-    if (!v) { stopMusic(); if (ctx) ctx.suspend(); }
-    else { init(); ctx && ctx.resume().then(() => { if (wanted) startMusic(wanted); }); }
+    if (!v) { stopMusic(); stopAmb(); if (ctx) ctx.suspend(); }
+    else { init(); ctx && ctx.resume().then(() => { if (wanted) startMusic(wanted); if (ambWanted) startAmb(ambWanted); }); }
   }
 
   // 장 분위기 → 곡
   const TONE_SONG = { ch0: 'night', ch1: 'veni', ch2: 'calm', ch3: 'joy', ch4: 'silent', end: 'silent', home: 'night' };
-  window.Sound = { sfx, blip, music, setOn, toggle, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
+  window.Sound = { sfx, blip, music, ambience, setOn, toggle, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
 })();

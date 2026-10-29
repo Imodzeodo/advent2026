@@ -4,7 +4,7 @@
   const app = document.getElementById('app');
 
   function show(id, cls) {
-    if (id !== 'play') Sound.music('night');
+    if (id !== 'play') { Sound.music('night'); Sound.ambience(null); }
     app.innerHTML = `<div id="${id}" class="screen ${cls || ''}"></div>`;
     window.scrollTo(0, 0);
     return document.getElementById(id);

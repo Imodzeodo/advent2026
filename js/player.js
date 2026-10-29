@@ -250,6 +250,7 @@
         el.scene.innerHTML = Art.render(name);
         el.scene.style.transform = '';
         Fx.set(name);
+        Sound.ambience(name);
         el.hot.innerHTML = '';
         el.scene.classList.remove('fade');
         setTimeout(res, 350);
@@ -705,7 +706,7 @@
     if (ep.read && !steps.some(s => s.t === 'meditate')) steps.push({ t: 'meditate' });
     // 첫 장면을 미리 깔아 둔다
     const firstScene = steps.find(s => s.t === 'scene');
-    if (firstScene) { el.scene.innerHTML = Art.render(firstScene.name); requestAnimationFrame(() => Fx.set(firstScene.name)); }
+    if (firstScene) { el.scene.innerHTML = Art.render(firstScene.name); requestAnimationFrame(() => Fx.set(firstScene.name)); Sound.ambience(firstScene.name); }
     clearDialog('');
 
     let checked = false;
