@@ -487,3 +487,17 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .bk-code { font-size: 12px; font-family: ui-monospace, monospace; word-break: break-all; }
 .bk-filebtn { display: flex; align-items: center; justify-content: center; }
 .nudge { display: block; width: 100%; margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; border: 1px dashed rgba(255, 210, 122, .55); background: rgba(255, 210, 122, .08); color: #ffe3a3; font-size: 13.5px; text-align: left; cursor: pointer; }
+
+/* ---------- 연출: 초상, 떠다니는 빛, 카메라 ---------- */
+.fx-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+.hot-layer { z-index: 2; }
+.scene-layer { transition: opacity .3s, transform 1.4s cubic-bezier(.3, .7, .2, 1); transform-origin: 50% 50%; }
+.scene-layer svg { animation: drift 26s ease-in-out infinite alternate; transform-origin: 50% 60%; }
+@keyframes drift { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.045) translate(-1.2%, -0.8%); } }
+.portrait { position: absolute; left: 12px; bottom: calc(196px + var(--safe-b) - 18px); z-index: 22; width: 78px; height: 78px; border-radius: 50%; overflow: hidden; border: 3px solid rgba(255, 230, 170, .75); box-shadow: 0 6px 20px rgba(0, 0, 0, .5); background: #222; }
+.portrait svg { width: 100%; height: 100%; display: block; }
+.portrait.pop { animation: ptpop .35s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes ptpop { from { transform: scale(.82); } to { transform: scale(1); } }
+.dialog.has-pt .name { left: 98px; }
+.dialog.choosing ~ .portrait, .overlay.in ~ .portrait { display: none; }
+@media (prefers-reduced-motion: reduce) { .scene-layer svg { animation: none; } .scene-layer { transition: opacity .3s; } }

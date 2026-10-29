@@ -20,8 +20,12 @@
     s = s.trim();
     let m = s.match(/^\(해설\)\s*(.*)$/);
     if (m) return { t: 'say', who: null, text: m[1] };
-    m = s.match(/^([^:：\[\]{}]{1,12})\s*[:：]\s*(.*)$/);
-    if (m) return { t: 'say', who: m[1].trim(), text: m[2] };
+    m = s.match(/^([^:：\[\]{}]{1,16})\s*[:：]\s*(.*)$/);
+    if (m) {
+      // "사가랴(놀람): 대사" → 표정 붙이기
+      const nm = m[1].trim(), e = nm.match(/^(.+?)\s*\((.+)\)$/);
+      return e ? { t: 'say', who: e[1].trim(), expr: e[2].trim(), text: m[2] } : { t: 'say', who: nm, text: m[2] };
+    }
     return { t: 'say', who: null, text: s };
   }
 

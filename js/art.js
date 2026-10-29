@@ -512,11 +512,81 @@
     ${person({ x: 260, y: 498, h: 140, ...SHP, wave: true, flip: true })}
     ${person({ x: 190, y: 512, h: 98, ...BOY, wave: true })}`;
 
+  /* ---------- 인물 초상 (대사창 옆) ---------- */
+  const PORTRAIT = {
+    '사가랴': { skin: '#a27a5c', cloth: '#bcb2cf', robe: '#5d4f78', beard: '#ece8f2', brow: '#d8d4e0', bg: '#3a2f55', age: 'old' },
+    '엘리사벳': { skin: '#a8805f', cloth: '#c9b8cf', robe: '#7d5f7e', veil: true, bg: '#4a2f48', age: 'old', brow: '#8a7a7a' },
+    '요셉': { skin: '#b08560', cloth: '#c9b48e', robe: '#6a5a48', beard: '#3a2a1e', brow: '#2a1a10', bg: '#3a3428' },
+    '마리아': { skin: '#b88b66', cloth: '#5f7fc9', robe: '#8a7a9a', veil: true, bg: '#2a3458', brow: '#3a2418' },
+    '할아버지': { skin: '#9d7558', cloth: '#a89a7a', robe: '#6b5a40', beard: '#e8e4dc', brow: '#d8d4cc', bg: '#2e3424', age: 'old' },
+    '목자': { skin: '#9d7a5e', cloth: '#8f8270', robe: '#5a4a3a', beard: '#2a2018', brow: '#1a1008', bg: '#2a2a30' },
+    '제사장': { skin: '#a77d5e', cloth: '#f7f2e8', robe: '#efe8dc', beard: '#4a3428', brow: '#2a1a10', bg: '#4a3a2a' },
+    '젊은 제사장': { skin: '#b38b66', cloth: '#f7f2e8', robe: '#efe8dc', brow: '#2a1a10', bg: '#4a3a2a' },
+    '꼬마': { skin: '#b38b66', hair: '#2b1d16', robe: '#8b6a4f', brow: '#2b1d16', bg: '#3a4a3a', child: true },
+    '이웃': { skin: '#9d7a5e', cloth: '#8f8099', robe: '#544463', veil: true, brow: '#3a2a20', bg: '#383048' },
+    '이웃2': { skin: '#a07a5c', cloth: '#a89a8a', robe: '#6a5a4a', beard: '#5a4a3a', brow: '#3a2a20', bg: '#3a3430' },
+    '여관 주인': { skin: '#a8805f', cloth: '#a88a6a', robe: '#6a4a3a', beard: '#3a2a1a', brow: '#2a1a10', bg: '#4a3020' },
+    '군인': { skin: '#b08a68', helmet: true, robe: '#8a2a2a', brow: '#2a1a10', bg: '#4a2020' },
+    '친척': { skin: '#a8805f', cloth: '#a89aa8', robe: '#6a5a6a', beard: '#6a5a4a', brow: '#3a2a20', bg: '#3a3040' },
+    '사람들': { skin: '#a07a5c', cloth: '#9a8a7a', robe: '#5a4a3a', brow: '#3a2a20', bg: '#383030' }
+  };
+  // 표정: 눈·눈썹·입 모양
+  const EXPR = {
+    '기본': { eye: 'dot', brow: 0, mouth: 'flat' }, '웃음': { eye: 'smile', brow: -2, mouth: 'smile', blush: true },
+    '놀람': { eye: 'wide', brow: -5, mouth: 'o' }, '슬픔': { eye: 'down', brow: 4, mouth: 'sad' },
+    '걱정': { eye: 'dot', brow: 4, mouth: 'wavy' }, '결심': { eye: 'dot', brow: 3, mouth: 'flat', firm: true },
+    '감동': { eye: 'smile', brow: 3, mouth: 'smile', tear: true, blush: true }, '두려움': { eye: 'wide', brow: 5, mouth: 'wavy' },
+    '기쁨': { eye: 'smile', brow: -3, mouth: 'open', blush: true }
+  };
+  function portrait(who, expr) {
+    if (!who) return '';
+    if (who === '천사' || who === '가브리엘') return `<svg viewBox="0 0 100 100"><defs>${ANGEL_DEF}</defs><circle cx="50" cy="50" r="50" fill="#fff6dc"/><circle cx="50" cy="50" r="48" fill="url(#angelglow)"/><path d="M50,30 Q40,36 38,50 L32,100 L68,100 L62,50 Q60,36 50,30 Z" fill="#fff" opacity=".8"/><circle cx="50" cy="26" r="11" fill="#fff"/></svg>`;
+    if (/서판$/.test(who)) return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#3a2f55"/><rect x="24" y="30" width="52" height="40" rx="4" fill="#c9b48e" stroke="#7a5a3a" stroke-width="4"/><path d="M32,44 L66,44 M32,54 L58,54 M32,62 L50,62" stroke="#5a3a1a" stroke-width="3" stroke-linecap="round"/><path d="M70,22 L80,14" stroke="#e8dcc0" stroke-width="4" stroke-linecap="round"/></svg>`;
+    const P = PORTRAIT[who] || PORTRAIT['사람들'];
+    const E = EXPR[expr] || EXPR['기본'];
+    const cx = 50, cy = 50, hr = P.child ? 19 : 21;
+    let g = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="${P.bg}"/>`;
+    g += `<path d="M10,100 Q14,76 36,72 L64,72 Q86,76 90,100 Z" fill="${P.robe}"/>`;
+    if (P.veil) g += `<path d="M24,58 Q22,22 50,20 Q78,22 76,58 L82,96 L18,96 Z" fill="${P.cloth}"/>`;
+    else if (P.cloth) g += `<path d="M27,50 Q26,22 50,21 Q74,22 73,50 L78,74 L22,74 Z" fill="${P.cloth}"/>`;
+    g += `<rect x="44" y="62" width="12" height="12" fill="${P.skin}"/>`;
+    g += `<ellipse cx="${cx}" cy="${cy}" rx="${hr - 1}" ry="${hr + 1}" fill="${P.skin}"/>`;
+    if (P.hair) g += `<path d="M30,46 Q30,26 50,26 Q70,26 70,46 Q64,36 50,36 Q36,36 30,46 Z" fill="${P.hair}"/>`;
+    if (P.veil) g += `<path d="M29,46 Q30,26 50,25 Q70,26 71,46 Q66,32 50,32 Q34,32 29,46 Z" fill="${P.cloth}"/>`;
+    else if (P.cloth) g += `<path d="M28,44 Q30,24 50,24 Q70,24 72,44 Q64,33 50,33 Q36,33 28,44 Z" fill="${P.cloth}"/><rect x="29" y="38" width="42" height="3" rx="1.5" fill="#000" opacity=".2"/>`;
+    if (P.helmet) g += `<path d="M28,46 Q28,22 50,22 Q72,22 72,46 L72,40 Q50,30 28,40 Z" fill="#b0a090"/><rect x="47" y="12" width="6" height="14" fill="#c03030"/>`;
+    // 눈썹
+    const by = 43, bt = E.brow;
+    g += `<path d="M37,${by + bt} L45,${by}" stroke="${P.brow}" stroke-width="2.4" stroke-linecap="round"/><path d="M55,${by} L63,${by + bt}" stroke="${P.brow}" stroke-width="2.4" stroke-linecap="round"/>`;
+    // 눈
+    const ey = 50;
+    if (E.eye === 'smile') g += `<path d="M38,${ey + 1} Q41,${ey - 3} 44,${ey + 1}" stroke="#2a1a10" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M56,${ey + 1} Q59,${ey - 3} 62,${ey + 1}" stroke="#2a1a10" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+    else if (E.eye === 'wide') g += `<circle cx="41" cy="${ey}" r="3.2" fill="#fff"/><circle cx="41" cy="${ey}" r="1.8" fill="#2a1a10"/><circle cx="59" cy="${ey}" r="3.2" fill="#fff"/><circle cx="59" cy="${ey}" r="1.8" fill="#2a1a10"/>`;
+    else if (E.eye === 'down') g += `<path d="M38,${ey} Q41,${ey + 2} 44,${ey}" stroke="#2a1a10" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M56,${ey} Q59,${ey + 2} 62,${ey}" stroke="#2a1a10" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+    else g += `<ellipse cx="41" cy="${ey}" rx="2" ry="${P.age === 'old' ? 1.6 : 2.4}" fill="#2a1a10"/><ellipse cx="59" cy="${ey}" rx="2" ry="${P.age === 'old' ? 1.6 : 2.4}" fill="#2a1a10"/>`;
+    if (P.age === 'old') g += `<path d="M36,55 Q39,57 42,55 M58,55 Q61,57 64,55" stroke="#000" stroke-opacity=".18" stroke-width="1.2" fill="none"/>`;
+    if (E.tear) g += `<path d="M62,53 Q63,58 61,60 Q59,58 62,53 Z" fill="#9fd4ff"/>`;
+    if (E.blush) g += `<ellipse cx="36" cy="57" rx="4" ry="2.2" fill="#e88a8a" opacity=".45"/><ellipse cx="64" cy="57" rx="4" ry="2.2" fill="#e88a8a" opacity=".45"/>`;
+    // 수염
+    if (P.beard) g += `<path d="M31,52 Q31,82 50,86 Q69,82 69,52 Q64,66 50,66 Q36,66 31,52 Z" fill="${P.beard}"/>`;
+    // 입
+    const my = P.beard ? 62 : 61, mc = P.beard ? '#3a2018' : '#7a3a2a';
+    const M = { flat: `<path d="M45,${my} L55,${my}" stroke="${mc}" stroke-width="2.2" stroke-linecap="round"/>`,
+      smile: `<path d="M43,${my - 1} Q50,${my + 5} 57,${my - 1}" stroke="${mc}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`,
+      open: `<path d="M43,${my - 1} Q50,${my + 8} 57,${my - 1} Z" fill="${mc}"/>`,
+      o: `<ellipse cx="50" cy="${my + 1}" rx="3.2" ry="4" fill="${mc}"/>`,
+      sad: `<path d="M44,${my + 2} Q50,${my - 3} 56,${my + 2}" stroke="${mc}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`,
+      wavy: `<path d="M44,${my} Q47,${my - 2} 50,${my} T56,${my}" stroke="${mc}" stroke-width="2" fill="none" stroke-linecap="round"/>` };
+    g += M[E.mouth] || M.flat;
+    g += `</svg>`;
+    return g;
+  }
+
   function render(name) {
     const fn = scenes[name];
     if (!fn) return `<svg viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#0b1026"/><text x="180" y="270" fill="#888" text-anchor="middle" font-size="14">장면 '${name}' 없음</text></svg>`;
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${fn()}</svg>`;
   }
 
-  window.Art = { render, bigStar, lampShape, LAMP_DEF, person };
+  window.Art = { render, bigStar, lampShape, LAMP_DEF, person, portrait, EXPR };
 })();

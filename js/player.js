@@ -19,12 +19,13 @@
 
   function mount(root) {
     root.innerHTML = `
-      <div class="stage"><div class="scene-layer"></div><div class="hot-layer"></div></div>
+      <div class="stage"><div class="scene-layer"></div><canvas class="fx-canvas"></canvas><div class="hot-layer"></div></div>
       <button class="exit" aria-label="나가기">✕</button>
       <button class="snd" aria-label="소리">${Sound.on ? '🔊' : '🔇'}</button>
       <div class="oil-pop" hidden></div>
       <div class="gem-hud" hidden>✦ <b>0</b>/<span>0</span></div>
       <div class="overlay" hidden></div>
+      <div class="portrait" hidden></div>
       <div class="dialog">
         <div class="name"></div>
         <div class="text"></div>
@@ -45,8 +46,10 @@
       next: root.querySelector('.next'),
       title: root.querySelector('.titlecard'),
       oil: root.querySelector('.oil-pop'),
-      gemHud: root.querySelector('.gem-hud')
+      gemHud: root.querySelector('.gem-hud'),
+      portrait: root.querySelector('.portrait')
     };
+    Fx.attach(root.querySelector('.fx-canvas'));
     // 대사 속 빛나는 낱말(빛 조각) 줍기
     el.text.addEventListener('click', e => {
       const g = e.target.closest('.gem');
@@ -161,8 +164,21 @@
   // 말하는 인물을 그림에서 살짝 움직이게
   function setSpeaking(who) {
     el.scene.querySelectorAll('.who.speaking').forEach(n => n.classList.remove('speaking'));
-    if (!who) return;
-    el.scene.querySelectorAll(`[data-who="${CSS.escape(who)}"]`).forEach(n => n.classList.add('speaking'));
+    const t = who && el.scene.querySelector(`[data-who="${CSS.escape(who)}"]`);
+    if (t) el.scene.querySelectorAll(`[data-who="${CSS.escape(who)}"]`).forEach(n => n.classList.add('speaking'));
+    camera(t);
+  }
+  // 카메라: 말하는 사람을 향해 조금 다가간다 (해설·살펴보기 때는 원래대로)
+  function camera(target) {
+    if (!target || hotState || Core.data.motion === false) { el.scene.style.transform = ''; return; }
+    let b;
+    try { b = target.getBBox(); } catch (e) { el.scene.style.transform = ''; return; }
+    const sr = el.stage.getBoundingClientRect();
+    const p = Fx.toScreen(b.x + b.width / 2, b.y + b.height * 0.35);
+    const k = 1.08, mx = (k - 1) * sr.width / 2, my = (k - 1) * sr.height / 2;
+    const tx = Math.max(-mx, Math.min(mx, (sr.width / 2 - p.x) * 0.3));
+    const ty = Math.max(-my, Math.min(my, (sr.height / 2 - p.y) * 0.2));
+    el.scene.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${k})`;
   }
   function setSpeaker(who) {
     el.dialog.classList.toggle('narr', !who);
@@ -170,9 +186,23 @@
     el.name.style.display = who ? '' : 'none';
     el.name.style.background = colorOf(who);
   }
-  async function say(who, text) {
+  function setPortrait(who, expr, text) {
+    if (!who) { el.portrait.hidden = true; el.dialog.classList.remove('has-pt'); return; }
+    // 표정을 안 적었으면 웃음소리 정도만 알아본다
+    if (!expr && /하하|허허|히히|후후/.test(text || '')) expr = '웃음';
+    const html = Art.portrait(who, expr || '기본');
+    if (el.portrait.dataset.key !== who + expr) {
+      el.portrait.innerHTML = html;
+      el.portrait.dataset.key = who + expr;
+      el.portrait.classList.remove('pop'); void el.portrait.offsetWidth; el.portrait.classList.add('pop');
+    }
+    el.portrait.hidden = false;
+    el.dialog.classList.add('has-pt');
+  }
+  async function say(who, text, expr) {
     setSpeaker(who);
     setSpeaking(who);
+    setPortrait(who, expr, text);
     el.actions.innerHTML = '';
     const t = Script.fill(text, ep.id);
     await typeText(t, who);
@@ -181,7 +211,7 @@
     await waitTap();
   }
   async function sayLines(lines) {
-    for (const l of lines) await say(l.who, l.text);
+    for (const l of lines) await say(l.who, l.text, l.expr);
   }
 
   /* ---------- 덮는 카드 ---------- */
@@ -206,6 +236,7 @@
   }
   function clearDialog(text) {
     setSpeaker(null);
+    if (el.portrait) { el.portrait.hidden = true; el.dialog.classList.remove('has-pt'); }
     el.text.textContent = text || '';
     el.actions.innerHTML = '';
   }
@@ -217,6 +248,8 @@
       Sound.sfx('page');
       setTimeout(() => {
         el.scene.innerHTML = Art.render(name);
+        el.scene.style.transform = '';
+        Fx.set(name);
         el.hot.innerHTML = '';
         el.scene.classList.remove('fade');
         setTimeout(res, 350);
@@ -255,6 +288,7 @@
     el.hot.innerHTML = step.spots.map(s =>
       `<button class="hot-mark" data-name="${esc(s.name)}"><i></i><span>${esc(s.name)}</span></button>`).join('');
     hotState = step;
+    el.scene.style.transition = 'none'; el.scene.style.transform = ''; void el.scene.offsetWidth; el.scene.style.transition = '';
     placeHotMarks();
     setTimeout(placeHotMarks, 400);
 
@@ -304,7 +338,7 @@
       el.title.hidden = true;
     },
     scene: s => setScene(s.name),
-    say: s => say(s.who, s.text),
+    say: s => say(s.who, s.text, s.expr),
     async fx(s) {
       const once = { '흔들림': 650, '번쩍': 800, '두근': 900 };
       const cls = 'fx-' + s.name;
@@ -360,6 +394,7 @@
     },
     async choice(s, my) {
       setSpeaker(null);
+      el.portrait.hidden = true; el.dialog.classList.remove('has-pt');
       await typeText(Script.fill(s.prompt, ep.id));
       el.dialog.classList.add('choosing');
       const pick = await new Promise(res => {
@@ -670,7 +705,7 @@
     if (ep.read && !steps.some(s => s.t === 'meditate')) steps.push({ t: 'meditate' });
     // 첫 장면을 미리 깔아 둔다
     const firstScene = steps.find(s => s.t === 'scene');
-    if (firstScene) el.scene.innerHTML = Art.render(firstScene.name);
+    if (firstScene) { el.scene.innerHTML = Art.render(firstScene.name); requestAnimationFrame(() => Fx.set(firstScene.name)); }
     clearDialog('');
 
     let checked = false;
