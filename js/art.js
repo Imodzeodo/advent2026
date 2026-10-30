@@ -35,9 +35,10 @@
   }
   // 얼굴 사진: (x,y)에 얼굴 한가운데, fw = 얼굴 폭.
   //   flip: 바깥 그림이 거울로 뒤집혀 있음(되돌림), want: 'R'|'L' 얼굴이 봤으면 하는 쪽
-  //   F.gaze: 사진 속 얼굴이 보는 쪽, F.rot: 기운 고개를 바로 세우는 각도
+  //   F.gaze: 사진 속 얼굴이 보는 쪽, F.rot: 기운 고개를 바로 세우는 각도, F.look: 늘 보게 할 쪽
   function faceImg(t, x, y, fw, flip, want) {
     const F = window.FACES[t], k = fw / 120;
+    if (F.look) want = F.look; // 늘 이쪽을 보게 (사진에 따라)
     const turn = !!(F.gaze && want && F.gaze !== want);
     const img = `<image href="img/faces/${t}.webp" x="${(-F.cx * k).toFixed(1)}" y="${(-F.cy * k).toFixed(1)}" width="${(F.w * k).toFixed(1)}" height="${(F.h * k).toFixed(1)}"/>`;
     return `<g transform="translate(${x},${y})${(!!flip) !== turn ? ' scale(-1,1)' : ''}${F.rot ? ` rotate(${F.rot})` : ''}">${img}</g>`;
@@ -85,6 +86,7 @@
       if (kind === 'woman') g += `<path d="M-21,${hy + 8} Q-22,${hy - 26} 0,${hy - 27} Q22,${hy - 26} 21,${hy + 8} L24,${hy + 40} L-24,${hy + 40} Z" fill="${cloth}"/>`;
       else if (kind === 'man' && !o.helmet) g += `<path d="M-19,${hy + 10} Q-21,${hy - 24} 0,${hy - 25} Q21,${hy - 24} 19,${hy + 10} L18,${hy + 20} L-18,${hy + 20} Z" fill="${cloth}"/>`;
       g += faceImg(t, 0, hy - 2, fw, o.flip, o.flip ? 'L' : 'R');
+      if (!o.helmet) g += `<path d="M-19,${top + 9} Q-15,${top - 1} -7,${top} Q0,${top + 6} 7,${top} Q15,${top - 1} 19,${top + 9} L20,${top + 16} L-20,${top + 16} Z" fill="${kind === 'woman' ? cloth : robe}"/>`;
       if (o.helmet) g += `<g transform="translate(0,${hy - 14})"><path d="M-17,4 Q-17,-16 0,-16 Q17,-16 17,4 L17,0 Q0,-8 -17,0 Z" fill="#b0a090"/><rect x="-3" y="-26" width="6" height="12" fill="#c03030"/></g>`;
     } else {
     g += `<circle cx="0" cy="${hy}" r="${kind === 'child' ? 11 : 12}" fill="${skin}"/>`;
@@ -644,6 +646,7 @@
     g += `<path d="M8,100 Q12,76 34,72 L66,72 Q88,76 92,100 Z" fill="${P.robe}"/>`;
     g += `<path d="M40,72 Q50,82 60,72" stroke="#000" stroke-opacity=".18" stroke-width="2" fill="none"/>`;
     g += faceImg(t, 50, 47, 44, false, 'R');
+    g += `<path d="M6,100 Q10,80 26,73 Q36,69 43,74 Q50,79 57,74 Q64,69 74,73 Q90,80 94,100 Z" fill="${P.veil ? P.cloth : P.robe}"/><path d="M43,74 Q50,79 57,74" stroke="#000" stroke-opacity=".2" stroke-width="1.6" fill="none"/>`;
     if (P.helmet) g += `<path d="M28,36 Q28,8 50,8 Q72,8 72,36 L72,30 Q50,20 28,30 Z" fill="#b0a090"/><rect x="47" y="-2" width="6" height="14" fill="#c03030"/>`;
     g += exprMarks(expr);
     return g + `</svg>`;
