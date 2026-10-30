@@ -82,7 +82,7 @@
       <header class="home-head">
         <div class="home-star">${Art.bigStar(Math.max(0.04, b), 170)}</div>
         <h1>그 밤을 향하여</h1>
-        <p class="sub">2026 연동교회 고등부 대림절</p>
+        <p class="sub">${esc((window.SITE || {}).label || '')}</p>
         ${started ? `<div class="stats">
           <span>${esc(D.nickname)}${D.ban ? ' · ' + esc(D.ban) : ''}</span>
           <span>⭐ 별빛 ${Core.starCount()}/${Core.starTotal()}</span>
@@ -395,7 +395,7 @@
         <h2>함께한 사람들</h2>
         <p><b>사가랴 · 엘리사벳 · 요셉 · 마리아</b><br>할아버지 목자와 들판의 목자들<br>그리고 등불을 든 <b>${esc(D.nickname || '너')}</b></p>
         ${castList().length ? `<div class="fin-cast"><h3>출연</h3>${castList().map(c => `<div><span>${esc(c.role)}</span><b>${esc(FACES[c.t].name)} 선생님</b></div>`).join('')}</div>` : ''}
-        <p>2026 연동교회 고등부 대림절</p>
+        <p>${esc((window.SITE || {}).label || '')}</p>
         <p class="fin-small">성경 본문: 성경전서 개역개정판 © 대한성서공회<br>음악: 곧 오소서 임마누엘 · 기쁘다 구주 오셨네 · 고요한 밤 거룩한 밤 (옛 찬송 선율)</p>
         <p class="fin-last">"목자들은 자기들에게 이르던 바와 같이<br>듣고 본 그 모든 것으로 인하여<br>하나님께 영광을 돌리고 찬송하며 돌아가니라"<br><small>누가복음 2:20</small></p>
       </section>

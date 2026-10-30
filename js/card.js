@@ -367,7 +367,7 @@
     ctx.font = `400 34px ${SERIF}`; ctx.fillStyle = '#fff8e6';
     let y = 1090; for (const l of clamp(wrap(ctx, '“' + v.text + '”', W - 220), 3)) { ctx.fillText(l, W / 2, y); y += 50; }
     ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.7)';
-    ctx.fillText('누가복음 2:20 · 2026. 12. 25. 연동교회 고등부 대림절', W / 2, H - P - 50);
+    ctx.fillText((window.SITE || {}).cardFoot || '누가복음 2:20', W / 2, H - P - 50);
     ctx.restore();
     return cv;
   }
