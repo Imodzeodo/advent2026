@@ -188,7 +188,7 @@
     <path d="M0,430 L360,430" stroke="#fff" stroke-opacity=".05" stroke-width="2"/>
     ${person({ x: 70, y: 492, h: 150, robe: '#5d4f78', cloth: '#bcb2cf', skin: '#a27a5c', beard: '#ece8f2', lamp: true, who: '사가랴' })}
     ${person({ x: 186, y: 486, h: 134, kind: 'woman', robe: '#7d5f7e', cloth: '#c9b8cf', skin: '#a8805f', hot: '엘리사벳', who: '엘리사벳', flip: true })}
-    ${person({ x: 250, y: 500, h: 84, kind: 'child', robe: '#8b6a4f', skin: '#b38b66', hot: '꼬마', who: '꼬마', wave: true })}
+    ${person({ x: 250, y: 466, h: 84, kind: 'child', robe: '#8b6a4f', skin: '#b38b66', hot: '꼬마', who: '꼬마', wave: true })}
     ${person({ x: 318, y: 480, h: 122, kind: 'woman', robe: '#544463', cloth: '#8f8099', skin: '#9d7a5e', hot: '이웃 아주머니', who: '이웃', flip: true })}`;
 
   // 1-1: 예루살렘으로 올라가는 길
@@ -301,13 +301,7 @@
       <circle cx="180" cy="300" r="22" fill="url(#lampglow)"/>
     </g>
     <!-- 분향단 오른편의 빛 (1-2 끝, 1-3) -->
-    <g id="angel" opacity="0">
-      <circle cx="250" cy="250" r="120" fill="url(#angelglow)"/>
-      <path d="M246,190 Q190,150 176,96 Q214,150 240,176 Z" fill="#fffaf0" opacity=".35"/>
-      <path d="M254,190 Q310,150 324,96 Q286,150 260,176 Z" fill="#fffaf0" opacity=".35"/>
-      <path d="M250,160 Q232,170 228,200 L216,388 Q250,398 284,388 L272,200 Q268,170 250,160 Z" fill="#fffaf0" opacity=".55"/>
-      <circle cx="250" cy="150" r="15" fill="#fffdf6" opacity=".85"/>
-    </g>
+    <g id="angel" opacity="0"><g transform="translate(250,352) scale(.95)">${angelBody()}</g></g>
     ${person({ x: 112, y: 500, h: 156, robe: '#efe9dc', cloth: '#f7f3ea', skin: '#a27a5c', beard: '#ece8f2', who: '사가랴' })}`;
 
   /* ---------- 공통 소품 ---------- */
@@ -330,13 +324,48 @@
   }
   const STAR = () => `<radialGradient id="starglow"><stop offset="0" stop-color="#fff3c4" stop-opacity=".45"/><stop offset=".3" stop-color="#ffe7a8" stop-opacity=".12"/><stop offset="1" stop-color="#ffe7a8" stop-opacity="0"/></radialGradient>`;
   const ANGEL_DEF = `<radialGradient id="angelglow"><stop offset="0" stop-color="#fffbe8" stop-opacity=".95"/><stop offset=".35" stop-color="#ffe9a8" stop-opacity=".45"/><stop offset="1" stop-color="#ffe9a8" stop-opacity="0"/></radialGradient>`;
+  // 천사: 들어 올린 깃털 날개 + 빛나는 옷. 원점은 발밑, 머리는 y=-200
+  // 오른쪽 날개를 어깨(0,0) 기준으로 그리고, 왼쪽은 거울로 뒤집는다
+  const WING = (() => {
+    const f = n => n.toFixed(1);
+    const tips = [[104, 104], [90, 102], [75, 95], [60, 85], [45, 72], [31, 57], [18, 41], [8, 24]];
+    let out = 'M0,0 Q26,-74 80,-84 Q124,-88 126,-34 Q124,34 104,104';
+    for (let i = 1; i < tips.length; i++) {
+      const [x0, y0] = tips[i - 1], [x1, y1] = tips[i];
+      out += ` Q${f((x0 + x1) / 2 + 3)},${f((y0 + y1) / 2 + 9)} ${x1},${y1}`;
+    }
+    out += ' Q2,16 0,0Z';
+    // 깃대(긴 깃털 줄기)
+    let shafts = '';
+    tips.forEach(([x, y], i) => { const t = i / (tips.length - 1); const bx = 112 - 96 * t, by = -26 + 10 * t; shafts += `M${f(bx)},${f(by)} Q${f((bx + x) / 2 + 4)},${f((by + y) / 2)} ${f(x - 3)},${f(y - 6)} `; });
+    // 덮깃 두 줄 (작은 비늘 무늬)
+    const row = (pts, d) => { let r = `M${pts[0][0]},${pts[0][1]}`; for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; r += ` Q${f((x0 + x1) / 2 + d * 0.3)},${f((y0 + y1) / 2 + d)} ${x1},${y1}`; } return r; };
+    const cov1 = row([[6, -14], [22, -40], [42, -58], [64, -66], [88, -64], [110, -50], [118, -30]], 10);
+    const cov2 = row([[8, 4], [20, -14], [36, -28], [56, -36], [78, -36], [98, -26], [114, -8]], 12);
+    return { out, shafts, cov1, cov2 };
+  })();
+  function wing(side) {
+    return `<g class="wing ${side < 0 ? 'wl' : 'wr'}" style="transform-origin:${side * 10}px -150px"><g transform="translate(${side * 10},-150) scale(${side},1)">
+      <path d="${WING.out}" fill="url(#wingGrad)" stroke="#fff3cf" stroke-opacity=".7" stroke-width="1.2"/>
+      <path d="${WING.shafts}" fill="none" stroke="#e6d3a2" stroke-opacity=".55" stroke-width="1.1"/>
+      <path d="${WING.cov2}" fill="none" stroke="#e6d3a2" stroke-opacity=".5" stroke-width="1"/>
+      <path d="${WING.cov1}" fill="none" stroke="#e6d3a2" stroke-opacity=".6" stroke-width="1"/>
+    </g></g>`;
+  }
+  const WING_DEF = `<linearGradient id="wingGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6" stop-opacity=".95"/><stop offset=".55" stop-color="#fff4d6" stop-opacity=".7"/><stop offset="1" stop-color="#ffe6a6" stop-opacity=".25"/></linearGradient>`;
+  function angelBody() {
+    return `<defs>${WING_DEF}</defs><circle cx="0" cy="-110" r="150" fill="url(#angelglow)" opacity=".85"/>
+      <g opacity=".5" stroke="#fff6d8" stroke-width="2" stroke-linecap="round">${[-60, -35, -12, 12, 35, 60].map(d => { const a = d * Math.PI / 180; return `<line x1="${(Math.sin(a) * 40).toFixed(1)}" y1="${(-200 - Math.cos(a) * 40).toFixed(1)}" x2="${(Math.sin(a) * 92).toFixed(1)}" y2="${(-200 - Math.cos(a) * 92).toFixed(1)}" stroke-opacity="${(0.25 + Math.abs(d) / 300).toFixed(2)}"/>`; }).join('')}</g>
+      ${wing(-1)}${wing(1)}
+      <path d="M0,-186 Q-24,-178 -28,-148 Q-36,-60 -46,34 Q-20,46 0,42 Q20,46 46,34 Q36,-60 28,-148 Q24,-178 0,-186Z" fill="#fffaf0" opacity=".9"/>
+      <path d="M-14,-120 Q-18,-40 -24,36 M8,-118 Q12,-40 18,38 M-2,-90 Q-2,-20 -4,40" stroke="#e9dcb8" stroke-width="1.4" fill="none" opacity=".7"/>
+      <path d="M-26,-146 Q-50,-112 -40,-84 Q-28,-92 -18,-118Z M26,-146 Q50,-112 40,-84 Q28,-92 18,-118Z" fill="#fffdf6" opacity=".95"/>
+      <path d="M-28,-150 Q0,-136 28,-150" stroke="#f2d98e" stroke-width="2.5" fill="none" opacity=".8"/>
+      <circle cx="0" cy="-200" r="17" fill="#fffdf6"/>
+      <circle cx="0" cy="-200" r="26" fill="url(#angelglow)" opacity=".9"/>`;
+  }
   function angel(x, y, sc, id, op) {
-    return `<g ${id ? `id="${id}"` : ''} class="who" data-who="천사" opacity="${op == null ? 0 : op}"><g transform="translate(${x},${y}) scale(${sc})">
-      <circle cx="0" cy="-90" r="120" fill="url(#angelglow)"/>
-      <path d="M-4,-160 Q-60,-200 -74,-254 Q-36,-200 -10,-174 Z" fill="#fffaf0" opacity=".35"/>
-      <path d="M4,-160 Q60,-200 74,-254 Q36,-200 10,-174 Z" fill="#fffaf0" opacity=".35"/>
-      <path d="M0,-190 Q-18,-180 -22,-150 L-34,38 Q0,48 34,38 L22,-150 Q18,-180 0,-190 Z" fill="#fffaf0" opacity=".55"/>
-      <circle cx="0" cy="-200" r="15" fill="#fffdf6" opacity=".85"/></g></g>`;
+    return `<g ${id ? `id="${id}"` : ''} class="who" data-who="천사" opacity="${op == null ? 0 : op}"><g transform="translate(${x},${y}) scale(${sc})">${angelBody()}</g></g>`;
   }
   function interior(id, top, bottom) {
     return `<defs>${sky(id, [[0, top], [1, bottom]])}${LAMP_DEF}${STAR()}${ANGEL_DEF}</defs><rect width="${W}" height="${H}" fill="url(#${id})"/>`;
@@ -477,7 +506,7 @@
     <g data-hot="모닥불">${fire(190, 440)}</g>
     ${person({ x: 110, y: 500, h: 146, ...GRA })}
     ${person({ x: 268, y: 498, h: 140, ...SHP, flip: true })}
-    ${person({ x: 196, y: 512, h: 96, ...BOY })}`;
+    ${person({ x: 196, y: 494, h: 96, ...BOY })}`;
   scenes['베들레헴'] = () => `
     <defs>${sky('s19', [[0, '#1a1a40'], [0.55, '#6a4a6a'], [1, '#c07a5a']])}${LAMP_DEF}${STAR()}</defs>
     <rect width="${W}" height="${H}" fill="url(#s19)"/>
@@ -489,7 +518,7 @@
     <g data-hot="로마 군인">${person({ x: 334, y: 470, h: 118, robe: '#8a2a2a', cloth: '#b0a090', who: '군인', flip: true })}</g>
     <g data-hot="어떤 부부" opacity=".85">${person({ x: 250, y: 400, h: 70, robe: '#3a3048', cloth: '#5a5070' })}${person({ x: 270, y: 400, h: 62, kind: 'woman', robe: '#3a3048', cloth: '#4a5a8a' })}</g>
     ${person({ x: 180, y: 486, h: 120, robe: '#6a4a3a', cloth: '#a88a6a', beard: '#3a2a1a', who: '여관 주인' })}
-    ${person({ x: 110, y: 512, h: 94, ...BOY })}`;
+    ${person({ x: 112, y: 490, h: 94, ...BOY })}`;
   scenes['마구간'] = () => `${interior('s20', '#140e0c', '#2e2018')}
     <path d="M0,0 L360,0 L360,140 Q180,60 0,140 Z" fill="#0a0806"/>
     <circle cx="180" cy="360" r="190" fill="url(#lampglow)" opacity=".55"/>
@@ -510,7 +539,7 @@
     ${sheep(50, 420, 0.8)}${sheep(300, 430, 0.75, true)}
     ${person({ x: 110, y: 500, h: 146, ...GRA, wave: true })}
     ${person({ x: 260, y: 498, h: 140, ...SHP, wave: true, flip: true })}
-    ${person({ x: 190, y: 512, h: 98, ...BOY, wave: true })}`;
+    ${person({ x: 190, y: 494, h: 98, ...BOY, wave: true })}`;
 
   /* ---------- 인물 초상 (대사창 옆) ---------- */
   const PORTRAIT = {
@@ -540,7 +569,7 @@
   };
   function portrait(who, expr) {
     if (!who) return '';
-    if (who === '천사' || who === '가브리엘') return `<svg viewBox="0 0 100 100"><defs>${ANGEL_DEF}</defs><circle cx="50" cy="50" r="50" fill="#fff6dc"/><circle cx="50" cy="50" r="48" fill="url(#angelglow)"/><path d="M50,30 Q40,36 38,50 L32,100 L68,100 L62,50 Q60,36 50,30 Z" fill="#fff" opacity=".8"/><circle cx="50" cy="26" r="11" fill="#fff"/></svg>`;
+    if (who === '천사' || who === '가브리엘') return `<svg viewBox="0 0 100 100"><defs>${ANGEL_DEF}</defs><circle cx="50" cy="50" r="50" fill="#fff6dc"/><g transform="translate(50,118) scale(.42)">${angelBody()}</g></svg>`;
     if (/서판$/.test(who)) return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#3a2f55"/><rect x="24" y="30" width="52" height="40" rx="4" fill="#c9b48e" stroke="#7a5a3a" stroke-width="4"/><path d="M32,44 L66,44 M32,54 L58,54 M32,62 L50,62" stroke="#5a3a1a" stroke-width="3" stroke-linecap="round"/><path d="M70,22 L80,14" stroke="#e8dcc0" stroke-width="4" stroke-linecap="round"/></svg>`;
     const P = PORTRAIT[who] || PORTRAIT['사람들'];
     const E = EXPR[expr] || EXPR['기본'];

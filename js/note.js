@@ -19,19 +19,65 @@
   const entries = () => Core.mainEpisodes().map(entry).filter(Boolean);
 
   /* ---------- 글로 ---------- */
+  // 메모장·카톡에 붙여 넣었을 때 깔끔하게 보이는 글 모양
+  const LINE = '────────────────';
+  const who = () => { const D = Core.data; return `${D.nickname || '나'}${D.ban ? ' · ' + D.ban : ''}`; };
+  const ST_SHORT = { yes: '✅ 했어', no: '🤍 못 했어', wait: '⏳ 아직', none: '' };
   function text() {
-    const D = Core.data;
-    let out = `그 밤을 향하여 · 나의 대림절 묵상 노트\n${D.nickname || ''}${D.ban ? ' · ' + D.ban : ''}\n2026 연동교회 고등부 대림절\n`;
+    const out = [`🌟 그 밤을 향하여`, `나의 대림절 묵상 노트 · ${who()}`, ''];
     let lastCh = null;
     for (const x of entries()) {
-      if (x.ch !== lastCh) { out += `\n━━━━━━━━━━━━━━━━\n${x.ch.label} 「${x.ch.title}」\n━━━━━━━━━━━━━━━━\n`; lastCh = x.ch; }
-      out += `\n▸ ${Core.dateLabel(x.e.date)} ${x.e.day} · ${x.e.title}\n  본문: ${x.read}\n`;
-      for (const v of x.vs) out += `  마음에 남은 말씀: "${v.text}" (${v.label})\n`;
-      for (const q of x.qa) out += `  Q. ${q.q}\n  A. ${q.a}\n`;
-      if (x.mission) out += `  미션: ${x.mission}${ST[x.st] ? ' — ' + ST[x.st] : ''}\n`;
+      if (x.ch !== lastCh) { out.push(LINE, `📖 ${x.ch.label} · ${x.ch.title}`, LINE, ''); lastCh = x.ch; }
+      out.push(`🗓 ${Core.dateLabel(x.e.date)} ${x.e.day} 「${x.e.title}」`, '');
+      if (x.vs.length) {
+        out.push('✨ 마음에 남은 말씀');
+        for (const v of x.vs) out.push(`"${v.text}"`, `— ${v.label}`, '');
+      }
+      if (x.qa.length) {
+        out.push('✏️ 나의 묵상');
+        for (const q of x.qa) out.push(`· ${q.q}`, `  → ${q.a}`, '');
+      }
+      if (x.mission) out.push(`🎯 미션  ${ST_SHORT[x.st] || ''}`.trim(), x.mission, '');
+      out.push('');
     }
-    out += `\n성경 본문: 성경전서 개역개정판 © 대한성서공회\n`;
-    return out;
+    out.push(LINE, '2026 연동교회 고등부 대림절', '성경 본문: 개역개정판 © 대한성서공회');
+    return out.join('\n');
+  }
+  // 말씀 모음
+  function versesText() {
+    const out = [`📖 내가 붙든 말씀`, `그 밤을 향하여 · ${who()}`, ''];
+    for (const e of Core.mainEpisodes()) {
+      for (const r of Bible.marks(e.id)) {
+        const v = Bible.verses(r)[0];
+        if (v) out.push(`"${v.text}"`, `— ${v.label}  (${Core.dateLabel(e.date)} ${e.title})`, '');
+      }
+    }
+    out.push(LINE, '성경 본문: 개역개정판 © 대한성서공회');
+    return out.join('\n');
+  }
+  // 나의 기록
+  function recordText() {
+    const D = Core.data;
+    const out = [`📜 나의 대림절 기록`, `그 밤을 향하여 · ${who()}`, '',
+      `⭐ 별빛 ${Core.starCount()}/${Core.starTotal()}   ✅ 미션 ${Fame.missionYes()}   🪔 기름 ${D.oil || 0}`, '', LINE, '🎯 미션', LINE, ''];
+    for (const e of Core.mainEpisodes()) {
+      if (!D.mission[e.id]) continue;
+      out.push(`${Core.dateLabel(e.date)} 「${e.title}」  ${ST_SHORT[Fame.missionStatus(e)] || ''}`.trim(), Bible.full(D.mission[e.id]), '');
+    }
+    const got = Fame.BADGES.filter(b => D.badges && D.badges[b.id]);
+    if (got.length) { out.push(LINE, `🏅 받은 배지 ${got.length}개`, LINE, ''); for (const b of got) out.push(`${b.icon} ${b.name} — ${b.desc}`); out.push(''); }
+    out.push(LINE, '2026 연동교회 고등부 대림절');
+    return out.join('\n');
+  }
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; }
+    catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch (e2) { /* 무시 */ }
+      ta.remove(); return ok;
+    }
   }
   async function copy() {
     const t = text();
@@ -149,5 +195,5 @@
     return out;
   }
 
-  window.Note = { entries, text, copy, txtUrl, pages };
+  window.Note = { entries, text, versesText, recordText, copyText, copy, txtUrl, pages };
 })();

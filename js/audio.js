@@ -144,6 +144,17 @@
   /* ---------- 곡 ---------- */
   // [음높이(MIDI), 길이(박)] / { c: [화음] } 은 그 자리에서 바탕 화음이 바뀜
   const Em = [40, 52, 55, 59], D = [38, 50, 54, 57], C = [36, 48, 52, 55], G = [43, 50, 55, 59], F = [41, 48, 53, 57];
+  const Am = [45, 57, 60, 64], E = [40, 52, 56, 59];
+  // 2장: '저 아기 잠이 들었네(What Child Is This)' 옛 선율, 3박 자장가처럼
+  const CHILD_A = [
+    { c: Am }, [72, 2], [74, 1], [76, 1.5], [77, 0.5], [76, 1], { c: G }, [74, 2], [71, 1], { c: Em }, [67, 1.5], [69, 0.5], [71, 1],
+    { c: Am }, [72, 2], [69, 1], { c: E }, [69, 1.5], [68, 0.5], [69, 1], [71, 2], [68, 1], { c: Am }, [64, 2], [69, 1]];
+  const CHILD_B = [
+    { c: Am }, [72, 2], [74, 1], [76, 1.5], [77, 0.5], [76, 1], { c: G }, [74, 2], [71, 1], { c: Em }, [67, 1.5], [69, 0.5], [71, 1],
+    { c: Am }, [72, 1.5], [71, 0.5], [69, 1], { c: E }, [68, 1.5], [66, 0.5], [68, 1], { c: Am }, [69, 3], [69, 2], [0, 1]];
+  const CHILD_R = [
+    { c: C }, [79, 3], [79, 1.5], [78, 0.5], [76, 1], { c: G }, [74, 2], [71, 1], { c: Em }, [67, 1.5], [69, 0.5], [71, 1],
+    { c: Am }, [72, 2], [69, 1], { c: E }, [69, 1.5], [68, 0.5], [69, 1], [71, 2], [68, 1], [64, 3]];
   const SONGS = {
     veni: { beat: 0.78, vol: 0.13, notes: [
       { c: Em }, [64, 1], [67, 1], [71, 1], [71, 1], [71, 1], [69, 1], [72, 1], [71, 1], [69, 1], [67, 2],
@@ -154,6 +165,8 @@
       { c: C }, [72, 2], [71, 1.5], [69, 0.5], [67, 3], { c: F }, [65, 1], [64, 2], { c: G }, [62, 2], { c: C }, [60, 3],
       [67, 1], { c: F }, [69, 3], [69, 1], { c: G }, [71, 3], [71, 1], { c: C }, [72, 6], [0, 2],
       { c: C }, [72, 2], [71, 1.5], [69, 0.5], [67, 3], { c: F }, [65, 1], [64, 2], { c: G }, [62, 2], { c: C }, [60, 6], [0, 4]] },
+    child: { beat: 0.46, vol: 0.12, notes: [[69, 1], ...CHILD_A, ...CHILD_B, ...CHILD_R, ...CHILD_R.slice(0, 12),
+      { c: Am }, [72, 1.5], [71, 0.5], [69, 1], { c: E }, [68, 1.5], [66, 0.5], [68, 1], { c: Am }, [69, 3], [69, 3], [0, 3]] },
     silent: { beat: 0.3, vol: 0.12, notes: [
       { c: C }, [67, 3], [69, 1], [67, 2], [64, 6], [67, 3], [69, 1], [67, 2], [64, 6],
       { c: G }, [74, 4], [74, 2], [71, 6], { c: C }, [72, 4], [72, 2], [67, 6],
@@ -353,7 +366,7 @@
   }
 
   // 장 분위기 → 곡
-  const TONE_SONG = { ch0: 'night', ch1: 'veni', ch2: 'calm', ch3: 'joy', ch4: 'silent', end: 'silent', home: 'night' };
+  const TONE_SONG = { ch0: 'night', ch1: 'veni', ch2: 'child', ch3: 'joy', ch4: 'silent', end: 'silent', home: 'night' };
   /* ---------- 핵심 장면 음성 (audio/*.mp3, 잔향을 입혀서) ---------- */
   const vcache = {};
   function preload(name) {
@@ -364,12 +377,21 @@
     }
     return vcache[name];
   }
+  let curVoice = null;
+  function stopVoice() {
+    if (!curVoice || !ctx) return;
+    const { s, g } = curVoice; curVoice = null;
+    try { g.gain.setTargetAtTime(0, ctx.currentTime, 0.08); s.stop(ctx.currentTime + 0.4); } catch (e) { /* 무시 */ }
+  }
   async function voice(name) {
     if (!on() || !ctx || ctx.state !== 'running') return;
     const buf = await preload(name);
     if (!buf || !ctx) return;
+    stopVoice();
     const s = ctx.createBufferSource(); s.buffer = buf;
-    const g = ctx.createGain(); g.gain.value = 1.1;
+    const g = ctx.createGain(); g.gain.value = /^n-/.test(name) ? 1.0 : 1.1;
+    curVoice = { s, g };
+    s.onended = () => { if (curVoice && curVoice.s === s) curVoice = null; };
     // 천사·천군은 성전처럼 크게 울리고, 사람 목소리는 살짝만
     const heavenly = /^v-(1-3|1-4|2-3|3-0|3-1|4-4|4-4c)$/.test(name);
     const w = ctx.createGain(); w.gain.value = heavenly ? 0.45 : 0.12;
@@ -378,6 +400,7 @@
     musicBus.gain.cancelScheduledValues(t); musicBus.gain.setTargetAtTime(0.14, t, 0.3);
     musicBus.gain.setTargetAtTime(0.5, t + buf.duration + 0.3, 0.8);
     s.start(t + 0.05);
+    return buf.duration;
   }
-  window.Sound = { sfx, blip, music, ambience, voice, preload: n => preload(n), setOn, toggle, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
+  window.Sound = { sfx, blip, music, ambience, voice, stopVoice, preload: n => preload(n), setOn, toggle, get on() { return on(); }, get state() { return (ctx ? ctx.state : 'none') + ' · ' + (current || '-'); }, forTone: t => TONE_SONG[t] || 'calm' };
 })();

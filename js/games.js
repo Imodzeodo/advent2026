@@ -230,7 +230,7 @@
     const px = mx.getImageData(0, 0, 600, 300).data, targets = [];
     for (let y = 4; y < 300; y += 9) for (let x = 4; x < 600; x += 9) if (px[(y * 600 + x) * 4 + 3] > 120) targets.push({ x, y, hit: false });
     let hits = 0, drawing = false, lastP = null, finished = false;
-    const need = Math.ceil(targets.length * 0.7);
+    const need = Math.ceil(targets.length * 0.55);
     const pos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * 600, y: (e.clientY - r.top) / r.height * 300 }; };
     const mark = (a, b) => {
       const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 6));
@@ -251,9 +251,9 @@
       if (Math.random() < 0.08) Sound.sfx('plane');
     });
     cv.addEventListener('pointerup', () => { drawing = false; });
-    // 손가락이 불편한 학생을 위해 20초 뒤 '다 썼어' 버튼
+    // 6초 뒤 '다 썼어' 버튼
     const skip = box.querySelector('.tr-skip');
-    setTimeout(() => { if (!finished) skip.hidden = false; }, 20000);
+    setTimeout(() => { if (!finished) skip.hidden = false; }, 6000);
     skip.onclick = () => done();
     function done() {
       if (finished) return; finished = true;
@@ -432,6 +432,45 @@
         setTimeout(api.done, 2200);
       }
     }, 40);
+  };
+
+  /* ---- 말씀 퍼즐: 흩어진 말씀 조각을 순서대로 눌러 맞추기 ---- */
+  G['퍼즐'] = (box, api, ref) => {
+    const text = Bible.verses(ref).map(v => v.text).join(' ');
+    const words = text.split(/\s+/).filter(Boolean);
+    const n = Math.max(4, Math.min(7, Math.round(words.length / 2.2)));
+    const parts = [];
+    for (let i = 0; i < n; i++) parts.push(words.slice(Math.round(i * words.length / n), Math.round((i + 1) * words.length / n)).join(' '));
+    let order = parts.map((_, i) => i);
+    do { order.sort(() => Math.random() - 0.5); } while (order.every((v, i) => v === i));
+    box.innerHTML = `
+      <div class="game-title">🧩 말씀 퍼즐</div>
+      <div class="game-help">${Bible.full(ref)} · 말씀 조각을 <b>순서대로</b> 눌러 봐</div>
+      <div class="pz-line">${parts.map((_, i) => `<span class="pz-slot" data-i="${i}">＿＿</span>`).join(' ')}</div>
+      <div class="pz-chips">${order.map(i => `<button class="pz-chip" data-i="${i}">${parts[i]}</button>`).join('')}</div>`;
+    let next = 0, miss = 0;
+    box.querySelectorAll('.pz-chip').forEach(c => c.onclick = () => {
+      const i = +c.dataset.i;
+      if (i !== next) {
+        miss++; Sound.sfx('select');
+        c.classList.remove('wrong'); void c.offsetWidth; c.classList.add('wrong');
+        if (miss >= 2) { const h = box.querySelector(`.pz-chip[data-i="${next}"]`); if (h) h.classList.add('hint'); }
+        return;
+      }
+      miss = 0;
+      Sound.sfx('gem');
+      c.classList.add('used'); c.disabled = true;
+      const slot = box.querySelector(`.pz-slot[data-i="${i}"]`);
+      slot.textContent = parts[i]; slot.classList.add('on');
+      next++;
+      if (next === parts.length) {
+        box.querySelector('.pz-line').classList.add('done');
+        box.querySelector('.game-help').innerHTML = '말씀이 다 맞춰졌어!';
+        Sound.sfx('verse');
+        if (navigator.vibrate) navigator.vibrate(30);
+        setTimeout(api.done, 1600);
+      }
+    });
   };
 
   window.Games = G;

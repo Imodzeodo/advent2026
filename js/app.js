@@ -11,8 +11,11 @@
     h.classList.toggle('no-motion', D.motion === false);
   }
   applyPrefs();
+  let homeScroll = 0;
   function show(id, cls) {
-    if (id !== 'play') { Sound.music('night'); Sound.ambience(null); }
+    if (id !== 'play') { Sound.music('night'); Sound.ambience(null); if (Sound.stopVoice) Sound.stopVoice(); }
+    // 홈을 떠날 때 내려가 있던 자리를 기억했다가 돌아오면 그 자리로
+    if (document.getElementById('home') && id !== 'home') homeScroll = window.scrollY;
     app.innerHTML = `<div id="${id}" class="screen ${cls || ''}"></div>`;
     window.scrollTo(0, 0);
     return document.getElementById(id);
@@ -25,6 +28,15 @@
       <button class="link" id="test-reset">테스트 기록 지우기</button></div>`;
   }
 
+  // 그날 편의 형식 꼬리표: 💬 대화창 · 🎬 보는 날 · 🧩 말씀 퍼즐 · 🎮 미니게임
+  function kindTag(id) {
+    const src = (window.STORY || {})[id] || '';
+    if (/#\s*모드\s*채팅/.test(src)) return ['💬', '대화창'];
+    if (/#\s*모드\s*영화/.test(src)) return ['🎬', '보는 날'];
+    if (/게임\s*[:：]\s*퍼즐/.test(src)) return ['🧩', '말씀 퍼즐'];
+    if (/게임\s*[:：]/.test(src)) return ['🎮', '미니게임'];
+    return null;
+  }
   /* ---------- 홈 ---------- */
   function home() {
     const D = Core.data;
@@ -55,7 +67,7 @@
         }
         list += `<button class="${cls}" data-id="${e.id}">
           <span class="ep-date">${esc(Core.dateLabel(e.date))}<em>${esc(e.day)}</em></span>
-          <span class="ep-title">${label}${!open && !done && started ? `<span class="ep-open">${e.openHour ? e.openHour + '시에' : ''} 열려요</span>` : ''}</span>
+          <span class="ep-title">${label}${(() => { const k = started && kindTag(e.id); return k ? `<span class="ep-kind">${k[0]}${open || done ? ' ' + k[1] : ''}</span>` : ''; })()}${!open && !done && started ? `<span class="ep-open">${e.openHour ? e.openHour + '시에' : ''} 열려요</span>` : ''}</span>
           <span class="ep-state">${state}</span>
         </button>`;
       }
@@ -76,19 +88,21 @@
         </div>` : ''}
       </header>
       ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록이 저장되지 않아요(사생활 보호 모드일 수 있어요). 일반 모드로 열어 주세요.</div>` : ''}
+      ${started ? `<nav class="menu top">
+        <button id="cards"><span>🃏</span>카드 도감<small>${Core.starCount()}/${Core.starTotal()}</small></button>
+        <button id="fame"><span>📜</span>나의 기록</button>
+        <button id="diary"><span>📔</span>묵상 노트</button>
+        <button id="verses"><span>📖</span>말씀 모음<small>${Object.values(D.verse || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 1), 0)}</small></button>
+        <button id="code"><span>🔑</span>주일 암호<small>${Object.keys(D.codes || {}).length}/4</small></button>
+        <button id="settings"><span>⚙️</span>설정</button>
+      </nav>` : ''}
       ${nightLine()}
       ${backupNudge()}
       ${!started ? `<button class="btn big start" id="start">시작하기</button>` : D.done.end ? `<button class="btn big finale-go" id="finale">🌟 27일의 기록 다시 보기</button>` : noteCard()}
+      ${started ? todayMission() : ''}
+      ${started ? skyPanel() : ''}
       ${list}
       <footer class="home-foot">
-        ${started ? `<div class="menu">
-          <button class="btn ghost" id="cards">🃏 카드 도감 <small>${Core.starCount()}/${Core.starTotal()}</small></button>
-          <button class="btn ghost" id="fame">📜 나의 기록</button>
-          <button class="btn ghost" id="code">🔑 주일 암호 <small>${Object.keys(D.codes || {}).length}/4</small></button>
-          <button class="btn ghost" id="diary">📔 묵상 노트</button>
-          <button class="btn ghost" id="verses">📖 말씀 모음 <small>${Object.values(D.verse || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 1), 0)}</small></button>
-          <button class="btn ghost" id="settings">⚙️ 설정</button>
-        </div>` : ''}
         <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
       </footer>`;
 
@@ -101,6 +115,9 @@
       Player.toast(`${Core.dateLabel(e.date)} ${e.openHour ? e.openHour + '시에' : ''} 열려요`);
     });
     const s = root.querySelector('#start'); if (s) s.onclick = () => go('0');
+    bindTodayMission(root);
+    bindSky(root);
+    if (homeScroll) { const y = homeScroll; requestAnimationFrame(() => window.scrollTo(0, y)); setTimeout(() => window.scrollTo(0, y), 60); }
     const d = root.querySelector('#diary'); if (d) d.onclick = diary;
     const st = root.querySelector('#settings'); if (st) st.onclick = settings;
     const cd = root.querySelector('#cards'); if (cd) cd.onclick = cards;
@@ -108,10 +125,57 @@
     const co = root.querySelector('#code'); if (co) co.onclick = codePage;
     const vv = root.querySelector('#verses'); if (vv) vv.onclick = versePage;
     const fi = root.querySelector('#finale'); if (fi) fi.onclick = finale;
-    const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => { settings(); setTimeout(() => { const b = document.getElementById('bk-make'); if (b) b.scrollIntoView({ block: 'center' }); }, 100); };
+    const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => sendKey().then(() => { if (Core.data.lastBackup && Date.now() - Core.data.lastBackup < 6e4) nu.remove(); });
     const nc = root.querySelector('.note-card'); if (nc) nc.onclick = () => go(nc.dataset.id);
     root.querySelector('#snd').onclick = e => { e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇'; };
     bindTestReset(root);
+  }
+
+  // 나의 밤하늘: 편마다 별 하나, 빛 조각을 다 모으면 환해지고, 한 장을 다 채우면 별자리가 이어진다
+  function skyPanel() {
+    const st = Sky.stats();
+    return `<section class="sky-panel">
+      <h2 class="sec">🌌 나의 밤하늘 <small>빛 조각 ${st.gems}/${st.total} · 별자리 ${st.full}/4</small></h2>
+      ${Sky.svg()}
+      <p class="sky-hint">편을 끝내면 별이 뜨고, 그 편의 <b>빛 조각</b>을 다 모으면 별이 환해져요. 한 장의 별이 모두 환해지면 별자리가 이어져요.</p>
+    </section>`;
+  }
+  function bindSky(root) {
+    root.querySelectorAll('.sky-svg .sk-star').forEach(n => n.addEventListener('click', () => {
+      const e = Core.epById(n.dataset.id); if (!e) return;
+      const lv = Sky.level(e.id), t = Sky.gemTotal(e.id), got = ((Core.data.gems || {})[e.id] || []).length;
+      Player.toast(`${Core.dateLabel(e.date)} ${e.title} · ` + (!lv ? '아직 뜨지 않은 별' : lv === 2 ? '환한 별 ✦' : `빛 조각 ${got}/${t} · 다시 보기로 마저 모으면 환해져요`));
+    }));
+  }
+  // 오늘의 미션: 가장 최근에 끝낸 편의 미션 (아직 안 한 편의 미션은 당연히 안 보임)
+  function todayMission() {
+    const D = Core.data;
+    const played = Core.mainEpisodes().filter(e => D.done[e.id] && D.mission[e.id]);
+    const e = played[played.length - 1];
+    if (!e) return '';
+    const st = Fame.missionStatus(e);
+    const label = { yes: '✅ 했어', no: '🤍 못 했어 (괜찮아)', wait: '아직 안 했어', none: '' }[st];
+    return `<section class="today-m${st === 'yes' ? ' ok' : ''}">
+      <div class="tm-head"><b>🎯 오늘의 미션</b><span>${esc(Core.dateLabel(e.date))} ${esc(e.title)}</span></div>
+      <div class="tm-text">${esc(Bible.full(D.mission[e.id]))}</div>
+      ${st === 'wait' ? `<div class="row tm-btns"><button class="btn ghost" data-m="no" data-id="${e.id}">못 했어</button><button class="btn" data-m="yes" data-id="${e.id}">했어! ✓</button></div>
+        <div class="tm-note">정직하게 체크하면 등불 기름 +1 · 다음 편을 열 때 물어보기도 해</div>`
+      : `<div class="tm-state">${label}</div>`}
+      <button class="tm-more" id="tm-more">지난 미션 모두 보기 →</button>
+    </section>`;
+  }
+  function bindTodayMission(root) {
+    root.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+      const D = Core.data, id = b.dataset.id, ans = b.dataset.m;
+      D.missionAns[id] = ans;
+      if (ans === 'yes') D.missionDone[id] = true;
+      D.oil = (D.oil || 0) + 1;
+      Core.save(); Fame.checkNew();
+      Sound.sfx(ans === 'yes' ? 'mission' : 'oil');
+      Player.toast(ans === 'yes' ? '잘했어! 등불 기름 +1' : '정직하게 말해 줘서 고마워. 기름 +1');
+      home();
+    });
+    const m = root.querySelector('#tm-more'); if (m) m.onclick = () => { fameTab = 'mission'; fame(); };
   }
 
   // 오늘 열린 편(또는 가장 최근에 열렸는데 아직 안 한 편)의 인물 쪽지
@@ -132,7 +196,33 @@
     if (n < 3) return '';
     const days = D.lastBackup ? (Date.now() - D.lastBackup) / 864e5 : 99;
     if (days < 7) return '';
-    return `<button class="nudge" id="nudge">📦 기록을 지켜 두자: <b>백업 코드</b> 만들기 (${D.lastBackup ? Math.floor(days) + '일 전 백업' : '아직 백업 안 함'})</button>`;
+    return `<button class="nudge" id="nudge">🔑 기록 지키기: 눌러서 <b>카톡 나와의 채팅</b>으로 보내 두기 (${D.lastBackup ? Math.floor(days) + '일 전' : '아직 안 함'})</button>`;
+  }
+  // 기록 열쇠 보내기: 공유창(카톡 등) → 안 되면 복사
+  async function sendKey() {
+    let url;
+    try { url = await Backup.link(); } catch (e) { Player.toast('열쇠를 만들지 못했어요'); return; }
+    const name = Core.data.nickname || '나';
+    const text = `🔑 그 밤을 향하여 · ${name}의 기록 열쇠\n(${new Date().toLocaleDateString('ko-KR')} · 별빛 ${Core.starCount()})\n기록이 사라지면 이 링크를 눌러 주세요.\n\n${url}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: '그 밤 기록 열쇠', text }); Player.toast('보냈어요. 이제 기록은 안전해요'); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const ok = await Note.copyText(text);
+    alert(ok ? '기록 열쇠를 복사했어요.\n카톡 \'나와의 채팅\'에 붙여 넣어 두세요.' : '복사가 안 됐어요. 설정의 \'직접 되살리기\' 아래 글을 길게 눌러 복사해 주세요.');
+  }
+  // 링크로 들어왔으면 기록 되살리기
+  async function restoreFromLink() {
+    const code = Backup.fromHash();
+    if (!code) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    try {
+      const obj = await Backup.read(code);
+      const now = Core.starCount() ? `\n\n지금 이 브라우저: ${Backup.summary(Core.data)}` : '';
+      if (confirm(`기록 열쇠로 되살릴까요?\n\n열쇠: ${Backup.summary(obj)}${now}\n\n이 브라우저의 기록이 열쇠의 내용으로 바뀌어요.`)) {
+        Core.replace(obj); Player.toast('기록을 되살렸어요'); home();
+      }
+    } catch (err) { Player.toast(err.message || '열쇠를 읽을 수 없어요'); }
   }
   // 지금 한국 시간이 밤이면 한 줄
   function nightLine() {
@@ -286,7 +376,7 @@
       </section>
       <section class="reveal fin-end">
         <button class="btn big" id="fin-card">🌟 완주 카드 만들기</button>
-        <button class="link-btn" id="fin-home">홈으로</button>
+        <button class="btn ghost" id="fin-home">홈으로</button>
       </section>`;
     // 내려가면 하나씩 나타나기
     const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); if (e.target.querySelector('.fin-grid')) Sound.sfx('star'); io.unobserve(e.target); } }), { threshold: 0.2 });
@@ -315,10 +405,7 @@
       }).join('') : `<p class="empty">아직 표시한 구절이 없어요.<br>매일 끝의 말씀 묵상에서 구절을 눌러 보세요.</p>`}`;
     root.querySelector('.back').onclick = home;
     const c = root.querySelector('#vcopy');
-    if (c) c.onclick = async () => {
-      const t = groups.map(g => `[${g.e.title}]\n` + g.vs.map(v => `"${v.text}" (${v.label})`).join('\n')).join('\n\n') + '\n\n성경전서 개역개정판 © 대한성서공회';
-      try { await navigator.clipboard.writeText(t); Player.toast('복사했어요'); } catch (e) { Player.toast('복사가 안 되는 브라우저예요'); }
-    };
+    if (c) c.onclick = async () => Player.toast((await Note.copyText(Note.versesText())) ? '복사했어요. 메모장이나 카톡에 붙여 넣어 보세요' : '복사가 안 되는 브라우저예요');
     bindTestReset(root);
   }
 
@@ -430,9 +517,11 @@
           <span class="ml-t">${esc(D.mission[e.id] || '미션 없음')}</span>
           <span class="ml-s">${ST[st][0]}<small>${ST[st][1]}</small></span></div>`;
       }).join('')}</div>
-      <p class="page-note">미션 결과는 다음 편을 열 때 정직하게 답한 대로 기록돼요. 못 했다고 답해도 기름은 똑같이 받아요.</p>
-      </section>`;
+      <p class="page-note">미션 결과는 홈의 '오늘의 미션'이나 다음 편을 열 때 정직하게 답한 대로 기록돼요. 못 했다고 답해도 기름은 똑같이 받아요.</p>
+      </section>
+      <button class="btn ghost" id="rec-copy">📋 내 기록 복사하기</button>`;
     root.querySelector('.back').onclick = home;
+    root.querySelector('#rec-copy').onclick = async () => Player.toast((await Note.copyText(Note.recordText())) ? '복사했어요. 메모장이나 카톡에 붙여 넣어 보세요' : '복사가 안 되는 브라우저예요');
     root.querySelectorAll('.tab').forEach(t => t.onclick = () => {
       fameTab = t.dataset.tab;
       root.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
@@ -461,19 +550,14 @@
       <div class="seg-label">화면 움직임 (카메라·떠다니는 빛)</div>
       <div class="seg" data-k="motion">${[['on', '켜기'], ['off', '끄기']].map(([v, t]) => `<button data-v="${v}" class="${(D.motion === false ? 'off' : 'on') === v ? 'on' : ''}">${t}</button>`).join('')}</div>
       <hr>
-      <h2 class="sec">📦 기록 백업</h2>
-      <p class="page-note">기록은 이 브라우저에만 있어요. 폰을 바꾸거나, 카톡 캐시를 지우거나, '홈 화면에 추가'로 옮기면 처음부터 시작돼요.<br><b>백업 코드</b>를 만들어 카톡 나와의 채팅에 보내 두면, 언제든 그대로 되살릴 수 있어요.${D.lastBackup ? `<br>마지막 백업: ${new Date(D.lastBackup).toLocaleDateString('ko-KR')}` : ''}</p>
-      <button class="btn" id="bk-make">백업 코드 만들기</button>
-      <div class="bk-out" hidden>
-        <textarea class="bk-code" rows="4" readonly></textarea>
-        <div class="row"><button class="btn ghost" id="bk-copy">📋 복사</button><button class="btn ghost" id="bk-file">💾 파일로</button></div>
-        <p class="page-note">복사한 코드를 카톡 '나와의 채팅'에 붙여 넣어 두세요.</p>
-      </div>
-      <button class="btn ghost" id="bk-load">백업 불러오기</button>
-      <div class="bk-in" hidden>
-        <textarea class="bk-paste" rows="4" placeholder="'그밤백업1'로 시작하는 코드를 붙여 넣어 줘"></textarea>
-        <div class="row"><label class="btn ghost bk-filebtn">📂 파일 고르기<input type="file" accept=".txt,text/plain" hidden></label><button class="btn" id="bk-apply">이 기록으로 바꾸기</button></div>
-      </div>
+      <h2 class="sec">🔑 기록 열쇠</h2>
+      <p class="page-note">기록은 이 폰의 이 브라우저에만 있어요. 아래 버튼을 눌러 <b>카톡 '나와의 채팅'</b>으로 보내 두면 끝.<br>폰을 바꾸거나 기록이 사라졌을 때, 그 링크를 누르기만 하면 그대로 돌아와요.${D.lastBackup ? `<br>마지막으로 보낸 날: ${new Date(D.lastBackup).toLocaleDateString('ko-KR')}` : ''}</p>
+      <button class="btn" id="bk-send">📲 기록 열쇠 나에게 보내기</button>
+      <details class="bk-more"><summary>링크가 안 열릴 때 (직접 되살리기)</summary>
+        <p class="page-note">'기록 열쇠' 글 전체를 복사해서 붙여 넣어 주세요.</p>
+        <textarea class="bk-paste" rows="4" placeholder="여기에 붙여 넣기"></textarea>
+        <button class="btn ghost" id="bk-apply">이 기록으로 바꾸기</button>
+      </details>
       <hr>
       <button class="btn danger ghost" id="wipe">모든 기록 지우기</button>`;
     root.querySelector('.back').onclick = home;
@@ -490,36 +574,13 @@
       seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
       Sound.sfx('select');
     }));
-    // 백업 만들기
-    let code = '';
-    root.querySelector('#bk-make').onclick = async () => {
-      code = await Backup.make();
-      root.querySelector('.bk-out').hidden = false;
-      root.querySelector('.bk-code').value = code;
-      Player.toast('백업 코드를 만들었어요');
-    };
-    root.querySelector('#bk-copy').onclick = async () => {
-      const ta = root.querySelector('.bk-code');
-      try { await navigator.clipboard.writeText(code); Player.toast('복사했어요. 카톡 나와의 채팅에 붙여 넣어 두세요'); }
-      catch (e) { ta.focus(); ta.select(); Player.toast('코드를 길게 눌러 전체 선택 → 복사해 주세요'); }
-    };
-    root.querySelector('#bk-file').onclick = () => {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
-      a.download = `그밤-백업-${D.nickname || '나'}.txt`;
-      document.body.appendChild(a); a.click(); a.remove();
-    };
-    // 불러오기
-    root.querySelector('#bk-load').onclick = () => { root.querySelector('.bk-in').hidden = false; };
-    root.querySelector('.bk-filebtn input').onchange = async e => {
-      const f = e.target.files[0]; if (f) root.querySelector('.bk-paste').value = await f.text();
-    };
+    root.querySelector('#bk-send').onclick = () => sendKey().then(() => settings());
     root.querySelector('#bk-apply').onclick = async () => {
       try {
         const obj = await Backup.read(root.querySelector('.bk-paste').value);
-        if (!confirm(`이 백업으로 바꿀까요?\n${Backup.summary(obj)}\n\n지금 이 브라우저의 기록은 백업 내용으로 바뀌어요.`)) return;
+        if (!confirm(`이 기록으로 바꿀까요?\n${Backup.summary(obj)}\n\n지금 이 브라우저의 기록은 이 내용으로 바뀌어요.`)) return;
         Core.replace(obj); Player.toast('기록을 되살렸어요'); home();
-      } catch (err) { Player.toast(err.message || '코드를 읽을 수 없어요'); }
+      } catch (err) { Player.toast(err.message || '읽을 수 없어요'); }
     };
     root.querySelector('#wipe').onclick = () => {
       if (confirm('일기, 별빛, 기름까지 모두 지워져요. 정말 지울까요?') && confirm('되돌릴 수 없어요. 지울까요?')) {
@@ -546,18 +607,27 @@
       </div>
       <button class="btn big" id="share">카톡으로 공유</button>
       <button class="btn ghost" id="save">이미지 저장</button>
-      <button class="link-btn" id="home">홈으로</button>`;
+      <button class="btn ghost" id="home">홈으로</button>`;
     root.querySelector('.back').onclick = cards;
     root.querySelector('#home').onclick = home;
-    let cv;
+    let cv, ticket = 0;
+    // 마지막으로 요청한 그림만 화면에 올린다 (버튼을 빨리 눌러도 옛 그림이 덮어쓰지 않게)
     const redraw = async () => {
-      cv = isF ? await Card.drawFinale() : isH ? await Card.drawHidden(+epId[1]) : await Card.draw(epId, opt);
+      const my = ++ticket;
       const box = root.querySelector('.card-preview');
-      box.innerHTML = '';
-      const img = new Image();
-      img.src = cv.toDataURL('image/png');
-      img.alt = '인증 카드';
-      box.appendChild(img);
+      box.classList.add('busy');
+      try {
+        const c = isF ? await Card.drawFinale() : isH ? await Card.drawHidden(+epId[1]) : await Card.draw(epId, opt);
+        if (my !== ticket) return;
+        cv = c;
+        box.innerHTML = '';
+        const img = new Image();
+        img.src = cv.toDataURL('image/png');
+        img.alt = '인증 카드';
+        box.appendChild(img);
+      } catch (e) {
+        if (my === ticket) box.innerHTML = '<div class="loading">그림을 만들지 못했어요. 다시 눌러 주세요.</div>';
+      } finally { if (my === ticket) box.classList.remove('busy'); }
     };
     const od = root.querySelector('#o-diary');
     if (od) od.onchange = () => { opt.withDiary = od.checked; redraw(); };
@@ -601,4 +671,5 @@
 
   window.App = { home, card, diary, go, cards, fame, codePage, versePage, finale };
   home();
+  restoreFromLink();
 })();

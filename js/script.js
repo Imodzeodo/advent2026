@@ -54,6 +54,12 @@
       let m;
 
       if ((m = line.match(/^#\s*표제\s+(.*)$/))) { steps.push({ t: 'title', parts: splitBar(m[1]) }); continue; }
+      if ((m = line.match(/^#\s*모드\s+(\S+)\s*(.*)$/))) {
+        const kind = { 채팅: 'chat', 영화: 'movie', 보통: 'normal' }[m[1]] || 'normal';
+        const [title, me] = splitBar(m[2] || '');
+        steps.push({ t: 'mode', mode: kind, title: title || '', me: me || '' });
+        continue;
+      }
       if ((m = line.match(/^#\s*장면\s+(.*)$/))) { steps.push({ t: 'scene', name: m[1].trim() }); continue; }
       if ((m = line.match(/^말씀\s*\[([^\]]+)\]\s*(.*)$/))) { steps.push({ t: 'verse', ref: m[1].trim(), text: m[2].trim() }); continue; }
       if ((m = line.match(/^성경읽기\s*[:：]\s*(.*)$/))) { steps.push({ t: 'read', ref: m[1].trim() }); continue; }

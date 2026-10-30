@@ -57,10 +57,16 @@
   function seeded(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 
   // 장면 그림(SVG)을 이미지로
+  // 무엇이든 정해진 시간 안에 안 끝나면 포기 (폰에서 멈춘 채 '그리는 중…'이 되지 않게)
+  const within = (p, ms, fallback) => Promise.race([p.catch(() => fallback), new Promise(r => setTimeout(() => r(fallback), ms))]);
+  const fontsReady = () => within(Promise.all([document.fonts.load(`700 60px ${SERIF}`), document.fonts.load(`400 40px ${SERIF}`), document.fonts.load(`400 40px ${SANS}`)]), 1500, null);
+  // 장면 그림: 미리 구워 둔 jpg를 먼저, 없으면 SVG
   async function sceneImage(name) {
     if (!name) return null;
-    let svg = Art.render(name).replace('<svg ', '<svg width="900" height="1350" ');
-    return loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+    const jpg = await within(loadImg('img/scenes/' + encodeURIComponent(name) + '.jpg'), 3000, null);
+    if (jpg) return jpg;
+    const svg = Art.render(name).replace('<svg ', '<svg width="900" height="1350" ');
+    return within(loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)), 2500, null);
   }
 
   function cardNo(epId) {
@@ -77,11 +83,7 @@
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
-    try {
-      await Promise.all([
-        document.fonts.load(`700 60px ${SERIF}`), document.fonts.load(`400 40px ${SERIF}`), document.fonts.load(`400 40px ${SANS}`)
-      ]);
-    } catch (e) { /* 기본 글꼴 */ }
+    await fontsReady();
 
     // 1) 금속 테두리
     ctx.fillStyle = grad(ctx, 0, 0, W, H, S.frame);
@@ -253,7 +255,7 @@
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
-    try { await Promise.all([document.fonts.load(`700 60px ${SERIF}`), document.fonts.load(`400 40px ${SANS}`)]); } catch (e) { /* 기본 글꼴 */ }
+    await fontsReady();
     // 테두리: 보라와 금
     ctx.fillStyle = grad(ctx, 0, 0, W, H, ['#fff2c4', '#b48cff', '#5a2d8a', '#e0b44a', '#fff2c4']);
     rr(ctx, 0, 0, W, H, 54); ctx.fill();
@@ -329,7 +331,7 @@
     const D = Core.data, W = 1080, H = 1350, P = 34;
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
-    try { await Promise.all([document.fonts.load(`700 60px ${SERIF}`), document.fonts.load(`400 40px ${SANS}`)]); } catch (e) { /* 기본 글꼴 */ }
+    await fontsReady();
     ctx.fillStyle = grad(ctx, 0, 0, W, H, STYLE.end.frame); rr(ctx, 0, 0, W, H, 54); ctx.fill();
     ctx.save(); rr(ctx, P, P, W - 2 * P, H - 2 * P, 32); ctx.clip();
     ctx.fillStyle = grad(ctx, 0, 0, 0, H, ['#0a0c22', '#2a2150', '#7a5a3a']); ctx.fillRect(0, 0, W, H);
