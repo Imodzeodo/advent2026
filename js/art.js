@@ -36,11 +36,12 @@
   // 얼굴 사진: (x,y)에 얼굴 한가운데, fw = 얼굴 폭.
   //   flip: 바깥 그림이 거울로 뒤집혀 있음(되돌림), want: 'R'|'L' 얼굴이 봤으면 하는 쪽
   //   F.gaze: 사진 속 얼굴이 보는 쪽, F.rot: 기운 고개를 바로 세우는 각도, F.look: 늘 보게 할 쪽
+  //   F.nx: 목 자리(가로). 옆얼굴은 얼굴 가운데 대신 목을 몸 가운데에 둔다. F.noCloth: 머릿수건·베일 없이
   function faceImg(t, x, y, fw, flip, want) {
     const F = window.FACES[t], k = fw / 120;
     if (F.look) want = F.look; // 늘 이쪽을 보게 (사진에 따라)
     const turn = !!(F.gaze && want && F.gaze !== want);
-    const img = `<image href="img/faces/${t}.webp" x="${(-F.cx * k).toFixed(1)}" y="${(-F.cy * k).toFixed(1)}" width="${(F.w * k).toFixed(1)}" height="${(F.h * k).toFixed(1)}"/>`;
+    const img = `<image href="img/faces/${t}.webp" x="${(-(F.nx || F.cx) * k).toFixed(1)}" y="${(-F.cy * k).toFixed(1)}" width="${(F.w * k).toFixed(1)}" height="${(F.h * k).toFixed(1)}"/>`;
     return `<g transform="translate(${x},${y})${(!!flip) !== turn ? ' scale(-1,1)' : ''}${F.rot ? ` rotate(${F.rot})` : ''}">${img}</g>`;
   }
 
@@ -83,10 +84,11 @@
     if (t) {
       // 사진 얼굴: 머릿수건은 뒤로 크게, 얼굴은 1.5배 크게(큰 머리 인형 느낌)
       const fw = kind === 'child' ? 30 : 34;
-      if (kind === 'woman') g += `<path d="M-21,${hy + 8} Q-22,${hy - 26} 0,${hy - 27} Q22,${hy - 26} 21,${hy + 8} L24,${hy + 40} L-24,${hy + 40} Z" fill="${cloth}"/>`;
-      else if (kind === 'man' && !o.helmet) g += `<path d="M-19,${hy + 10} Q-21,${hy - 24} 0,${hy - 25} Q21,${hy - 24} 19,${hy + 10} L18,${hy + 20} L-18,${hy + 20} Z" fill="${cloth}"/>`;
+      const bare = window.FACES[t].noCloth;
+      if (kind === 'woman' && !bare) g += `<path d="M-21,${hy + 8} Q-22,${hy - 26} 0,${hy - 27} Q22,${hy - 26} 21,${hy + 8} L24,${hy + 40} L-24,${hy + 40} Z" fill="${cloth}"/>`;
+      else if (kind === 'man' && !o.helmet && !bare) g += `<path d="M-19,${hy + 10} Q-21,${hy - 24} 0,${hy - 25} Q21,${hy - 24} 19,${hy + 10} L18,${hy + 20} L-18,${hy + 20} Z" fill="${cloth}"/>`;
       g += faceImg(t, 0, hy - 2, fw, o.flip, o.flip ? 'L' : 'R');
-      if (!o.helmet) g += `<path d="M-19,${top + 9} Q-15,${top - 1} -7,${top} Q0,${top + 6} 7,${top} Q15,${top - 1} 19,${top + 9} L20,${top + 16} L-20,${top + 16} Z" fill="${kind === 'woman' ? cloth : robe}"/>`;
+      if (!o.helmet) g += `<path d="M-19,${top + 9} Q-15,${top - 1} -7,${top} Q0,${top + 6} 7,${top} Q15,${top - 1} 19,${top + 9} L20,${top + 16} L-20,${top + 16} Z" fill="${kind === 'woman' && !bare ? cloth : robe}"/>`;
       if (o.helmet) g += `<g transform="translate(0,${hy - 14})"><path d="M-17,4 Q-17,-16 0,-16 Q17,-16 17,4 L17,0 Q0,-8 -17,0 Z" fill="#b0a090"/><rect x="-3" y="-26" width="6" height="12" fill="#c03030"/></g>`;
     } else {
     g += `<circle cx="0" cy="${hy}" r="${kind === 'child' ? 11 : 12}" fill="${skin}"/>`;
@@ -639,7 +641,9 @@
       '놀람': bang, '결심': spark(80, 24, 6) })[expr] || '';
   }
   function photoPortrait(t, who, expr) {
-    const P = PORTRAIT[who] || PORTRAIT['사람들'];
+    let P = PORTRAIT[who] || PORTRAIT['사람들'];
+    const bare = window.FACES[t].noCloth;
+    P = bare ? { ...P, veil: false, cloth: '' } : P;
     let g = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="${P.bg}"/>`;
     if (P.veil) g += `<path d="M18,60 Q16,10 50,8 Q84,10 82,60 L88,100 L12,100 Z" fill="${P.cloth}"/>`;
     else if (P.helmet) g += '';
