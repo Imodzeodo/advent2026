@@ -40,7 +40,7 @@
       if (x.mission) out.push(`🎯 미션  ${ST_SHORT[x.st] || ''}`.trim(), x.mission, '');
       out.push('');
     }
-    out.push(LINE, '2026 연동교회 고등부 대림절', '성경 본문: 개역개정판 © 대한성서공회');
+    out.push(LINE, (window.SITE || {}).label || '', '성경 본문: 개역개정판 © 대한성서공회');
     return out.join('\n');
   }
   // 말씀 모음
@@ -66,7 +66,7 @@
     }
     const got = Fame.BADGES.filter(b => D.badges && D.badges[b.id]);
     if (got.length) { out.push(LINE, `🏅 받은 배지 ${got.length}개`, LINE, ''); for (const b of got) out.push(`${b.icon} ${b.name} — ${b.desc}`); out.push(''); }
-    out.push(LINE, '2026 연동교회 고등부 대림절');
+    out.push(LINE, (window.SITE || {}).label || '');
     return out.join('\n');
   }
   async function copyText(t) {
@@ -165,7 +165,7 @@
     y += 90;
     if (draw) {
       ctx.font = `400 24px ${SANS}`; ctx.fillStyle = '#9a8566';
-      ctx.fillText('2026 연동교회 고등부 대림절 · 성경 본문: 개역개정판 © 대한성서공회', L, y - 40);
+      ctx.fillText(((window.SITE || {}).label ? window.SITE.label + ' · ' : '') + '성경 본문: 개역개정판 © 대한성서공회', L, y - 40);
     }
     return y;
   }
