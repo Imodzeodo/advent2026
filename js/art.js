@@ -628,7 +628,7 @@
   // 표정 덧그림 (사진 얼굴 위에 만화 기호로): 얼굴 한가운데 (50,47), 얼굴 폭 44 기준
   function exprMarks(expr, side) {
     // side: 옆을 보는 얼굴이면 볼 홍조를 얼굴 안쪽 한 볼에만
-    const blush = side ? `<ellipse cx="${side === 'L' ? 58 : 42}" cy="57" rx="5" ry="2.8" fill="#ff7a8a" opacity=".38"/>` : `<ellipse cx="35" cy="57" rx="5.5" ry="3" fill="#ff7a8a" opacity=".38"/><ellipse cx="65" cy="57" rx="5.5" ry="3" fill="#ff7a8a" opacity=".38"/>`;
+    const blush = side ? `<ellipse cx="${side === 'L' ? 55 : 45}" cy="56" rx="4.5" ry="2.6" fill="#ff7a8a" opacity=".36"/>` : `<ellipse cx="39" cy="56" rx="4.8" ry="2.7" fill="#ff7a8a" opacity=".36"/><ellipse cx="61" cy="56" rx="4.8" ry="2.7" fill="#ff7a8a" opacity=".36"/>`;
     const tear = `<path d="M66,52 Q68.5,58 66,61 Q63.5,58 66,52 Z" fill="#8fd0ff" stroke="#fff" stroke-width=".8"/>`;
     const sweat = `<path d="M75,24 Q79,31 75,35 Q71,31 75,24 Z" fill="#8fd0ff" stroke="#fff" stroke-width=".9"/>`;
     const spark = (x, y, r) => `<path d="M${x},${y - r} Q${x + r * .15},${y - r * .15} ${x + r},${y} Q${x + r * .15},${y + r * .15} ${x},${y + r} Q${x - r * .15},${y + r * .15} ${x - r},${y} Q${x - r * .15},${y - r * .15} ${x},${y - r} Z" fill="#ffe27a"/>`;
