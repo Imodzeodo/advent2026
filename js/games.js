@@ -270,11 +270,14 @@
     box.innerHTML = head(what === '문' ? '베들레헴 가는 길' : '잃은 양 찾기', `손가락으로 어둠을 비춰 봐 <small>(등불 기름 ${Core.data.oil || 0}방울만큼 밝아)</small>`) +
       `<div class="dark-field"><span class="dark-target">${icon}</span><div class="dark-mask"></div></div>`;
     const f = box.querySelector('.dark-field'), m = box.querySelector('.dark-mask'), t = box.querySelector('.dark-target');
-    const tx = rnd(15, 85), ty = rnd(20, 80);
+    // 처음 불빛(아래 가운데)과 멀리, 위쪽 좌우 어딘가에 숨긴다
+    const tx = Math.random() < 0.5 ? rnd(10, 35) : rnd(65, 90), ty = rnd(12, 48);
     t.style.left = tx + '%'; t.style.top = ty + '%';
     let found = false, near = 0;
-    const light = (x, y) => { m.style.background = `radial-gradient(circle ${R}px at ${x}px ${y}px, transparent 0, transparent 45%, rgba(3,4,12,.97) 100%)`; };
-    light(f.clientWidth / 2, f.clientHeight * 0.85);
+    const light = (x, y, r) => { m.style.background = `radial-gradient(circle ${r || R}px at ${x}px ${y}px, transparent 0, transparent 45%, rgba(3,4,12,.97) 100%)`; };
+    // 시작할 땐 발밑만 희미하게
+    requestAnimationFrame(() => light(f.clientWidth / 2, f.clientHeight * 0.95, R * 0.55));
+    light(f.clientWidth / 2 || 160, (f.clientHeight || 300) * 0.95, R * 0.55);
     f.addEventListener('pointermove', e => move(e));
     f.addEventListener('pointerdown', e => move(e));
     function move(e) {
@@ -469,6 +472,83 @@
         Sound.sfx('verse');
         if (navigator.vibrate) navigator.vibrate(30);
         setTimeout(api.done, 1600);
+      }
+    });
+  };
+
+  /* ---- 누가 한 말일까? (주일 돌아보기 퀴즈) ---- */
+  const QUIZ = {
+    '1': [
+      { q: '사가랴여 무서워하지 말라 너의 간구함이 들린지라', ref: '눅 1:13', a: '천사', o: ['천사', '사가랴', '엘리사벳', '마리아'] },
+      { q: '내가 이것을 어떻게 알리요 내가 늙고 아내도 나이가 많으니이다', ref: '눅 1:18', a: '사가랴', o: ['엘리사벳', '사가랴', '천사', '요셉'] },
+      { q: '나는 하나님 앞에 서 있는 가브리엘이라', ref: '눅 1:19', a: '천사', o: ['사가랴', '마리아', '천사', '엘리사벳'] },
+      { q: '주께서 나를 돌보시는 날에 사람들 앞에서 내 부끄러움을 없게 하시려고', ref: '눅 1:25', a: '엘리사벳', o: ['마리아', '천사', '사가랴', '엘리사벳'] }
+    ],
+    '2': [
+      { q: '다윗의 자손 요셉아 네 아내 마리아 데려오기를 무서워하지 말라', ref: '마 1:20', a: '천사', o: ['천사', '마리아', '요셉', '엘리사벳'] },
+      { q: '아들을 낳으리니 이름을 예수라 하라', ref: '마 1:21', a: '천사', o: ['요셉', '천사', '마리아', '사가랴'] },
+      { q: '보라 처녀가 잉태하여 아들을 낳을 것이요 그의 이름을 임마누엘이라 하리라', ref: '사 7:14', a: '이사야', o: ['요셉', '이사야', '마리아', '사가랴'] },
+      { q: '마태복음 1:18-25에 적힌 요셉의 말은 몇 마디일까?', ref: '마 1:18-25', a: '한마디도 없다', o: ['한마디', '세 마디', '한마디도 없다', '열 마디'], hint: '대신 그가 한 일이 적혀 있어' }
+    ],
+    '3': [
+      { q: '주의 여종이오니 말씀대로 내게 이루어지이다', ref: '눅 1:38', a: '마리아', o: ['엘리사벳', '마리아', '천사', '요셉'] },
+      { q: '여자 중에 네가 복이 있으며 네 태중의 아이도 복이 있도다', ref: '눅 1:42', a: '엘리사벳', o: ['천사', '사가랴', '엘리사벳', '마리아'] },
+      { q: '아니라 요한이라 할 것이라', ref: '눅 1:60', a: '엘리사벳', o: ['사가랴', '엘리사벳', '이웃', '마리아'], hint: '사가랴는 서판에 썼지. 말로 먼저 한 사람은?' },
+      { q: '찬송하리로다 주 이스라엘의 하나님이여', ref: '눅 1:68', a: '사가랴', o: ['마리아', '엘리사벳', '천사', '사가랴'] }
+    ]
+  };
+  const FACE = ['사가랴', '엘리사벳', '마리아', '요셉', '천사', '할아버지', '이웃'];
+  G['누가'] = (box, api, key) => {
+    const qs = QUIZ[key] || QUIZ['1'];
+    let i = 0, first = 0, tries = 0;
+    const show = () => {
+      const Q = qs[i]; tries = 0;
+      box.innerHTML = head('🗣️ 누가 한 말일까?', `지난 이야기 돌아보기 · ${i + 1} / ${qs.length}`) + `
+        <div class="qz-q">“${Q.q}”</div>
+        <div class="qz-opts">${Q.o.map(o => `<button class="qz-o" data-k="${o === Q.a ? 1 : 0}">${FACE.includes(o) ? `<span class="qz-face">${Art.portrait(o)}</span>` : `<span class="qz-face qz-txt">📖</span>`}<b>${o}</b></button>`).join('')}</div>
+        <div class="qz-msg"></div>`;
+      box.querySelectorAll('.qz-o').forEach(b => b.onclick = () => {
+        if (box.querySelector('.qz-o.right')) return;
+        if (b.dataset.k === '1') {
+          b.classList.add('right'); Sound.sfx('gem'); if (!tries) first++;
+          box.querySelector('.qz-msg').innerHTML = `맞아! <small>${Bible.full(Q.ref)}</small>`;
+          setTimeout(() => { i++; if (i < qs.length) show(); else end(); }, window.__fast ? 100 : 1400);
+        } else {
+          tries++; Sound.sfx('select');
+          b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); b.disabled = true;
+          box.querySelector('.qz-msg').textContent = Q.hint && tries === 1 ? '힌트: ' + Q.hint : '다시 골라 봐';
+        }
+      });
+    };
+    const end = () => {
+      box.innerHTML = head('🗣️ 누가 한 말일까?', '') + `<div class="qz-end">${qs.length}문제 중 <b>${first}</b>개를 한 번에 맞혔어!${first === qs.length ? '<br>완벽해 ✦' : ''}</div>`;
+      Sound.sfx(first === qs.length ? 'badge' : 'star');
+      setTimeout(api.done, window.__fast ? 100 : 1600);
+    };
+    show();
+  };
+
+  /* ---- 기억의 짝: 지난 이야기 조각 카드 뒤집어 짝 맞추기 ---- */
+  const PAIRS = {
+    '1': [['🪔', '등불'], ['📜', '서판'], ['⭐', '별'], ['🪚', '대패'], ['⚖️', '저울'], ['💭', '꿈']]
+  };
+  G['짝'] = (box, api, key) => {
+    const P = PAIRS[key] || PAIRS['1'];
+    const deck = P.flatMap((p, i) => [i, i]).sort(() => Math.random() - 0.5);
+    box.innerHTML = head('🃏 기억의 짝', '같은 그림 두 장을 찾아 뒤집어 봐') + `<div class="mm-grid">${deck.map((p, k) => `<button class="mm" data-p="${p}" data-k="${k}"><span class="mm-back">✦</span><span class="mm-front">${P[p][0]}<small>${P[p][1]}</small></span></button>`).join('')}</div><div class="mm-count">0번 뒤집음</div>`;
+    let open = [], moves = 0, matched = 0, lock = false;
+    box.querySelectorAll('.mm').forEach(c => c.onclick = () => {
+      if (lock || c.classList.contains('up')) return;
+      c.classList.add('up'); Sound.sfx('tap'); open.push(c);
+      if (open.length < 2) return;
+      moves++; box.querySelector('.mm-count').textContent = moves + '번 뒤집음';
+      const [a, b] = open; open = [];
+      if (a.dataset.p === b.dataset.p) {
+        a.classList.add('got'); b.classList.add('got'); Sound.sfx('gem'); matched++;
+        if (matched === P.length) { box.querySelector('.game-help').textContent = `다 찾았다! ${moves}번 만에`; Sound.sfx('star'); setTimeout(api.done, window.__fast ? 100 : 1400); }
+      } else {
+        lock = true;
+        setTimeout(() => { a.classList.remove('up'); b.classList.remove('up'); lock = false; }, window.__fast ? 50 : 750);
       }
     });
   };

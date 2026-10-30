@@ -62,7 +62,7 @@
     el.dialog.addEventListener('click', e => { if (!e.target.closest('button')) onTap(); });
     el.stage.addEventListener('click', e => { if (!e.target.closest('[data-hot],.hot-mark')) onTap(); });
     root.querySelector('.exit').addEventListener('click', () => {
-      if (confirm('이야기에서 나갈까요? 이번 편은 처음부터 다시 하게 돼요.')) {
+      if (confirm('이야기에서 나갈까요? 다음에 마지막 장면부터 이어서 할 수 있어요.')) {
         runId++;
         App.home();
       }
@@ -674,10 +674,12 @@
     Sound.sfx('verse');
     const D = Core.data;
     D.medi = D.medi || {};
-    const prev = D.medi[ep.id] || {};
     const qs = ep.medi && ep.medi.length ? ep.medi : ['오늘 말씀에서 가장 마음에 남는 부분은 어디야?', '그 말씀이 오늘 나에게 하는 말은 뭘까?'];
     const refLabel = Bible.full(ep.read);
     const picked = new Set(Bible.marks(ep.id));
+    // 묵상 → 기도. 기도 카드에서 '묵상 다시 보기'로 돌아올 수 있다
+    for (;;) {
+    const prev = D.medi[ep.id] || {};
     const mq = (q, i) => `
               <div class="mq">
                 <div class="mq-q"><b>${i + 1}</b>${esc(Bible.full(q))}</div>
@@ -712,18 +714,20 @@
       // 적는 칸이 키보드에 가리지 않게
       ov.querySelectorAll('textarea').forEach(t => t.addEventListener('focus', () => setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300)));
       const answers = () => [...ov.querySelectorAll('textarea')].map(t => t.value.trim());
-      ov.querySelector('[data-v=ok]').onclick = () => res({ a: answers(), done: true });
-      ov.querySelector('[data-v=skip]').onclick = () => res({ a: answers(), done: false });
+      // 뜨자마자 눌린 연타는 무시
+      const t0 = Date.now(), ready = () => Date.now() - t0 > (window.__fast ? 0 : 700);
+      ov.querySelector('[data-v=ok]').onclick = () => { if (ready()) res({ a: answers(), done: true }); };
+      ov.querySelector('[data-v=skip]').onclick = () => { if (ready()) res({ a: answers(), done: false }); };
     });
     hideOverlay();
     D.verse = D.verse || {};
     const order = list.map(v => v.ref).filter(r => picked.has(r));
     if (order.length) D.verse[ep.id] = order; else delete D.verse[ep.id];
-    if (result.a.some(Boolean)) D.medi[ep.id] = { q: qs, a: result.a };
+    if (result.a.some(Boolean)) D.medi[ep.id] = { q: qs, a: result.a }; else delete D.medi[ep.id];
     Core.save();
-    if (!result.done) return;
     Sound.sfx('verse');
     const v = order.length && list.find(x => x.ref === order[0]);
+    let goBack = false;
     await new Promise(res => {
       const ov = showOverlay(`
         <div class="card verse">
@@ -733,10 +737,16 @@
             <div class="pray-tag">🙏 오늘의 기도 <small>따라 읽거나, 내 말로 바꿔서</small></div>
             <div class="pray-text">${esc((window.PRAYERS || {})[ep.id] || '하나님, 오늘 읽은 말씀을 마음에 새기고 살아가게 해 주세요.')} ${esc(window.PRAYER_END || '예수님의 이름으로 기도합니다. 아멘.')}</div>
           </div>
-          <button class="btn">아멘</button>
+          <div class="row"><button class="btn ghost" data-v="back">← 묵상 다시 보기</button><button class="btn" data-v="amen" disabled>아멘</button></div>
         </div>`, 'center');
-      ov.querySelector('button').onclick = () => { hideOverlay(); res(); };
-    });
+      const amen = ov.querySelector('[data-v=amen]');
+      // 기도문을 읽을 틈을 주고 나서 '아멘'이 눌린다 (연타로 넘어가지 않게)
+      setTimeout(() => { amen.disabled = false; }, window.__fast ? 0 : 1500);
+      amen.onclick = () => { hideOverlay(); res(false); };
+      ov.querySelector('[data-v=back]').onclick = () => { hideOverlay(); res(true); };
+    }).then(back => { goBack = back; });
+    if (!goBack) break;
+    }
   };
 
   function nextHost() {
@@ -887,8 +897,31 @@
     const prev = Core.prevEpisode(id);
     const needCheck = prev && Core.data.mission[prev.id] && !Core.data.missionAns[prev.id];
 
-    for (const s of steps) {
+    // 지난번에 중간에 나갔으면, 마지막 장면부터 이어서 할지 묻는다
+    let start = 0;
+    const R = Core.data.resume;
+    if (R && R.id === id && R.i > 0 && R.i < steps.length && !window.__fast) {
+      const go = await new Promise(res => {
+        const ov = showOverlay(`
+          <div class="card">
+            <div class="done-title" style="font-size:19px">지난번에 여기까지 봤어</div>
+            <div class="done-sub">마지막 장면부터 이어서 할까?</div>
+            <div class="row"><button class="btn ghost" data-v="0">처음부터</button><button class="btn" data-v="1">이어서 하기</button></div>
+          </div>`, 'center');
+        ov.querySelectorAll('button').forEach(b => b.onclick = () => { hideOverlay(); res(b.dataset.v === '1'); });
+      });
       if (my !== runId) return;
+      if (go) {
+        start = R.i;
+        const lastMode = steps.slice(0, start).filter(x => x.t === 'mode').pop();
+        if (lastMode && lastMode.mode !== 'normal') await run.mode(lastMode);
+        checked = true;
+      }
+    }
+    for (let si = start; si < steps.length; si++) {
+      const s = steps[si];
+      if (my !== runId) return;
+      if (s.t === 'scene' && si > 0 && steps.slice(0, si).some(x => x.t === 'scene')) { Core.data.resume = { id, i: si }; Core.save(); }
       // 표제 다음, 첫 장면이 깔린 뒤에 지난 미션을 묻는다
       if (needCheck && !checked && s.t !== 'title' && s.t !== 'scene') {
         checked = true;
@@ -899,7 +932,11 @@
       if (s.t === 'explore') await explore(s, my);
       else if (run[s.t]) await run[s.t](s, my);
     }
-    if (my === runId) { if (mode === 'chat') chatClose(); mode = 'normal'; el.root.classList.remove('m-movie'); complete(my); }
+    if (my === runId) {
+      if (mode === 'chat') chatClose(); mode = 'normal'; el.root.classList.remove('m-movie');
+      if (Core.data.resume && Core.data.resume.id === id) { delete Core.data.resume; Core.save(); }
+      complete(my);
+    }
   }
 
   window.Player = { play, toast };

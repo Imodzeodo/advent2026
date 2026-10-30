@@ -668,3 +668,27 @@ html.no-motion .who.speaking { animation: none; }
 @keyframes autoBar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 .ep-kind { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 400; padding: 1px 7px; border-radius: 99px; background: rgba(255, 255, 255, .08); color: var(--dim); vertical-align: 1px; white-space: nowrap; }
+
+/* 누가 한 말일까 */
+.qz-q { font-family: var(--serif); font-size: 18px; line-height: 1.7; margin: 14px 4px 16px; color: #fff3d6; word-break: keep-all; }
+.qz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qz-o { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); color: #fff; font-size: 15px; cursor: pointer; text-align: left; }
+.qz-face { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 50%; overflow: hidden; background: #fff; display: grid; place-items: center; }
+.qz-face svg { width: 100%; height: 100%; }
+.qz-txt { background: rgba(255, 255, 255, .12); font-size: 20px; }
+.qz-o.right { border-color: #9fd8ad; background: rgba(120, 200, 140, .25); }
+.qz-o.wrong { animation: pzNo .35s; opacity: .45; }
+.qz-msg { min-height: 24px; margin-top: 12px; color: var(--gold); font-size: 14.5px; }
+.qz-msg small { color: var(--dim); margin-left: 4px; }
+.qz-end { font-size: 18px; line-height: 1.8; margin: 26px 0; }
+/* 기억의 짝 */
+.mm-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 8px; }
+.mm { position: relative; aspect-ratio: 3 / 4; border-radius: 12px; border: 1px solid rgba(255, 210, 122, .5); background: linear-gradient(160deg, #2a2f5e, #151a3a); color: #fff; cursor: pointer; padding: 0; overflow: hidden; }
+.mm-back { font-size: 20px; color: var(--gold); }
+.mm-front { display: none; flex-direction: column; align-items: center; font-size: 28px; line-height: 1.1; }
+.mm-front small { font-size: 10.5px; margin-top: 4px; color: #ffe9b3; }
+.mm.up { background: linear-gradient(160deg, #fff6dc, #f0dca8); animation: mmFlip .25s; }
+.mm.up .mm-back { display: none; } .mm.up .mm-front { display: flex; } .mm.up .mm-front small { color: #6b5536; }
+.mm.got { box-shadow: 0 0 0 2px #ffd27a, 0 0 14px rgba(255, 210, 122, .6); }
+.mm-count { color: var(--dim); font-size: 13px; }
+@keyframes mmFlip { from { transform: scaleX(.2); } }

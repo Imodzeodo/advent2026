@@ -34,6 +34,8 @@
     if (/#\s*모드\s*채팅/.test(src)) return ['💬', '대화창'];
     if (/#\s*모드\s*영화/.test(src)) return ['🎬', '보는 날'];
     if (/게임\s*[:：]\s*퍼즐/.test(src)) return ['🧩', '말씀 퍼즐'];
+    if (/게임\s*[:：]\s*누가/.test(src)) return ['🗣️', '누가 한 말일까'];
+    if (/게임\s*[:：]\s*짝/.test(src)) return ['🃏', '기억의 짝'];
     if (/게임\s*[:：]/.test(src)) return ['🎮', '미니게임'];
     return null;
   }

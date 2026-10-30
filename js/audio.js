@@ -393,7 +393,7 @@
     curVoice = { s, g };
     s.onended = () => { if (curVoice && curVoice.s === s) curVoice = null; };
     // 천사·천군은 성전처럼 크게 울리고, 사람 목소리는 살짝만
-    const heavenly = /^v-(1-3|1-4|2-3|3-0|3-1|4-4|4-4c)$/.test(name);
+    const heavenly = /^v-(1-3|1-4|2-3|3-0|3-1|4-4|4-4c)$/.test(name) || /^n-(lk1_15-16|lk1_17|mt1_21|lk1_32-33|lk1_36-37|lk2_11|lk2_12)$/.test(name);
     const w = ctx.createGain(); w.gain.value = heavenly ? 0.45 : 0.12;
     s.connect(g); g.connect(master); g.connect(w); w.connect(reverb);
     const t = ctx.currentTime;
