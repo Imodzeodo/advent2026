@@ -71,7 +71,8 @@
     let g = `<g class="who"${hot}${who}><g transform="translate(${o.x},${o.y}) scale(${s * flip},${s})">`;
     g += `<ellipse cx="0" cy="0" rx="26" ry="5" fill="#000" opacity=".28"/>`;
     // 뒤로 늘어진 머릿수건 / 베일
-    if (kind === 'woman') g += `<path d="M-15,-94 Q0,-114 15,-94 L24,-26 Q0,-20 -24,-26 Z" fill="${cloth}"/>`;
+    const noCloth = castOf(o.who) && window.FACES[castOf(o.who)].noCloth;
+    if (kind === 'woman' && !noCloth) g += `<path d="M-15,-94 Q0,-114 15,-94 L24,-26 Q0,-20 -24,-26 Z" fill="${cloth}"/>`;
     else if (kind === 'man') g += `<path d="M-14,-92 Q0,-112 14,-92 L19,-62 L-19,-62 Z" fill="${cloth}"/>`;
     // 몸(겉옷)
     const top = kind === 'child' ? -66 : -76;
