@@ -64,8 +64,10 @@
     const cloth = o.cloth || '#cbbfa8';
     const skin = o.skin || '#b98a68';
     const kind = o.kind || 'man';
-    const flip = o.flip ? -1 : 1;
     if (o.who === '군인') o = { ...o, helmet: true };
+    // 얼굴 방향을 고정한 배역(F.look)은 몸도 그쪽으로 돌린다
+    { const ft = castOf(o.who), F = ft && window.FACES[ft]; if (F && F.look) o = { ...o, flip: F.look === 'L' }; }
+    const flip = o.flip ? -1 : 1;
     const hot = o.hot ? ` data-hot="${o.hot}"` : '';
     const who = o.who ? ` data-who="${o.who}"` : '';
     let g = `<g class="who"${hot}${who}><g transform="translate(${o.x},${o.y}) scale(${s * flip},${s})">`;
