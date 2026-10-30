@@ -33,20 +33,16 @@
     const t = C[who + '@' + A.ch] || C[who];
     return t && F[t] ? t : null;
   }
-  // 얼굴 사진: (x,y)에 얼굴 한가운데, fw = 얼굴 폭. flip이면 거울 반전을 되돌린다
-  function faceImg(t, x, y, fw, flip) {
+  // 얼굴 사진: (x,y)에 얼굴 한가운데, fw = 얼굴 폭.
+  //   flip: 바깥 그림이 거울로 뒤집혀 있음(되돌림), want: 'R'|'L' 얼굴이 봤으면 하는 쪽
+  //   F.gaze: 사진 속 얼굴이 보는 쪽, F.rot: 기운 고개를 바로 세우는 각도
+  function faceImg(t, x, y, fw, flip, want) {
     const F = window.FACES[t], k = fw / 120;
+    const turn = !!(F.gaze && want && F.gaze !== want);
     const img = `<image href="img/faces/${t}.webp" x="${(-F.cx * k).toFixed(1)}" y="${(-F.cy * k).toFixed(1)}" width="${(F.w * k).toFixed(1)}" height="${(F.h * k).toFixed(1)}"/>`;
-    return `<g transform="translate(${x},${y})${flip ? ' scale(-1,1)' : ''}">${img}</g>`;
+    return `<g transform="translate(${x},${y})${(!!flip) !== turn ? ' scale(-1,1)' : ''}${F.rot ? ` rotate(${F.rot})` : ''}">${img}</g>`;
   }
-  // 흰 수염(늙은 인물): 얼굴 폭 fw 기준, 턱 둘레
-  function beardOver(x, y, fw, color) {
-    // 턱선을 따라 나는 수염: 입은 가리지 않고, 아래 끝은 물결
-    const u = fw / 44, f = n => (n * u).toFixed(1);
-    const d = `M${f(-20)},${f(2)} Q${f(-19)},${f(22)} ${f(-14)},${f(32)} Q${f(-12)},${f(38)} ${f(-7)},${f(36)} Q${f(-4)},${f(42)} 0,${f(40)} Q${f(4)},${f(42)} ${f(7)},${f(36)} Q${f(12)},${f(38)} ${f(14)},${f(32)} Q${f(19)},${f(22)} ${f(20)},${f(2)} Q${f(17)},${f(16)} ${f(10)},${f(19)} Q${f(7)},${f(26)} 0,${f(26)} Q${f(-7)},${f(26)} ${f(-10)},${f(19)} Q${f(-17)},${f(16)} ${f(-20)},${f(2)} Z`;
-    const m = `M${f(-10)},${f(12.5)} Q${f(-5)},${f(9)} 0,${f(11)} Q${f(5)},${f(9)} ${f(10)},${f(12.5)} Q${f(5)},${f(12)} 0,${f(13)} Q${f(-5)},${f(12)} ${f(-10)},${f(12.5)} Z`;
-    return `<g transform="translate(${x},${y})"><path d="${d}" fill="${color}" stroke="#bcb6c6" stroke-width="${f(.6)}"/><path d="${m}" fill="${color}" stroke="#bcb6c6" stroke-width="${f(.5)}"/></g>`;
-  }
+
 
 
   /* 이름표: 장면 속 인물 머리 위에 누구인지 */
@@ -88,8 +84,7 @@
       const fw = kind === 'child' ? 30 : 34;
       if (kind === 'woman') g += `<path d="M-21,${hy + 8} Q-22,${hy - 26} 0,${hy - 27} Q22,${hy - 26} 21,${hy + 8} L24,${hy + 40} L-24,${hy + 40} Z" fill="${cloth}"/>`;
       else if (kind === 'man' && !o.helmet) g += `<path d="M-19,${hy + 10} Q-21,${hy - 24} 0,${hy - 25} Q21,${hy - 24} 19,${hy + 10} L18,${hy + 20} L-18,${hy + 20} Z" fill="${cloth}"/>`;
-      g += faceImg(t, 0, hy - 2, fw, o.flip);
-      if (o.beard && /^#e/i.test(o.beard)) g += beardOver(0, hy - 2, fw, o.beard);
+      g += faceImg(t, 0, hy - 2, fw, o.flip, o.flip ? 'L' : 'R');
       if (o.helmet) g += `<g transform="translate(0,${hy - 14})"><path d="M-17,4 Q-17,-16 0,-16 Q17,-16 17,4 L17,0 Q0,-8 -17,0 Z" fill="#b0a090"/><rect x="-3" y="-26" width="6" height="12" fill="#c03030"/></g>`;
     } else {
     g += `<circle cx="0" cy="${hy}" r="${kind === 'child' ? 11 : 12}" fill="${skin}"/>`;
@@ -352,7 +347,7 @@
       <circle cx="180" cy="300" r="22" fill="url(#lampglow)"/>
     </g>
     <!-- 분향단 오른편의 빛 (1-2 끝, 1-3) -->
-    <g id="angel" opacity="0"><g transform="translate(250,352) scale(.95)">${angelBody(castOf('천사'))}</g>${nameTag('천사', 250, 352 - 262 * .95)}</g>
+    <g id="angel" opacity="0"><g transform="translate(250,352) scale(.95)">${angelBody(castOf('천사'), 'L')}</g>${nameTag('천사', 250, 352 - 262 * .95)}</g>
     ${person({ x: 112, y: 500, h: 156, robe: '#efe9dc', cloth: '#f7f3ea', skin: '#a27a5c', beard: '#ece8f2', who: '사가랴' })}`;
 
   /* ---------- 공통 소품 ---------- */
@@ -404,7 +399,7 @@
     </g></g>`;
   }
   const WING_DEF = `<linearGradient id="wingGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6" stop-opacity=".95"/><stop offset=".55" stop-color="#fff4d6" stop-opacity=".7"/><stop offset="1" stop-color="#ffe6a6" stop-opacity=".25"/></linearGradient>`;
-  function angelBody(t) {
+  function angelBody(t, want) {
     return `<defs>${WING_DEF}</defs><circle cx="0" cy="-110" r="150" fill="url(#angelglow)" opacity=".85"/>
       <g opacity=".5" stroke="#fff6d8" stroke-width="2" stroke-linecap="round">${[-60, -35, -12, 12, 35, 60].map(d => { const a = d * Math.PI / 180; return `<line x1="${(Math.sin(a) * 40).toFixed(1)}" y1="${(-200 - Math.cos(a) * 40).toFixed(1)}" x2="${(Math.sin(a) * 92).toFixed(1)}" y2="${(-200 - Math.cos(a) * 92).toFixed(1)}" stroke-opacity="${(0.25 + Math.abs(d) / 300).toFixed(2)}"/>`; }).join('')}</g>
       ${wing(-1)}${wing(1)}
@@ -412,7 +407,7 @@
       <path d="M-14,-120 Q-18,-40 -24,36 M8,-118 Q12,-40 18,38 M-2,-90 Q-2,-20 -4,40" stroke="#e9dcb8" stroke-width="1.4" fill="none" opacity=".7"/>
       <path d="M-26,-146 Q-50,-112 -40,-84 Q-28,-92 -18,-118Z M26,-146 Q50,-112 40,-84 Q28,-92 18,-118Z" fill="#fffdf6" opacity=".95"/>
       <path d="M-28,-150 Q0,-136 28,-150" stroke="#f2d98e" stroke-width="2.5" fill="none" opacity=".8"/>
-      ${t ? `<circle cx="0" cy="-204" r="34" fill="url(#angelglow)" opacity=".9"/>${faceImg(t, 0, -204, 40)}<ellipse cx="0" cy="-244" rx="17" ry="4.5" fill="none" stroke="#ffe58a" stroke-width="3" opacity=".9"/>`
+      ${t ? `<circle cx="0" cy="-204" r="34" fill="url(#angelglow)" opacity=".9"/>${faceImg(t, 0, -204, 40, false, want)}<ellipse cx="0" cy="-244" rx="17" ry="4.5" fill="none" stroke="#ffe58a" stroke-width="3" opacity=".9"/>`
           : `<circle cx="0" cy="-200" r="17" fill="#fffdf6"/>
       <circle cx="0" cy="-200" r="26" fill="url(#angelglow)" opacity=".9"/>`}`;
   }
@@ -422,7 +417,7 @@
   function angel(x, y, sc, id, op, t) {
     const main = t === undefined;
     if (main) t = castOf('천사');
-    return `<g ${id ? `id="${id}"` : ''} class="who" data-who="천사" opacity="${op == null ? 0 : op}"><g transform="translate(${x},${y}) scale(${sc})">${angelBody(t)}</g>${main ? nameTag('천사', x, y - 262 * sc) : ''}</g>`;
+    return `<g ${id ? `id="${id}"` : ''} class="who" data-who="천사" opacity="${op == null ? 0 : op}"><g transform="translate(${x},${y}) scale(${sc})">${angelBody(t, x > 185 ? 'L' : x < 175 ? 'R' : '')}</g>${main ? nameTag('천사', x, y - 262 * sc) : ''}</g>`;
   }
   function interior(id, top, bottom) {
     return `<defs>${sky(id, [[0, top], [1, bottom]])}${LAMP_DEF}${STAR()}${ANGEL_DEF}</defs><rect width="${W}" height="${H}" fill="url(#${id})"/>`;
@@ -648,8 +643,7 @@
     else if (P.cloth && !P.child) g += `<path d="M23,62 Q20,12 50,10 Q80,12 77,62 L80,84 L20,84 Z" fill="${P.cloth}"/>`;
     g += `<path d="M8,100 Q12,76 34,72 L66,72 Q88,76 92,100 Z" fill="${P.robe}"/>`;
     g += `<path d="M40,72 Q50,82 60,72" stroke="#000" stroke-opacity=".18" stroke-width="2" fill="none"/>`;
-    g += faceImg(t, 50, 47, 44);
-    if (P.beard && /^#e/i.test(P.beard)) g += beardOver(50, 47, 44, P.beard);
+    g += faceImg(t, 50, 47, 44, false, 'R');
     if (P.helmet) g += `<path d="M28,36 Q28,8 50,8 Q72,8 72,36 L72,30 Q50,20 28,30 Z" fill="#b0a090"/><rect x="47" y="-2" width="6" height="14" fill="#c03030"/>`;
     g += exprMarks(expr);
     return g + `</svg>`;
@@ -657,7 +651,7 @@
   function portrait(who, expr) {
     if (!who) return '';
     const t = castOf(who === '가브리엘' ? '천사' : who);
-    if ((who === '천사' || who === '가브리엘') && t) return `<svg viewBox="0 0 100 100"><defs>${ANGEL_DEF}</defs><circle cx="50" cy="50" r="50" fill="#fff6dc"/><circle cx="50" cy="44" r="40" fill="url(#angelglow)"/>${wingsSmall()}<path d="M18,100 Q22,74 38,70 L62,70 Q78,74 82,100 Z" fill="#fffaf0"/>${faceImg(t, 50, 45, 42)}<ellipse cx="50" cy="12" rx="16" ry="4" fill="none" stroke="#f0c850" stroke-width="2.6"/>${exprMarks(expr)}</svg>`;
+    if ((who === '천사' || who === '가브리엘') && t) return `<svg viewBox="0 0 100 100"><defs>${ANGEL_DEF}</defs><circle cx="50" cy="50" r="50" fill="#fff6dc"/><circle cx="50" cy="44" r="40" fill="url(#angelglow)"/>${wingsSmall()}<path d="M18,100 Q22,74 38,70 L62,70 Q78,74 82,100 Z" fill="#fffaf0"/>${faceImg(t, 50, 45, 42, false, 'R')}<ellipse cx="50" cy="12" rx="16" ry="4" fill="none" stroke="#f0c850" stroke-width="2.6"/>${exprMarks(expr)}</svg>`;
     if (who === '천사' || who === '가브리엘') return `<svg viewBox="0 0 100 100"><defs>${ANGEL_DEF}</defs><circle cx="50" cy="50" r="50" fill="#fff6dc"/><g transform="translate(50,118) scale(.42)">${angelBody()}</g></svg>`;
     if (t && !/서판$/.test(who)) return photoPortrait(t, who, expr);
     if (/서판$/.test(who)) return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" fill="#3a2f55"/><rect x="24" y="30" width="52" height="40" rx="4" fill="#c9b48e" stroke="#7a5a3a" stroke-width="4"/><path d="M32,44 L66,44 M32,54 L58,54 M32,62 L50,62" stroke="#5a3a1a" stroke-width="3" stroke-linecap="round"/><path d="M70,22 L80,14" stroke="#e8dcc0" stroke-width="4" stroke-linecap="round"/></svg>`;
