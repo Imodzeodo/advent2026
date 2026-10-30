@@ -626,8 +626,9 @@
     '기쁨': { eye: 'smile', brow: -3, mouth: 'open', blush: true }
   };
   // 표정 덧그림 (사진 얼굴 위에 만화 기호로): 얼굴 한가운데 (50,47), 얼굴 폭 44 기준
-  function exprMarks(expr) {
-    const blush = `<ellipse cx="35" cy="57" rx="5.5" ry="3" fill="#ff7a8a" opacity=".38"/><ellipse cx="65" cy="57" rx="5.5" ry="3" fill="#ff7a8a" opacity=".38"/>`;
+  function exprMarks(expr, side) {
+    // side: 옆을 보는 얼굴이면 볼 홍조를 얼굴 안쪽 한 볼에만
+    const blush = side ? `<ellipse cx="${side === 'L' ? 58 : 42}" cy="57" rx="5" ry="2.8" fill="#ff7a8a" opacity=".38"/>` : `<ellipse cx="35" cy="57" rx="5.5" ry="3" fill="#ff7a8a" opacity=".38"/><ellipse cx="65" cy="57" rx="5.5" ry="3" fill="#ff7a8a" opacity=".38"/>`;
     const tear = `<path d="M66,52 Q68.5,58 66,61 Q63.5,58 66,52 Z" fill="#8fd0ff" stroke="#fff" stroke-width=".8"/>`;
     const sweat = `<path d="M75,24 Q79,31 75,35 Q71,31 75,24 Z" fill="#8fd0ff" stroke="#fff" stroke-width=".9"/>`;
     const spark = (x, y, r) => `<path d="M${x},${y - r} Q${x + r * .15},${y - r * .15} ${x + r},${y} Q${x + r * .15},${y + r * .15} ${x},${y + r} Q${x - r * .15},${y + r * .15} ${x - r},${y} Q${x - r * .15},${y - r * .15} ${x},${y - r} Z" fill="#ffe27a"/>`;
@@ -645,9 +646,10 @@
     else if (P.cloth && !P.child) g += `<path d="M23,62 Q20,12 50,10 Q80,12 77,62 L80,84 L20,84 Z" fill="${P.cloth}"/>`;
     g += `<path d="M8,100 Q12,76 34,72 L66,72 Q88,76 92,100 Z" fill="${P.robe}"/>`;
     g += faceImg(t, 50, 47, 44, false, 'R');
-    g += `<path d="M6,100 Q10,80 26,73 Q36,69 43,74 Q50,79 57,74 Q64,69 74,73 Q90,80 94,100 Z" fill="${P.veil ? P.cloth : P.robe}"/>${P.veil ? '' : '<path d="M43,74 Q50,79 57,74" stroke="#000" stroke-opacity=".2" stroke-width="1.6" fill="none"/>'}`;
+    g += `<path d="${P.veil ? 'M6,100 Q10,80 26,73 Q36,70 50,73 Q64,70 74,73 Q90,80 94,100 Z' : 'M6,100 Q10,80 26,73 Q36,69 43,74 Q50,79 57,74 Q64,69 74,73 Q90,80 94,100 Z'}" fill="${P.veil ? P.cloth : P.robe}"/>${P.veil ? '' : '<path d="M43,74 Q50,79 57,74" stroke="#000" stroke-opacity=".2" stroke-width="1.6" fill="none"/>'}`;
     if (P.helmet) g += `<path d="M28,36 Q28,8 50,8 Q72,8 72,36 L72,30 Q50,20 28,30 Z" fill="#b0a090"/><rect x="47" y="-2" width="6" height="14" fill="#c03030"/>`;
-    g += exprMarks(expr);
+    const F = window.FACES[t];
+    g += exprMarks(expr, F.gaze ? (F.look || 'R') : '');
     return g + `</svg>`;
   }
   function portrait(who, expr) {
