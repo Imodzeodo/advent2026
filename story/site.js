@@ -3,5 +3,6 @@
    cardFoot: 완주 카드 맨 아래 한 줄 */
 window.SITE = {
   label: '대림절 스토리 게임',
-  cardFoot: '누가복음 2:20 · 성탄절'
+  cardFoot: '누가복음 2:20 · 성탄절',
+  relative: true   // true: 날짜를 그해 성탄절에 맞추고 'D-26'처럼 보여 줌(해마다 사용). false: episodes.js 날짜 그대로
 };

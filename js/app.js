@@ -95,7 +95,7 @@
         <button id="fame"><span>📜</span>나의 기록</button>
         <button id="diary"><span>📔</span>묵상 노트</button>
         <button id="verses"><span>📖</span>말씀 모음<small>${Object.values(D.verse || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 1), 0)}</small></button>
-        <button id="code"><span>🔑</span>주일 암호<small>${Object.keys(D.codes || {}).length}/4</small></button>
+        ${(window.CODES || []).length ? `<button id="code"><span>🔑</span>주일 암호<small>${Object.keys(D.codes || {}).length}/4</small></button>` : ''}
         <button id="settings"><span>⚙️</span>설정</button>
       </nav>` : ''}
       ${nightLine()}
@@ -251,8 +251,8 @@
   // 지금 한국 시간이 밤이면 한 줄
   function nightLine() {
     const n = Core.nowKST();
-    if (n.date === '2026-12-24' && n.hour >= 18) return `<div class="night-line holy">✨ 오늘 밤이 바로 그 밤이야. 목자들이 들판에서 양을 지키던 그 밤.</div>`;
-    if (n.date === '2026-12-25') return `<div class="night-line holy">⭐ 메리 크리스마스! 구주가 나셨어.</div>`;
+    if (n.date.slice(5) === '12-24' && n.hour >= 18) return `<div class="night-line holy">✨ 오늘 밤이 바로 그 밤이야. 목자들이 들판에서 양을 지키던 그 밤.</div>`;
+    if (n.date.slice(5) === '12-25') return `<div class="night-line holy">⭐ 메리 크리스마스! 구주가 나셨어.</div>`;
     if (n.hour >= 19 || n.hour < 5) return `<div class="night-line">🌙 지금 밖도 밤이야. 잠깐 창밖 하늘을 올려다봐.</div>`;
     return '';
   }
@@ -455,8 +455,8 @@
           <div class="dx-t">${esc(e.title)}</div>
         </button>`;
       }).join('')}</div>
-      <h2 class="sec">🕯️ 대림초 히든 카드 <small>${Object.keys(D.codes || {}).length} / 4</small></h2>
-      <p class="page-note">주일 예배 때 듣는 암호를 🔑 주일 암호에 넣으면 열려요.</p>
+      ${(window.CODES || []).length ? `<h2 class="sec">🕯️ 대림초 히든 카드 <small>${Object.keys(D.codes || {}).length} / 4</small></h2>
+      <p class="page-note">주일 예배 때 듣는 암호를 🔑 주일 암호에 넣으면 열려요.</p>` : ''}
       <div class="dex">${(window.CODES || []).map(c => D.codes && D.codes[c.n]
         ? `<button class="dx hidden-card" data-id="H${c.n}"><div class="dx-no">HIDDEN ${c.n}</div><div class="dx-art"><div class="dx-emoji">${'🕯️'.repeat(c.n)}</div></div><div class="dx-t">${esc(c.title)}</div></button>`
         : `<div class="dx locked"><div class="dx-no">HIDDEN ${c.n}</div><div class="dx-q">🔑</div><div class="dx-t">${esc(Core.dateLabel(c.from))} 주일</div></div>`).join('')}</div>`;

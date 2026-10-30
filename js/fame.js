@@ -67,7 +67,7 @@
     { id: 'medi10', icon: '📖', name: '말씀 묵상가', desc: '말씀 묵상을 10번 적었어요', ok: () => Object.values(D().medi || {}).filter(m => m.a.some(Boolean)).length >= 10 },
     { id: 'codes4', icon: '🕯️', name: '네 개의 초', desc: '주일 암호 4개를 모두 찾았어요', ok: () => Object.keys(D().codes || {}).length >= 4 },
     { id: 'oil10', icon: '🫙', name: '기름 가득', desc: '등불 기름 10방울', ok: () => (D().oil || 0) >= 10 }
-  ];
+  ].filter(b => b.id !== 'codes4' || (window.CODES || []).length);
 
   // 새로 딴 배지 목록을 돌려주고 저장
   function checkNew() {
