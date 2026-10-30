@@ -692,3 +692,22 @@ html.no-motion .who.speaking { animation: none; }
 .mm.got { box-shadow: 0 0 0 2px #ffd27a, 0 0 14px rgba(255, 210, 122, .6); }
 .mm-count { color: var(--dim); font-size: 13px; }
 @keyframes mmFlip { from { transform: scaleX(.2); } }
+
+/* 출연 선생님 */
+.cast-strip { display: flex; align-items: center; gap: 12px; width: 100%; margin: 12px 0; padding: 10px 14px; border: 1px solid rgba(255, 220, 150, .35); border-radius: 16px; background: rgba(255, 230, 170, .08); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.cs-faces { display: flex; flex: 0 0 auto; }
+.cs-faces img { width: 30px; height: 30px; object-fit: contain; margin-left: -12px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
+.cs-faces img:first-child { margin-left: 0; }
+.cs-txt { display: flex; flex-direction: column; font-size: 14px; font-weight: 700; min-width: 0; }
+.cs-txt small { font-weight: 400; opacity: .7; font-size: 12px; margin-top: 2px; }
+.cast-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin: 8px 0 30px; }
+.cast-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 12px 8px; border-radius: 16px; background: rgba(255, 255, 255, .06); }
+.cc-pt { width: 92px; height: 92px; border-radius: 50%; overflow: hidden; border: 3px solid rgba(255, 230, 170, .75); margin-bottom: 8px; }
+.cc-pt svg { width: 100%; height: 100%; display: block; }
+.cast-card b { font-size: 15px; }
+.cc-name { font-size: 13px; margin-top: 2px; color: #ffe2a0; }
+.cast-card small { font-size: 11px; opacity: .65; margin-top: 4px; line-height: 1.35; }
+.fin-cast { margin: 18px auto; max-width: 300px; }
+.fin-cast h3 { font-size: 15px; letter-spacing: .2em; color: #ffe2a0; margin: 0 0 8px; }
+.fin-cast div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; line-height: 2; color: #e8e2f2; }
+.fin-cast span { opacity: .7; }

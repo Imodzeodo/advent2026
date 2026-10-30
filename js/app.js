@@ -103,6 +103,7 @@
       ${!started ? `<button class="btn big start" id="start">시작하기</button>` : D.done.end ? `<button class="btn big finale-go" id="finale">🌟 27일의 기록 다시 보기</button>` : noteCard()}
       ${started ? todayMission() : ''}
       ${started ? skyPanel() : ''}
+      ${castStrip()}
       ${list}
       <footer class="home-foot">
         <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
@@ -126,11 +127,32 @@
     const fm = root.querySelector('#fame'); if (fm) fm.onclick = fame;
     const co = root.querySelector('#code'); if (co) co.onclick = codePage;
     const vv = root.querySelector('#verses'); if (vv) vv.onclick = versePage;
+    const cs = root.querySelector('#cast'); if (cs) cs.onclick = castPage;
     const fi = root.querySelector('#finale'); if (fi) fi.onclick = finale;
     const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => sendKey().then(() => { if (Core.data.lastBackup && Date.now() - Core.data.lastBackup < 6e4) nu.remove(); });
     const nc = root.querySelector('.note-card'); if (nc) nc.onclick = () => go(nc.dataset.id);
     root.querySelector('#snd').onclick = e => { e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇'; };
     bindTestReset(root);
+  }
+
+  // 출연 선생님 (story/cast.js가 있을 때만)
+  const castList = () => (window.CAST_LIST || []).filter(c => window.FACES && FACES[c.t]);
+  function castStrip() {
+    const L = castList();
+    if (!L.length) return '';
+    const faces = L.slice(0, 9).map(c => `<img src="img/faces/${c.t}.webp" alt="">`).join('');
+    return `<button class="cast-strip" id="cast"><span class="cs-faces">${faces}</span><span class="cs-txt">🎭 이 이야기에 나오는 선생님들<small>${L.length}명 모두 보기 ›</small></span></button>`;
+  }
+  function castPage() {
+    const root = show('cast', 'page');
+    const L = castList();
+    const chOf = c => +(c.key.split('@')[1] || (c.note.match(/^(\d)/) || [])[1] || 1);
+    root.innerHTML = `${testBanner()}
+      <div class="page-head"><button class="back">←</button><h1>🎭 출연 선생님</h1></div>
+      <p class="page-note">이야기 속 인물들은 우리 선생님들이 맡았어요. 누가 누군지 찾아보세요!</p>
+      <div class="cast-grid">${L.map(c => { Art.setChapter(chOf(c)); const k = c.key.split('@')[0];
+        return `<div class="cast-card"><div class="cc-pt">${Art.portrait(k, '웃음')}</div><b>${esc(c.role)}</b><span class="cc-name">${esc(FACES[c.t].name)} 선생님</span><small>${esc(c.note)}</small></div>`; }).join('')}</div>`;
+    root.querySelector('.back').onclick = home;
   }
 
   // 나의 밤하늘: 편마다 별 하나, 빛 조각을 다 모으면 환해지고, 한 장을 다 채우면 별자리가 이어진다
@@ -372,6 +394,7 @@
       <section class="reveal fin-credits">
         <h2>함께한 사람들</h2>
         <p><b>사가랴 · 엘리사벳 · 요셉 · 마리아</b><br>할아버지 목자와 들판의 목자들<br>그리고 등불을 든 <b>${esc(D.nickname || '너')}</b></p>
+        ${castList().length ? `<div class="fin-cast"><h3>출연</h3>${castList().map(c => `<div><span>${esc(c.role)}</span><b>${esc(FACES[c.t].name)} 선생님</b></div>`).join('')}</div>` : ''}
         <p>2026 연동교회 고등부 대림절</p>
         <p class="fin-small">성경 본문: 성경전서 개역개정판 © 대한성서공회<br>음악: 곧 오소서 임마누엘 · 기쁘다 구주 오셨네 · 고요한 밤 거룩한 밤 (옛 찬송 선율)</p>
         <p class="fin-last">"목자들은 자기들에게 이르던 바와 같이<br>듣고 본 그 모든 것으로 인하여<br>하나님께 영광을 돌리고 찬송하며 돌아가니라"<br><small>누가복음 2:20</small></p>

@@ -868,6 +868,7 @@
   async function play(id) {
     const my = ++runId;
     ep = Core.epById(id);
+    Art.setChapter(ep.ch);
     const src = window.STORY[id];
     const root = document.getElementById('play');
     mount(root);
