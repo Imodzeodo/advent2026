@@ -49,6 +49,15 @@
   }
 
 
+  /* 이름표: 장면 속 인물 머리 위에 누구인지 */
+  const NAME = { '할아버지': '목자 할아버지', '군인': '로마 군인', '사람들': '나그네', '이웃2': '이웃 아저씨', '나': '나' };
+  const NAME_CH = { '이웃@1': '이웃 아주머니', '이웃@2': '우물가 아주머니', '이웃2@2': '우물가 아저씨', '이웃@4': '이웃 아주머니', '천사@1': '천사 가브리엘', '천사@3': '천사 가브리엘', '천사@2': '주의 사자', '천사@4': '주의 사자' };
+  const nameOf = who => NAME_CH[who + '@' + A.ch] || NAME[who] || who;
+  function nameTag(who, x, y) {
+    const t = nameOf(who), w = t.length * 10.5 + 14;
+    return `<g class="nm" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><rect x="${(-w / 2).toFixed(1)}" y="-15" width="${w.toFixed(1)}" height="17" rx="8.5" fill="#140e04" fill-opacity=".62" stroke="#ffd27a" stroke-opacity=".55" stroke-width=".8"/><text x="0" y="-2.6" text-anchor="middle" font-size="11" font-weight="700" fill="#ffeec4">${t}</text></g>`;
+  }
+
   /* 사람: x,y = 발 위치, h = 키
      kind: man | woman | child,  old: 흰 수염,  lamp: 등잔 들기 */
   function person(o) {
@@ -103,7 +112,13 @@
     } else {
       g += `<path d="M14,${top + 14} Q20,${top + 34} 13,${top + 46}" stroke="#000" stroke-opacity=".15" stroke-width="7" stroke-linecap="round" fill="none"/>`;
     }
-    g += `</g></g>`;
+    g += `</g>`;
+    if (o.who && h >= 90 && !o.noTag) {
+      let top = hy - 18;
+      if (castOf(o.who)) { const F = window.FACES[castOf(o.who)], fw = kind === 'child' ? 30 : 34; top = hy - 2 - F.cy * fw / 120; }
+      g += nameTag(o.who, o.x, o.y + (top - 5) * s);
+    }
+    g += `</g>`;
     return g;
   }
 
@@ -337,7 +352,7 @@
       <circle cx="180" cy="300" r="22" fill="url(#lampglow)"/>
     </g>
     <!-- 분향단 오른편의 빛 (1-2 끝, 1-3) -->
-    <g id="angel" opacity="0"><g transform="translate(250,352) scale(.95)">${angelBody(castOf('천사'))}</g></g>
+    <g id="angel" opacity="0"><g transform="translate(250,352) scale(.95)">${angelBody(castOf('천사'))}</g>${nameTag('천사', 250, 352 - 262 * .95)}</g>
     ${person({ x: 112, y: 500, h: 156, robe: '#efe9dc', cloth: '#f7f3ea', skin: '#a27a5c', beard: '#ece8f2', who: '사가랴' })}`;
 
   /* ---------- 공통 소품 ---------- */
@@ -405,8 +420,9 @@
     return `<defs>${WING_DEF}</defs><g transform="translate(50,78) scale(.36)"><g transform="translate(-10,-60) scale(-1,1)"><path d="${WING.out}" fill="url(#wingGrad)" stroke="#e8d49a" stroke-width="2"/></g><g transform="translate(10,-60)"><path d="${WING.out}" fill="url(#wingGrad)" stroke="#e8d49a" stroke-width="2"/></g></g>`;
   }
   function angel(x, y, sc, id, op, t) {
-    if (t === undefined) t = castOf('천사');
-    return `<g ${id ? `id="${id}"` : ''} class="who" data-who="천사" opacity="${op == null ? 0 : op}"><g transform="translate(${x},${y}) scale(${sc})">${angelBody(t)}</g></g>`;
+    const main = t === undefined;
+    if (main) t = castOf('천사');
+    return `<g ${id ? `id="${id}"` : ''} class="who" data-who="천사" opacity="${op == null ? 0 : op}"><g transform="translate(${x},${y}) scale(${sc})">${angelBody(t)}</g>${main ? nameTag('천사', x, y - 262 * sc) : ''}</g>`;
   }
   function interior(id, top, bottom) {
     return `<defs>${sky(id, [[0, top], [1, bottom]])}${LAMP_DEF}${STAR()}${ANGEL_DEF}</defs><rect width="${W}" height="${H}" fill="url(#${id})"/>`;
@@ -555,7 +571,7 @@
     ${house(240, 180, 120, 250, '#4e4046', { win: [[20, 50, 1], [70, 50, 1]] })}
     <g data-hot="여관"><rect x="122" y="250" width="116" height="180" fill="#6a5250"/><rect x="150" y="320" width="58" height="110" fill="#ffcf8a" opacity=".85"/><rect x="120" y="244" width="120" height="8" fill="#7a6260"/><text x="180" y="290" text-anchor="middle" font-size="13" fill="#ffe0b0">여관</text></g>
     <rect x="0" y="430" width="${W}" height="110" fill="#4a3a36"/>
-    <g data-hot="사람들">${person({ x: 30, y: 456, h: 100, robe: '#4a3a4a', cloth: '#8a7a8a' })}${person({ x: 64, y: 462, h: 104, kind: 'woman', robe: '#5a4a3a', cloth: '#9a8a7a', who: '사람들' })}${person({ x: 300, y: 460, h: 102, robe: '#3a3a4a', cloth: '#7a7a8a', flip: true })}</g>
+    <g data-hot="사람들">${person({ x: 30, y: 456, h: 100, robe: '#4a3a4a', cloth: '#8a7a8a' })}${person({ x: 64, y: 462, h: 104, robe: '#5a4a3a', cloth: '#9a8a7a', who: '사람들' })}${person({ x: 300, y: 460, h: 102, robe: '#3a3a4a', cloth: '#7a7a8a', flip: true })}</g>
     <g data-hot="로마 군인">${person({ x: 334, y: 470, h: 118, robe: '#8a2a2a', cloth: '#b0a090', who: '군인', flip: true })}</g>
     <g data-hot="어떤 부부" opacity=".85">${person({ x: 250, y: 400, h: 70, robe: '#3a3048', cloth: '#5a5070', who: '요셉' })}${person({ x: 270, y: 400, h: 62, kind: 'woman', robe: '#3a3048', cloth: '#4a5a8a', who: '마리아' })}</g>
     ${person({ x: 180, y: 486, h: 120, robe: '#6a4a3a', cloth: '#a88a6a', beard: '#3a2a1a', who: '여관 주인' })}
@@ -691,5 +707,5 @@
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${fn()}</svg>`;
   }
 
-  window.Art = { setChapter: n => { A.ch = n; }, castOf, render, bigStar, lampShape, LAMP_DEF, person, portrait, EXPR };
+  window.Art = { nameOf, setChapter: n => { A.ch = n; }, castOf, render, bigStar, lampShape, LAMP_DEF, person, portrait, EXPR };
 })();
