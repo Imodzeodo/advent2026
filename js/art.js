@@ -540,7 +540,7 @@
     ${person({ x: 186, y: 494, h: 134, ...ELI })}
     ${person({ x: 296, y: 500, h: 138, ...MAR, flip: true })}`;
   scenes['할례'] = () => scenes['유대집']().replace(`${person({ x: 296, y: 500, h: 138, ...MAR, flip: true })}`,
-    `${person({ x: 236, y: 456, h: 100, kind: 'woman', robe: '#7a6a8a', cloth: '#c8b8d0', who: '친척 아가씨', flip: true })}${person({ x: 270, y: 466, h: 108, robe: '#5a6a5a', cloth: '#a8b0a0', who: '친척 청년', flip: true })}${person({ x: 300, y: 480, h: 118, kind: 'woman', robe: '#8a6a5a', cloth: '#b8a08a', who: '친척 아주머니', flip: true })}${person({ x: 330, y: 500, h: 124, robe: '#5a4a5a', cloth: '#9a8a9a', beard: '#4a3a2a', who: '친척 아저씨', flip: true })}`);
+    `${person({ x: 236, y: 456, h: 100, kind: 'woman', robe: '#7a6a8a', cloth: '#c8b8d0', who: '친척 아가씨', flip: true, noTag: true })}${person({ x: 270, y: 466, h: 108, robe: '#5a6a5a', cloth: '#a8b0a0', who: '친척 청년', flip: true, noTag: true })}${person({ x: 300, y: 480, h: 118, kind: 'woman', robe: '#8a6a5a', cloth: '#b8a08a', who: '친척 아주머니', flip: true, noTag: true })}${person({ x: 330, y: 500, h: 124, robe: '#5a4a5a', cloth: '#9a8a9a', beard: '#4a3a2a', who: '친척 아저씨', flip: true, noTag: true })}${nameTag('친척들', 285, 356)}`);
   scenes['언덕노을'] = () => `
     <defs>${sky('s17', [[0, '#4a3070'], [0.4, '#c06080'], [0.75, '#f0a070'], [1, '#f8c890']])}${STAR()}</defs>
     <rect width="${W}" height="${H}" fill="url(#s17)"/>
