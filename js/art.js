@@ -644,9 +644,8 @@
     else if (P.helmet) g += '';
     else if (P.cloth && !P.child) g += `<path d="M23,62 Q20,12 50,10 Q80,12 77,62 L80,84 L20,84 Z" fill="${P.cloth}"/>`;
     g += `<path d="M8,100 Q12,76 34,72 L66,72 Q88,76 92,100 Z" fill="${P.robe}"/>`;
-    g += `<path d="M40,72 Q50,82 60,72" stroke="#000" stroke-opacity=".18" stroke-width="2" fill="none"/>`;
     g += faceImg(t, 50, 47, 44, false, 'R');
-    g += `<path d="M6,100 Q10,80 26,73 Q36,69 43,74 Q50,79 57,74 Q64,69 74,73 Q90,80 94,100 Z" fill="${P.veil ? P.cloth : P.robe}"/><path d="M43,74 Q50,79 57,74" stroke="#000" stroke-opacity=".2" stroke-width="1.6" fill="none"/>`;
+    g += `<path d="M6,100 Q10,80 26,73 Q36,69 43,74 Q50,79 57,74 Q64,69 74,73 Q90,80 94,100 Z" fill="${P.veil ? P.cloth : P.robe}"/>${P.veil ? '' : '<path d="M43,74 Q50,79 57,74" stroke="#000" stroke-opacity=".2" stroke-width="1.6" fill="none"/>'}`;
     if (P.helmet) g += `<path d="M28,36 Q28,8 50,8 Q72,8 72,36 L72,30 Q50,20 28,30 Z" fill="#b0a090"/><rect x="47" y="-2" width="6" height="14" fill="#c03030"/>`;
     g += exprMarks(expr);
     return g + `</svg>`;
