@@ -632,14 +632,15 @@
     '기쁨': { eye: 'smile', brow: -3, mouth: 'open', blush: true }
   };
   // 표정 덧그림 (사진 얼굴 위에 만화 기호로): 얼굴 한가운데 (50,47), 얼굴 폭 44 기준
-  function exprMarks(expr, side) {
+  function exprMarks(expr, side, noBlush) {
     // side: 옆을 보는 얼굴이면 볼 홍조를 얼굴 안쪽 한 볼에만
-    const blush = side ? `<ellipse cx="${side === 'L' ? 55 : 45}" cy="56" rx="4.5" ry="2.6" fill="#ff7a8a" opacity=".36"/>` : `<ellipse cx="39" cy="56" rx="4.8" ry="2.7" fill="#ff7a8a" opacity=".36"/><ellipse cx="61" cy="56" rx="4.8" ry="2.7" fill="#ff7a8a" opacity=".36"/>`;
+    let blush = side ? `<ellipse cx="${side === 'L' ? 55 : 45}" cy="56" rx="4.5" ry="2.6" fill="#ff7a8a" opacity=".36"/>` : `<ellipse cx="39" cy="56" rx="4.8" ry="2.7" fill="#ff7a8a" opacity=".36"/><ellipse cx="61" cy="56" rx="4.8" ry="2.7" fill="#ff7a8a" opacity=".36"/>`;
     const tear = `<path d="M66,52 Q68.5,58 66,61 Q63.5,58 66,52 Z" fill="#8fd0ff" stroke="#fff" stroke-width=".8"/>`;
     const sweat = `<path d="M75,24 Q79,31 75,35 Q71,31 75,24 Z" fill="#8fd0ff" stroke="#fff" stroke-width=".9"/>`;
     const spark = (x, y, r) => `<path d="M${x},${y - r} Q${x + r * .15},${y - r * .15} ${x + r},${y} Q${x + r * .15},${y + r * .15} ${x},${y + r} Q${x - r * .15},${y + r * .15} ${x - r},${y} Q${x - r * .15},${y - r * .15} ${x},${y - r} Z" fill="#ffe27a"/>`;
     const bang = `<g transform="translate(81,20) rotate(12)"><rect x="-3" y="-12" width="6" height="15" rx="3" fill="#ffd34d" stroke="#7a4a10" stroke-width="1"/><circle cx="0" cy="8" r="3.2" fill="#ffd34d" stroke="#7a4a10" stroke-width="1"/></g>`;
     const gloom = `<path d="M38,26 L38,36 M44,24 L44,35 M50,23 L50,35 M56,24 L56,35 M62,26 L62,36" stroke="#4a4aa0" stroke-width="1.6" opacity=".45" stroke-linecap="round"/>`;
+    if (noBlush) blush = '';
     return ({ '웃음': blush, '기쁨': blush + spark(18, 28, 6) + spark(84, 38, 4.5), '감동': blush + tear + spark(82, 26, 4.5),
       '슬픔': tear + `<circle cx="50" cy="50" r="50" fill="#3050a0" opacity=".12"/>`, '걱정': sweat, '두려움': gloom + sweat,
       '놀람': bang, '결심': spark(80, 24, 6) })[expr] || '';
@@ -657,7 +658,7 @@
     g += `<path d="${P.veil ? 'M6,100 Q10,80 26,73 Q36,70 50,73 Q64,70 74,73 Q90,80 94,100 Z' : 'M6,100 Q10,80 26,73 Q36,69 43,74 Q50,79 57,74 Q64,69 74,73 Q90,80 94,100 Z'}" fill="${P.veil ? P.cloth : P.robe}"/>${P.veil ? '' : '<path d="M43,74 Q50,79 57,74" stroke="#000" stroke-opacity=".2" stroke-width="1.6" fill="none"/>'}`;
     if (P.helmet) g += `<path d="M28,36 Q28,8 50,8 Q72,8 72,36 L72,30 Q50,20 28,30 Z" fill="#b0a090"/><rect x="47" y="-2" width="6" height="14" fill="#c03030"/>`;
     const F = window.FACES[t];
-    g += exprMarks(expr, F.gaze ? (F.look || 'R') : '');
+    g += exprMarks(expr, F.gaze ? (F.look || 'R') : '', F.noBlush);
     return g + `</svg>`;
   }
   function portrait(who, expr) {
