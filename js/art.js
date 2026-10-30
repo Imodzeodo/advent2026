@@ -65,8 +65,9 @@
     const skin = o.skin || '#b98a68';
     const kind = o.kind || 'man';
     if (o.who === '군인') o = { ...o, helmet: true };
-    // 얼굴 방향을 고정한 배역(F.look)은 몸도 그쪽으로 돌린다
-    { const ft = castOf(o.who), F = ft && window.FACES[ft]; if (F && F.look) o = { ...o, flip: F.look === 'L' }; }
+    // 옆을 보는 얼굴: 고개가 보는 쪽의 반대편에 팔이 보이게 몸을 돌린다 (팔은 flip이 아니면 오른쪽)
+    { const ft = castOf(o.who), F = ft && window.FACES[ft];
+      if (F && F.gaze) { const look = F.look || (o.flip ? 'L' : 'R'); o = { ...o, flip: look === 'R', faceLook: look }; } }
     const flip = o.flip ? -1 : 1;
     const hot = o.hot ? ` data-hot="${o.hot}"` : '';
     const who = o.who ? ` data-who="${o.who}"` : '';
@@ -90,7 +91,7 @@
       const bare = window.FACES[t].noCloth;
       if (kind === 'woman' && !bare) g += `<path d="M-21,${hy + 8} Q-22,${hy - 26} 0,${hy - 27} Q22,${hy - 26} 21,${hy + 8} L24,${hy + 40} L-24,${hy + 40} Z" fill="${cloth}"/>`;
       else if (kind === 'man' && !o.helmet && !bare) g += `<path d="M-19,${hy + 10} Q-21,${hy - 24} 0,${hy - 25} Q21,${hy - 24} 19,${hy + 10} L18,${hy + 20} L-18,${hy + 20} Z" fill="${cloth}"/>`;
-      g += faceImg(t, 0, hy - 2, fw, o.flip, o.flip ? 'L' : 'R');
+      g += faceImg(t, 0, hy - 2, fw, o.flip, o.faceLook || (o.flip ? 'L' : 'R'));
       if (!o.helmet) g += `<path d="M-19,${top + 9} Q-15,${top - 1} -7,${top} Q0,${top + 6} 7,${top} Q15,${top - 1} 19,${top + 9} L20,${top + 16} L-20,${top + 16} Z" fill="${kind === 'woman' && !bare ? cloth : robe}"/>`;
       if (o.helmet) g += `<g transform="translate(0,${hy - 14})"><path d="M-17,4 Q-17,-16 0,-16 Q17,-16 17,4 L17,0 Q0,-8 -17,0 Z" fill="#b0a090"/><rect x="-3" y="-26" width="6" height="12" fill="#c03030"/></g>`;
     } else {
