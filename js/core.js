@@ -24,16 +24,34 @@
     return ep.openHour == null || n.hour >= ep.openHour;
   }
 
+  /* ---------- 성탄절 기준 날짜 (story/site.js의 relative: true) ----------
+     episodes.js의 날짜는 2026년 달력으로 적혀 있다. relative면 그해 성탄절에 맞춰 옮기고,
+     화면에는 날짜 대신 'D-26'처럼 성탄까지 남은 날을 보여 준다. 해마다 그대로 쓸 수 있다. */
+  const REL = !!(window.SITE && window.SITE.relative);
+  const toDays = iso => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+  const fromDays = n => new Date(n * 864e5).toISOString().slice(0, 10);
+  const SEASON = (() => { const [y, m] = nowKST().date.split('-').map(Number); return REL ? (m === 1 ? y - 1 : y) : 2026; })();
+  const XMAS = SEASON + '-12-25';
+  if (REL) {
+    const shift = toDays(XMAS) - toDays('2026-12-25');
+    (window.EPISODES || []).forEach(e => { if (e.date) e.date = fromDays(toDays(e.date) + shift); delete e.openHour; });
+    // 요일이 해마다 달라지니 '주일'을 전제한 문구를 바꾼다
+    const S = window.STORY || {};
+    for (const k in S) S[k] = S[k].replace(/오늘 주일 말씀/g, '이번 주 말씀')
+      .replace('첫 번째 초가 켜지는 11월 29일 주일, 예배 끝나고 만나자.', '성탄 26일 전, 첫 번째 이야기가 열리는 날 만나자.');
+  }
+
   const WD = ['일', '월', '화', '수', '목', '금', '토'];
   function dateLabel(iso, withYear) {
     if (!iso) return '';
+    if (REL) { const n = toDays(XMAS) - toDays(iso); return n > 0 ? 'D-' + n : n === 0 ? '성탄절' : '성탄 +' + (-n); }
     const [y, m, d] = iso.split('-').map(Number);
     const wd = WD[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
     return (withYear ? y + '. ' : '') + m + '/' + d + ' (' + wd + ')';
   }
 
   /* ---------- 저장 ---------- */
-  const KEY = IS_TEST ? 'geubam2026-test' : 'geubam2026';
+  const KEY = REL ? 'geubam-' + SEASON + (IS_TEST ? '-test' : '') : (IS_TEST ? 'geubam2026-test' : 'geubam2026');
   const blank = () => ({
     v: 1,
     nickname: '',
@@ -84,7 +102,7 @@
 
   window.Core = {
     params, IS_TEST, PREVIEW_ALL, TEST_DATE,
-    nowKST, isOpen, dateLabel,
+    nowKST, isOpen, dateLabel, REL, SEASON, XMAS,
     get data() { return data; },
     save, reset, replace,
     get canSave() { return canSave; },
