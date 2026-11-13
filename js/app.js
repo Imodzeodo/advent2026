@@ -212,6 +212,20 @@
   }
 
   // 오늘 열린 편(또는 가장 최근에 열렸는데 아직 안 한 편)의 인물 쪽지
+  // 그 편에 나오는 선생님 (story/cast.js가 있을 때만)
+  function castOfEp(e) {
+    if (!window.CAST_LIST || !CAST_LIST.length || !window.FACES) return [];
+    const names = [];
+    for (const line of (window.STORY[e.id] || '').split('\n'))
+      for (const part of line.replace(/^[*-] /, '').split(/ \| | -> /)) {
+        const m = part.match(/^([가-힣0-9 ]{1,8})(\([가-힣]+\))?:/);
+        if (m && !names.includes(m[1].trim())) names.push(m[1].trim());
+      }
+    Art.setChapter(e.ch);
+    const out = [], seen = new Set();
+    for (const n of names) { const t = Art.castOf(n === '가브리엘' ? '천사' : n); if (t && !seen.has(t)) { seen.add(t); out.push({ t, name: FACES[t].name, role: Art.nameOf(n) }); } }
+    return out;
+  }
   function noteCard() {
     const D = Core.data;
     const open = Core.mainEpisodes().filter(e => Core.isOpen(e) && !D.done[e.id] && window.STORY[e.id]);
@@ -221,6 +235,12 @@
     return `<button class="note-card" data-id="${e.id}">
       <span class="note-from">📩 ${esc(e.host)}의 쪽지 <em>${esc(Core.dateLabel(e.date))} ${esc(e.day)}</em></span>
       <span class="note-text">“${esc(e.note)}”</span>
+      ${(() => {
+        const c = castOfEp(e);
+        if (!c.length) return '';
+        const names = c.slice(0, 4).map(x => x.name).join(' · ') + (c.length > 4 ? ` 외 ${c.length - 4}명` : '');
+        return `<span class="note-cast"><span class="nc-faces">${c.slice(0, 6).map(x => `<img src="img/faces/${x.t}.webp" alt="">`).join('')}</span><span class="nc-txt">🎭 오늘 나오는 선생님<b>${esc(names)}</b></span></span>`;
+      })()}
       <span class="note-go">이야기 열기 →</span>${more}
     </button>`;
   }

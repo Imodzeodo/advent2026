@@ -142,6 +142,7 @@
     }
     return html;
   }
+  let replay = false; // 이미 끝낸 편을 다시 하는 중
   function typeText(text, who) {
     return new Promise(res => {
       const segs = segments(text);
@@ -151,6 +152,7 @@
       let i = 0, timer;
       const finish = () => { clearInterval(timer); el.text.innerHTML = segHTML(segs, total); typing = null; res(); };
       typing = finish;
+      if (replay) { finish(); return; } // 이미 끝낸 편을 다시 볼 때는 글자를 한 번에
       timer = setInterval(() => {
         i++;
         el.text.innerHTML = segHTML(segs, i);
@@ -216,7 +218,7 @@
   }
   function setSpeaker(who) {
     el.dialog.classList.toggle('narr', !who);
-    el.name.textContent = who || '';
+    el.name.textContent = who ? (Art.nameOf ? Art.nameOf(who) : who) : '';
     el.name.style.display = who ? '' : 'none';
     el.name.style.background = colorOf(who);
   }
@@ -289,7 +291,7 @@
     if (!who) row.className = 'cm sys';
     else row.className = 'cm ' + (base === chatMe ? 'me' : 'them') + (/서판$/.test(who) ? ' cm-tab' : '');
     const head = who && base !== chatMe ? `<div class="cm-av">${Art.portrait(base, expr || '기본')}</div>` : '';
-    const name = who && base !== chatMe ? `<div class="cm-name" style="color:${colorOf(base)}">${esc(who)}</div>` : '';
+    const name = who && base !== chatMe ? `<div class="cm-name" style="color:${colorOf(base)}">${esc(Art.nameOf ? Art.nameOf(who) : who)}</div>` : '';
     row.innerHTML = who ? `${head}<div class="cm-body">${name}<div class="cm-bub"><span class="cm-typing"><i></i><i></i><i></i></span></div></div>` : `<div class="cm-bub"></div>`;
     log.appendChild(row);
     log.scrollTop = log.scrollHeight;
@@ -840,6 +842,10 @@
       ov.querySelector('button').onclick = () => App.home();
       return;
     }
+    // 다음 편: 열려 있으면 바로 이어서, 아니면 언제 열리는지 예고
+    const list = Core.mainEpisodes(), nx = list[list.findIndex(x => x.id === ep.id) + 1];
+    const nextOpen = nx && Core.isOpen(nx) && !D.done[nx.id] && window.STORY[nx.id];
+    const nextLine = !nx || nextOpen || D.done[nx.id] ? '' : `<div class="next-tease">🌙 다음 이야기 「${esc(nx.title)}」<br><small>${esc(Core.dateLabel(nx.date))} ${nx.openHour ? '오후 ' + (nx.openHour - 12) + '시' : '0시'}에 열려요</small></div>`;
     const ov = showOverlay(`
       <div class="card done">
         <div class="done-star">${Art.bigStar(before / total, 150)}</div>
@@ -847,7 +853,9 @@
         <div class="done-sub">별빛 ${after} / ${total}${first ? ` · 카드 No.${Card.cardNo(ep.id)} 획득` : ''}${gemLine ? `<br><span class="gem-line">${esc(gemLine)}</span>` : ''}</div>
         ${skyLine()}
         ${newBadges.length ? `<div class="new-badges">${newBadges.map(b => `<div class="nb"><span>${b.icon}</span><b>${esc(b.name)}</b><small>새 배지</small></div>`).join('')}</div>` : ''}
+        ${nextLine}
         <button class="btn" data-v="card">인증 카드 보기</button>
+        ${nextOpen ? `<button class="btn ghost next-go" data-v="next">다음 편 이어서 ▶ 「${esc(nx.title)}」</button>` : ''}
         <button class="btn ghost" data-v="home">홈으로</button>
       </div>`, 'center full');
     setTimeout(() => {
@@ -866,12 +874,15 @@
       ov.querySelector('.done-sub').after(fin);
     }
     ov.querySelector('[data-v=home]').onclick = () => App.home();
+    const nb = ov.querySelector('[data-v=next]'); if (nb) nb.onclick = () => App.go(nx.id);
   }
 
   /* ---------- 시작 ---------- */
   async function play(id) {
     const my = ++runId;
     ep = Core.epById(id);
+    replay = !!Core.data.done[id];
+    if (replay) setTimeout(() => toast('다시 보기 · 글자가 한 번에 나와요'), 900);
     Art.setChapter(ep.ch);
     const src = window.STORY[id];
     const root = document.getElementById('play');
