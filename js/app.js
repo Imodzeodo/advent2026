@@ -162,14 +162,23 @@
       <h2 class="sec">🌌 나의 밤하늘 <small>빛 조각 ${st.gems}/${st.total} · 별자리 ${st.full}/4</small></h2>
       ${Sky.svg()}
       <p class="sky-hint">편을 끝내면 별이 뜨고, 그 편의 <b>빛 조각</b>을 다 모으면 별이 환해져요. 한 장의 별이 모두 환해지면 별자리가 이어져요.</p>
+      ${(() => {
+        // 끝냈지만 빛 조각이 남은 편: 다시 해서 모을 수 있게
+        const left = Core.mainEpisodes().filter(e => Sky.level(e.id) === 1);
+        if (!left.length) return '';
+        return `<div class="sky-left"><b>✦ 빛 조각이 남은 편</b> <small>다시 하면서 금빛 낱말을 누르면 별이 환해져요</small>
+          ${left.map(e => `<button class="sky-redo" data-id="${e.id}"><span>${esc(Core.dateLabel(e.date))} ${esc(e.title)}</span><em>${((Core.data.gems || {})[e.id] || []).length}/${Sky.gemTotal(e.id)}</em><i>다시 하기 ›</i></button>`).join('')}</div>`;
+      })()}
     </section>`;
   }
   function bindSky(root) {
     root.querySelectorAll('.sky-svg .sk-star').forEach(n => n.addEventListener('click', () => {
       const e = Core.epById(n.dataset.id); if (!e) return;
       const lv = Sky.level(e.id), t = Sky.gemTotal(e.id), got = ((Core.data.gems || {})[e.id] || []).length;
-      Player.toast(`${Core.dateLabel(e.date)} ${e.title} · ` + (!lv ? '아직 뜨지 않은 별' : lv === 2 ? '환한 별 ✦' : `빛 조각 ${got}/${t} · 다시 보기로 마저 모으면 환해져요`));
+      if (lv === 1) { if (confirm(`${Core.dateLabel(e.date)} 「${e.title}」\n빛 조각 ${got}/${t}개를 모았어요.\n다시 하면서 남은 빛 조각을 모을까요?`)) go(e.id); return; }
+      Player.toast(`${Core.dateLabel(e.date)} ${e.title} · ` + (!lv ? '아직 뜨지 않은 별' : '환한 별 ✦'));
     }));
+    root.querySelectorAll('.sky-redo').forEach(b => b.onclick = () => go(b.dataset.id));
   }
   // 오늘의 미션: 가장 최근에 끝낸 편의 미션 (아직 안 한 편의 미션은 당연히 안 보임)
   function todayMission() {

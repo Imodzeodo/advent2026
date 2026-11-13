@@ -714,5 +714,16 @@
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${fn()}</svg>`;
   }
 
+  // 선생님 얼굴 사진을 미리 받아 두기 (대사창 초상이 늦게 뜨지 않게)
+  const faceCache = [];
+  function preloadFaces() {
+    for (const t of Object.keys(window.FACES || {})) {
+      const im = new Image(); im.decoding = 'async'; im.src = `img/faces/${t}.webp`;
+      if (im.decode) im.decode().catch(() => {});
+      faceCache.push(im);
+    }
+  }
+  if (window.FACES && Object.keys(window.FACES).length) setTimeout(preloadFaces, 200);
+
   window.Art = { nameOf, setChapter: n => { A.ch = n; }, castOf, render, bigStar, lampShape, LAMP_DEF, person, portrait, EXPR };
 })();

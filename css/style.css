@@ -169,6 +169,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 /* 덮는 카드 */
 .overlay { position: absolute; left: 0; right: 0; top: 0; bottom: calc(196px + var(--safe-b)); z-index: 25; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(4, 5, 16, .55); opacity: 0; transition: opacity .3s; }
 .overlay.in { opacity: 1; }
+/* 카드가 화면보다 길어도 위쪽이 잘리지 않게: 위에서부터 보이고 스크롤, 짧으면 가운데 */
+.overlay:not(.medi):not(.game):not(.input) { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; align-items: flex-start; padding-top: calc(58px + var(--safe-t)); }
+.overlay:not(.medi):not(.game):not(.input) > * { margin-top: auto; margin-bottom: auto; flex-shrink: 0; }
+.overlay.tall { bottom: 0; padding-bottom: calc(16px + var(--safe-b)); z-index: 26; background: rgba(4, 5, 16, .82); }
 .overlay.input { bottom: 0; align-items: flex-start; padding-top: calc(60px + var(--safe-t)); background: rgba(4, 5, 16, .82); }
 .overlay.game { bottom: calc(196px + var(--safe-b)); background: rgba(4, 5, 16, .78); padding: 12px; }
 .overlay.full { bottom: 0; background: rgba(4, 5, 16, .85); }
@@ -333,7 +337,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .mv sup { font-family: var(--sans); font-size: 11px; color: #a07a3e; margin-right: 4px; }
 .mv.on { background: rgba(255, 196, 92, .35); border-color: #c98a2a; }
 .medi-src, .verse-src { font-size: 11px; color: #8d7a5d; text-align: right; margin-top: 4px; }
-.medi .btn.ghost { color: #3a2a17; border-color: rgba(58, 42, 23, .25); background: rgba(255, 255, 255, .4); }
+.medi .btn.ghost, .card.verse .btn.ghost { color: #3a2a17; border-color: rgba(58, 42, 23, .3); background: rgba(255, 255, 255, .5); font-weight: 700; }
 .medi-pray { font-size: 14px; color: #6b5536; line-height: 1.6; margin: 10px 0 6px; text-align: center; }
 
 /* ---------- 완료 화면의 새 배지 ---------- */
@@ -647,8 +651,11 @@ html.no-motion .who.speaking { animation: none; }
 .cm.cm-tab .cm-bub { background: #e6d6a8; color: #3a2a12; font-family: var(--serif); letter-spacing: 1px; border: 1px solid #b89a5e; box-shadow: inset 0 0 10px rgba(120, 90, 30, .25); }
 .cm.sys { align-self: center; max-width: 88%; }
 .cm.sys .cm-bub { background: rgba(40, 52, 64, .25); color: #24303a; font-size: 13px; border-radius: 99px; padding: 5px 12px; text-align: center; box-shadow: none; }
-.cm .gem { color: #8a5a00; text-decoration: underline wavy #e0a800; }
-.cm .gem.got { color: inherit; text-decoration: none; }
+.cm .gem { color: #5a3500; text-shadow: none; background: linear-gradient(transparent 45%, #ffd84d 45%); border-bottom: 2px dotted #c98a00; border-radius: 2px; padding: 0 2px; }
+.cm .gem::before { content: '✦'; font-size: 11px; color: #c98a00; margin-right: 2px; vertical-align: super; }
+.cm.me .gem { background: linear-gradient(transparent 40%, #fff 40%); box-shadow: 0 0 0 1px rgba(201, 138, 0, .35); }
+.cm .gem.got { color: inherit; background: none; border-bottom: 2px solid rgba(201, 138, 0, .45); }
+.cm .gem.got::before { content: none; }
 .cm-typing { display: inline-flex; gap: 3px; padding: 4px 2px; }
 .cm-typing i { width: 6px; height: 6px; border-radius: 50%; background: #9aa; animation: cmDot 1s infinite; }
 .cm-typing i:nth-child(2) { animation-delay: .15s; } .cm-typing i:nth-child(3) { animation-delay: .3s; }
@@ -711,3 +718,12 @@ html.no-motion .who.speaking { animation: none; }
 .fin-cast h3 { font-size: 15px; letter-spacing: .2em; color: #ffe2a0; margin: 0 0 8px; }
 .fin-cast div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; line-height: 2; color: #e8e2f2; }
 .fin-cast span { opacity: .7; }
+
+/* 빛 조각이 남은 편 */
+.sky-left { margin-top: 10px; padding: 12px; border-radius: 14px; background: rgba(255, 216, 77, .07); border: 1px solid rgba(255, 210, 122, .35); }
+.sky-left > b { color: #ffe08a; font-size: 14px; }
+.sky-left > small { display: block; font-size: 12px; opacity: .7; margin: 2px 0 8px; }
+.sky-redo { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 10px; margin-top: 6px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .12); background: rgba(255, 255, 255, .05); color: inherit; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.sky-redo span { flex: 1; min-width: 0; }
+.sky-redo em { font-style: normal; color: #ffe08a; font-size: 13px; }
+.sky-redo i { font-style: normal; color: var(--gold); font-size: 13px; white-space: nowrap; }
