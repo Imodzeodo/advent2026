@@ -31,6 +31,8 @@
     return lines.filter(Boolean);
   }
   function clamp(lines, n) {
+    // 자리가 없으면(n이 0 이하) 아무 줄도 넣지 않는다 (사파리는 글자 폭이 넓어 자리가 모자랄 때가 있음)
+    if (n <= 0) return [];
     if (lines.length <= n) return lines;
     const out = lines.slice(0, n);
     out[n - 1] = out[n - 1].replace(/.$/, '') + '…';
@@ -166,7 +168,8 @@
     const ans = D.diary[epId] && D.diary[epId].a;
     const quote = opt.withDiary && ans ? { text: ans, label: '— 나의 묵상' } : v ? { text: v.text, label: (picked ? '내 마음에 남은 말씀 · ' : '') + v.label } : null;
     if (quote) {
-      const boxY = y, maxH = H - P - 150 - boxY;
+      // 오늘의 미션이 있으면 그 자리(제목+한 줄)를 남겨 둔다
+      const boxY = y, maxH = H - P - 150 - boxY - (D.mission[epId] ? 120 : 0);
       ctx.font = `400 36px ${SERIF}`;
       const lines = clamp(wrap(ctx, '“' + quote.text + '”', iw - 70), Math.max(1, Math.floor((maxH - 80) / 52)));
       const boxH = Math.min(maxH, lines.length * 52 + 92);

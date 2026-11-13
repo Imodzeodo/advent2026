@@ -313,6 +313,10 @@
     el.overlay.innerHTML = html;
     el.overlay.hidden = false;
     void el.overlay.offsetWidth; el.overlay.classList.add('in');
+    // 카드가 대사창 위 공간보다 길면 대사창 자리까지 넓게 쓴다 (작은 폰에서 버튼이 밀려나지 않게)
+    const ov = el.overlay;
+    const fit = () => { if (ov.hidden) return; ov.classList.remove('tall'); if (ov.scrollHeight > ov.clientHeight + 4) ov.classList.add('tall'); };
+    fit(); requestAnimationFrame(fit); setTimeout(fit, 300);
     return el.overlay;
   }
   function hideOverlay() {
