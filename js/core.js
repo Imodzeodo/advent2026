@@ -67,15 +67,28 @@
     medi: {},        // { epId: { q: [...], a: [...] } } 말씀 묵상 질문에 적은 답
     badges: {},      // { badgeId: timestamp }
     codes: {},       // { 1~4: timestamp } 찾은 주일 암호
+    appointedOn: null,
+    a2hsSeen: false,
+    trailerSeen: false,
+    field: null,
+    meteor: {},
     sound: true,
-    oil: 0
+    oil: 0,
+    oilEarned: 0,
+    codeItems: {}
   });
+
+  function loadData(record) {
+    const next = Object.assign(blank(), record);
+    if (record?.oilEarned == null) next.oilEarned = next.oil || 0;
+    return next;
+  }
 
   let data = blank();
   let canSave = true;
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) data = Object.assign(blank(), JSON.parse(raw));
+    if (raw) data = loadData(JSON.parse(raw));
     localStorage.setItem(KEY + '-ping', '1');
     localStorage.removeItem(KEY + '-ping');
   } catch (e) {
@@ -93,9 +106,25 @@
   // 백업 불러오기
   function replace(obj) {
     const keepSound = data.sound;
-    data = Object.assign(blank(), obj);
+    data = loadData(obj);
     if (keepSound != null) data.sound = keepSound;
     save();
+  }
+  function addOil(n, _why) {
+    data.oil += n;
+    data.oilEarned += n;
+  }
+  function spendOil(n) {
+    if (!Number.isInteger(n) || n < 0 || data.oil < n) return false;
+    data.oil -= n;
+    return true;
+  }
+  // pair는 받침 있는 조사, 받침 없는 조사 순서.
+  function josa(word, pair) {
+    const last = word.normalize('NFC').match(/[가-힣a-z0-9](?=[^가-힣a-z0-9]*$)/i)?.[0] || '';
+    const code = last.charCodeAt(0);
+    const hasFinal = code >= 0xac00 && code <= 0xd7a3 ? (code - 0xac00) % 28 !== 0 : /^[013678l-nr]$/i.test(last);
+    return word + pair[hasFinal ? 0 : 1];
   }
   // 브라우저가 저장 공간을 함부로 비우지 않게 부탁 (안드로이드 크롬 등)
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* 무시 */ }
@@ -104,7 +133,7 @@
     params, IS_TEST, PREVIEW_ALL, TEST_DATE,
     nowKST, isOpen, dateLabel, REL, SEASON, XMAS,
     get data() { return data; },
-    save, reset, replace,
+    save, reset, replace, addOil, spendOil, josa,
     get canSave() { return canSave; },
     epById: id => window.EPISODES.find(e => e.id === id),
     // 인트로를 뺀 본편(별 계산용)

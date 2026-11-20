@@ -70,6 +70,9 @@
       if ((m = line.match(/^음성\s*[:：]\s*(.*)$/))) { steps.push({ t: 'voice', name: m[1].trim() }); continue; }
       if ((m = line.match(/^미션\s*[:：]\s*(.*)$/))) { steps.push({ t: 'mission', text: m[1].trim() }); continue; }
       if (/^이름입력\s*[:：]?/.test(line)) { steps.push({ t: 'nickname' }); continue; }
+      if (/^임명식\s*[:：]\s*$/.test(line)) { steps.push({ t: 'appoint' }); continue; }
+      if (/^양받기\s*[:：]\s*$/.test(line)) { steps.push({ t: 'lamb' }); continue; }
+      if (/^양떼\s*[:：]\s*$/.test(line)) { steps.push({ t: 'flock' }); continue; }
       if (/^묵상\s*[:：]?\s*$/.test(line)) { steps.push({ t: 'meditate' }); continue; }
       if (/^안내\s*[:：]?/.test(line)) { steps.push({ t: 'rules' }); continue; }
       if ((m = line.match(/^질문\s*[:：]\s*(.*)$/))) {
@@ -92,8 +95,13 @@
     return steps;
   }
 
+  const nameParticles = {
+    '이(가)': '이가', '(이)가': '이가', '을(를)': '을를', '(을)를': '을를',
+    '과(와)': '과와', '(와)과': '과와', '와(과)': '과와', '은(는)': '은는', '(은)는': '은는'
+  };
   /* 대사 속 치환
      {이름}                → 닉네임
+     {이름}이(가) 등       → 닉네임과 받침에 맞는 조사
      {일기}                → 이 편의 일기 답
      {일기:1-0}            → 그 편의 일기 답
      {일기:1-0?A|B}        → 답이 있으면 A($ 자리에 답), 없으면 B
@@ -102,7 +110,8 @@
     if (window.Bible) text = Bible.full(text);
     const d = window.Core.data;
     const clip = s => (s.length > 40 ? s.slice(0, 40) + '…' : s);
-    return text.replace(/\{([^{}]*)\}/g, (all, inner) => {
+    return text.replace(/\{이름\}(이\(가\)|\(이\)가|을\(를\)|\(을\)를|과\(와\)|\(와\)과|와\(과\)|은\(는\)|\(은\)는)|\{([^{}]*)\}/g, (all, particle, inner) => {
+      if (particle) return Core.josa(d.nickname || '친구', nameParticles[particle]);
       if (inner === '이름') return d.nickname || '친구';
       let m = inner.match(/^일기(?::([\w-]+))?(?:\?(.*))?$/);
       if (m) {
