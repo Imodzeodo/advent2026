@@ -86,5 +86,21 @@
 
   // 장면 좌표 → 화면 좌표 (카메라용)
   function toScreen(x, y) { return map ? map(x, y) : { x, y, k: 1 }; }
-  window.Fx = { attach, set, resize, toScreen };
+  function burst(root, x = 50, y = 45, count = 26) {
+    if (reduce || Core.data.motion === false) return;
+    const sparks = document.createElement('div');
+    sparks.className = 'fx-burst';
+    sparks.setAttribute('aria-hidden', 'true');
+    sparks.style.cssText = `left:${x}%;top:${y}%`;
+    for (let i = 0; i < count; i++) {
+      const star = document.createElement('i');
+      const a = R(0, 2 * Math.PI), r = R(38, 125);
+      star.textContent = i % 3 ? '·' : '✦';
+      star.style.cssText = `--dx:${Math.cos(a) * r}px;--dy:${Math.sin(a) * r}px;--delay:${R(0, .26)}s;font-size:${R(9, 24)}px`;
+      sparks.appendChild(star);
+    }
+    root.appendChild(sparks);
+    setTimeout(() => sparks.remove(), 1550);
+  }
+  window.Fx = { attach, set, resize, toScreen, burst };
 })();

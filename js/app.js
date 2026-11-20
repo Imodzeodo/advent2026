@@ -35,13 +35,14 @@
     if (/#\s*모드\s*영화/.test(src)) return ['🎬', '보는 날'];
     if (/게임\s*[:：]\s*퍼즐/.test(src)) return ['🧩', '말씀 퍼즐'];
     if (/게임\s*[:：]\s*누가/.test(src)) return ['🗣️', '누가 한 말일까'];
-    if (/게임\s*[:：]\s*짝/.test(src)) return ['🃏', '기억의 짝'];
+    if (/게임\s*[:：]\s*짝/.test(src)) return ['🖼️', '기억의 짝'];
     if (/게임\s*[:：]/.test(src)) return ['🎮', '미니게임'];
     return null;
   }
   /* ---------- 홈 ---------- */
   function home() {
     const D = Core.data;
+    Fame.deliverCodeItems();
     const root = show('home');
     const b = Core.starCount() / Core.starTotal();
     const started = !!D.done['0'];
@@ -78,11 +79,13 @@
 
     root.innerHTML = `
       ${testBanner()}
+      ${codeReminder()}
       <button class="snd-home" id="snd">${Sound.on ? '🔊' : '🔇'}</button>
       <header class="home-head">
         <div class="home-star">${Art.bigStar(Math.max(0.04, b), 170)}</div>
         <h1>그 밤을 향하여</h1>
         <p class="sub">${esc((window.SITE || {}).label || '')}</p>
+        ${(window.CODES || []).length ? `<button class="home-wreath" data-code-page aria-label="대림 화환 · ${litWeeks().length}개 점등 · 주일 암호">${Art.advent({ lit: litWeeks() })}</button>` : ''}
         ${started ? `<div class="stats">
           <span>${esc(D.nickname)}${D.ban ? ' · ' + esc(D.ban) : ''}</span>
           <span>⭐ 별빛 ${Core.starCount()}/${Core.starTotal()}</span>
@@ -91,7 +94,7 @@
       </header>
       ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록이 저장되지 않아요(사생활 보호 모드일 수 있어요). 일반 모드로 열어 주세요.</div>` : ''}
       ${started ? `<nav class="menu top">
-        <button id="cards"><span>🃏</span>카드 도감<small>${Core.starCount()}/${Core.starTotal()}</small></button>
+        <button id="cards"><span>🖼️</span>카드 도감<small>${Core.starCount()}/${Core.starTotal()}</small></button>
         <button id="fame"><span>📜</span>나의 기록</button>
         <button id="diary"><span>📔</span>묵상 노트</button>
         <button id="verses"><span>📖</span>말씀 모음<small>${Object.values(D.verse || {}).reduce((a, v) => a + (Array.isArray(v) ? v.length : 1), 0)}</small></button>
@@ -100,12 +103,15 @@
       </nav>` : ''}
       ${nightLine()}
       ${backupNudge()}
+      ${homeInstallNote()}
       ${!started ? `<button class="btn big start" id="start">시작하기</button>` : D.done.end ? `<button class="btn big finale-go" id="finale">🌟 27일의 기록 다시 보기</button>` : noteCard()}
       ${started ? todayMission() : ''}
       ${started ? skyPanel() : ''}
+      ${window.Field?.panelHTML() || ''}
       ${castStrip()}
       ${list}
       <footer class="home-foot">
+        ${window.Trailer ? '<button class="btn ghost small" data-trailer>🎬 예고편 다시 보기</button>' : ''}
         <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
       </footer>`;
 
@@ -117,22 +123,43 @@
       if (!started) return Player.toast('먼저 시작하기를 눌러 줘');
       Player.toast(`${Core.dateLabel(e.date)} ${e.openHour ? e.openHour + '시에' : ''} 열려요`);
     });
-    const s = root.querySelector('#start'); if (s) s.onclick = () => go('0');
+    const s = root.querySelector('#start');
+    if (s) s.onclick = async () => {
+      s.disabled = true;
+      if (window.Trailer && !D.trailerSeen && !window.__fast) {
+        await Trailer.play({ fromStart: true });
+        D.trailerSeen = true; Core.save();
+      }
+      if (root.isConnected) go('0');
+    };
+    const trailer = root.querySelector('[data-trailer]');
+    if (trailer) trailer.onclick = () => Trailer.play();
     bindTodayMission(root);
     bindSky(root);
+    window.Field?.bindPanel(root);
     if (homeScroll) { const y = homeScroll; requestAnimationFrame(() => window.scrollTo(0, y)); setTimeout(() => window.scrollTo(0, y), 60); }
     const d = root.querySelector('#diary'); if (d) d.onclick = diary;
     const st = root.querySelector('#settings'); if (st) st.onclick = settings;
     const cd = root.querySelector('#cards'); if (cd) cd.onclick = cards;
     const fm = root.querySelector('#fame'); if (fm) fm.onclick = fame;
     const co = root.querySelector('#code'); if (co) co.onclick = codePage;
+    root.querySelectorAll('[data-code-page]').forEach(button => { button.onclick = codePage; });
     const vv = root.querySelector('#verses'); if (vv) vv.onclick = versePage;
     const cs = root.querySelector('#cast'); if (cs) cs.onclick = castPage;
     const fi = root.querySelector('#finale'); if (fi) fi.onclick = finale;
     const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => sendKey().then(() => { if (Core.data.lastBackup && Date.now() - Core.data.lastBackup < 6e4) nu.remove(); });
     const nc = root.querySelector('.note-card'); if (nc) nc.onclick = () => go(nc.dataset.id);
+    const dismiss = root.querySelector('[data-dismiss-install]');
+    if (dismiss) dismiss.onclick = () => { D.a2hsSeen = true; Core.save(); dismiss.closest('.install-note').remove(); };
     root.querySelector('#snd').onclick = e => { e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇'; };
     bindTestReset(root);
+  }
+
+  function homeInstallNote() {
+    const D = Core.data;
+    if (!D.done['1-0'] || D.a2hsSeen || navigator.standalone || matchMedia('(display-mode: standalone)').matches) return '';
+    const how = Core.isKakao ? '오른쪽 아래 ⋯ → 다른 브라우저로 열기 후 추가' : Core.isIOS ? '공유 버튼 → 홈 화면에 추가' : '메뉴 ⋮ → 홈 화면에 추가';
+    return `<aside class="install-note"><div><b>홈 화면에 추가</b><p>${how}</p></div><button type="button" data-dismiss-install aria-label="안내 닫기">✕</button></aside>`;
   }
 
   // 출연 선생님 (story/cast.js가 있을 때만)
@@ -202,11 +229,12 @@
       const D = Core.data, id = b.dataset.id, ans = b.dataset.m;
       D.missionAns[id] = ans;
       if (ans === 'yes') D.missionDone[id] = true;
-      D.oil = (D.oil || 0) + 1;
-      Core.save(); Fame.checkNew();
+      Core.addOil(1, 'mission');
+      Core.save();
+      const badges = Fame.checkNew();
       Sound.sfx(ans === 'yes' ? 'mission' : 'oil');
-      Player.toast(ans === 'yes' ? '잘했어! 등불 기름 +1' : '정직하게 말해 줘서 고마워. 기름 +1');
       home();
+      if (!notifyBadges(badges)) Player.toast(ans === 'yes' ? '잘했어! 등불 기름 +1' : '정직하게 말해 줘서 고마워. 기름 +1');
     });
     const m = root.querySelector('#tm-more'); if (m) m.onclick = () => { fameTab = 'mission'; fame(); };
   }
@@ -471,7 +499,7 @@
     const got = list.filter(e => D.done[e.id]).length;
     root.innerHTML = `
       ${testBanner()}
-      <div class="page-head"><button class="back">←</button><h1>🃏 카드 도감</h1><span class="head-count">${got} / ${list.length}</span></div>
+      <div class="page-head"><button class="back">←</button><h1>🖼️ 카드 도감</h1><span class="head-count">${got} / ${list.length}</span></div>
       <p class="page-note">한 편을 끝낼 때마다 카드 한 장. 그날 편을 그날 끝내면 <b>'그날 완료'</b> 리본이 붙어요.</p>
       <div class="dex">${list.map(e => {
         const ch = CHAPTERS.find(c => c.n === e.ch);
@@ -495,19 +523,30 @@
   }
 
   /* ---------- 주일 암호 ---------- */
+  function litWeeks() {
+    return (window.CODES || []).filter(c => Core.data.codes?.[c.n]).map(c => c.n);
+  }
+  function codeReminder() {
+    const { date, hour } = Core.nowKST();
+    const time = iso => Date.parse(iso + 'T00:00:00Z');
+    const week = (window.CODES || []).find(c => {
+      const days = (time(date) - time(c.from)) / 86400000;
+      return !Core.data.codes?.[c.n] && days >= 0 && days < 7 && (days > 0 || hour >= 13);
+    });
+    if (!week) return '';
+    const ordinal = ['첫째', '둘째', '셋째', '넷째'][week.n - 1];
+    return `<button class="code-reminder" data-code-page>🕯️ 오늘 예배에서 들은 주일 암호를 넣어 봐 · ${ordinal} 초를 켜자</button>`;
+  }
+
   function codePage() {
-    const D = Core.data;
     const root = show('codes', 'page');
-    const today = Core.nowKST().date;
     root.innerHTML = `
       ${testBanner()}
       <div class="page-head"><button class="back">←</button><h1>🔑 주일 암호</h1></div>
+      ${Core.IS_TEST ? '<p class="code-test">테스트 모드 · 날짜와 상관없이 열려요</p>' : ''}
       <p class="page-note">주일 예배 때 전도사님이 알려 주는 암호를 넣으면, 그 주의 대림초가 켜진 <b>히든 카드</b>가 열려요.</p>
-      <div class="candles">${(window.CODES || []).map(c => `
-        <div class="cd${D.codes && D.codes[c.n] ? ' lit' : ''}${c.n === 3 ? ' pink' : ''}">
-          <i></i><b>${c.n}주</b><small>${esc(Core.dateLabel(c.from))}</small>
-        </div>`).join('')}
-      </div>
+      <div class="candles">${Art.advent({ lit: litWeeks(), wreath: false })}
+        <div class="candle-labels">${(window.CODES || []).map(c => `<div><b>${c.n}주</b><small>${esc(Core.dateLabel(c.from))}</small></div>`).join('')}</div></div>
       <input class="code-in" maxlength="20" placeholder="암호를 넣어 줘" autocomplete="off">
       <button class="btn big" id="try">확인</button>
       <p class="code-msg"></p>`;
@@ -518,10 +557,12 @@
       if (!w) return;
       const r = Fame.tryCode(w);
       if (r.ok) {
-        Sound.sfx('badge');
-        Fame.checkNew();
-        Player.toast(r.isNew ? `${r.code.n}주 히든 카드를 찾았어!` : '이미 찾은 카드예요');
-        setTimeout(() => card('H' + r.code.n), 600);
+        const badges = Fame.checkNew();
+        if (r.isNew) codeCeremony(r, badges);
+        else {
+          Player.toast('이미 찾은 카드예요');
+          card('H' + r.code.n);
+        }
       } else {
         Sound.sfx('boop');
         inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake');
@@ -533,11 +574,63 @@
     bindTestReset(root);
   }
 
+  function codeCeremony({ code, item }, badges) {
+    const root = show('code-ceremony');
+    const verse = Bible.verses(code.verse)[0];
+    root.innerHTML = `<div class="code-celebrate">
+      <button class="back" aria-label="주일 암호로 돌아가기">←</button>
+      <div class="code-wreath">${Art.advent({ lit: litWeeks().filter(n => n !== code.n) })}</div>
+      <div class="code-reveal" hidden>
+        ${verse ? `<blockquote>“${esc(verse.text)}”<cite>${esc(verse.label)}</cite></blockquote>` : ''}
+        <div class="code-holo" hidden><b>${esc(code.title)}</b></div>
+        <div class="code-rewards" hidden><b>기름 +5</b><span>한정 꾸미기 · ${esc(item)}</span>
+          <div class="row"><button class="btn" data-card>카드 보기</button><button class="btn ghost" data-field>들판에 달아 주기</button></div>
+        </div>
+      </div></div>`;
+    root.querySelector('.back').onclick = codePage;
+    root.querySelector('[data-card]').onclick = () => card('H' + code.n);
+    root.querySelector('[data-field]').onclick = () => {
+      if (window.Field?.has()) Field.page();
+      else Player.toast('첫 양을 받으면 들판에 달아 줄 수 있어요');
+    };
+    const later = (delay, update) => setTimeout(() => { if (root.isConnected) update(); }, delay);
+    const holo = root.querySelector('.code-holo');
+    Card.drawHidden(code.n).then(cv => {
+      if (!root.isConnected) return;
+      cv.setAttribute('aria-label', code.title);
+      holo.replaceChildren(cv);
+    }).catch(() => {});
+    later(320, () => { Sound.sfx('match'); navigator.vibrate?.(50); });
+    later(900, () => {
+      const candle = root.querySelector(`[data-week="${code.n}"]`);
+      candle.classList.add('lit');
+      candle.querySelector('.advent-flame').removeAttribute('visibility');
+      Fx.burst(root, 15 + code.n * 14, 25);
+      Sound.sfx('gem');
+    });
+    later(1520, () => {
+      root.querySelector('.code-reveal').hidden = false;
+      Sound.voice(code.n === 1 ? 'code-1' : (window.NARR || {})[code.verse] || `code-${code.n}`);
+    });
+    later(2350, () => { holo.hidden = false; Sound.sfx('badge'); });
+    later(2900, () => { root.querySelector('.code-rewards').hidden = false; notifyBadges(badges); });
+  }
+
   /* ---------- 나의 기록 (미션 기록 · 배지 탭) ---------- */
+  function notifyBadges(badges) {
+    if (!badges.length) return false;
+    const [badge] = badges;
+    const title = badges.length === 1 ? `${badge.icon} ${badge.name} · 새 배지` : `새 배지 ${badges.length}개`;
+    Player.toast(title, { label: '카드 보기', open: () => {
+      if (badges.length === 1) card('B:' + badge.id);
+      else { fameTab = 'badge'; fame(); }
+    } });
+    return true;
+  }
   let fameTab = 'mission';
   function fame() {
     const D = Core.data;
-    Fame.checkNew();
+    const badges = Fame.checkNew();
     const root = show('fame', 'page');
     const list = Core.mainEpisodes();
     const s = Fame.streaks();
@@ -547,6 +640,7 @@
     root.innerHTML = `
       ${testBanner()}
       <div class="page-head"><button class="back">←</button><h1>📜 나의 기록</h1></div>
+      ${D.appointedOn ? '<button class="btn ghost small" data-appoint>📜 임명장</button>' : ''}
       <div class="fame-stats">
         <div><b>${Core.starCount()}</b><span>별빛</span></div>
         <div><b>${mYes}<small>/${mGiven}</small></b><span>미션 완료</span></div>
@@ -560,7 +654,7 @@
       <section class="tabpane" data-pane="badge" ${fameTab === 'badge' ? '' : 'hidden'}>
       <div class="badges">${Fame.BADGES.map(b => {
         const has = D.badges && D.badges[b.id];
-        return `<div class="bd${has ? ' has' : ''}"><span>${has ? b.icon : '🔒'}</span><b>${esc(b.name)}</b><small>${esc(b.desc)}</small></div>`;
+        return `<button class="bd${has ? ' has' : ''}" data-badge="${b.id}"><span>${has ? b.icon : '🔒'}</span><b>${esc(b.name)}</b><small>${esc(b.desc)}</small></button>`;
       }).join('')}</div>
       </section>
       <section class="tabpane" data-pane="mission" ${fameTab === 'mission' ? '' : 'hidden'}>
@@ -575,6 +669,13 @@
       </section>
       <button class="btn ghost" id="rec-copy">📋 내 기록 복사하기</button>`;
     root.querySelector('.back').onclick = home;
+    const appoint = root.querySelector('[data-appoint]');
+    if (appoint) appoint.onclick = () => card('APPOINT');
+    root.querySelectorAll('[data-badge]').forEach(button => button.onclick = () => {
+      const id = button.dataset.badge;
+      if (D.badges?.[id]) card('B:' + id);
+      else Player.toast(Fame.BADGES.find(b => b.id === id).desc);
+    });
     root.querySelector('#rec-copy').onclick = async () => Player.toast((await Note.copyText(Note.recordText())) ? '복사했어요. 메모장이나 카톡에 붙여 넣어 보세요' : '복사가 안 되는 브라우저예요');
     root.querySelectorAll('.tab').forEach(t => t.onclick = () => {
       fameTab = t.dataset.tab;
@@ -583,6 +684,7 @@
       Sound.sfx('select');
     });
     bindTestReset(root);
+    notifyBadges(badges);
   }
 
   /* ---------- 설정 ---------- */
@@ -648,37 +750,38 @@
   async function card(epId) {
     const D = Core.data;
     const root = show('cardview', 'page');
-    const isH = /^H\d$/.test(epId), isF = epId === 'FIN';
-    const hasDiary = !isH && !isF && !!(D.diary[epId] && D.diary[epId].a);
-    const hasMission = !isH && !isF && !!D.mission[epId];
+    const isH = /^H\d$/.test(epId), isF = epId === 'FIN', isB = epId.startsWith('B:'), isA = epId === 'APPOINT';
+    const isEpisode = !isH && !isF && !isB && !isA;
+    const hasDiary = isEpisode && !!(D.diary[epId] && D.diary[epId].a);
+    const hasMission = isEpisode && !!D.mission[epId];
     const opt = { withDiary: false, missionDone: !!D.missionDone[epId] };
     root.innerHTML = `
-      <div class="page-head"><button class="back">←</button><h1>${isF ? '🌟 완주 카드' : isH ? '🕯️ 히든 카드 ' + epId[1] : '카드 No.' + Card.cardNo(epId)}</h1></div>
+      <div class="page-head"><button class="back">←</button><h1>${isA ? '등불지기 임명장' : isB ? '배지 인증 카드' : isF ? '🌟 완주 카드' : isH ? '🕯️ 히든 카드 ' + epId[1] : '카드 No.' + Card.cardNo(epId)}</h1></div>
       <div class="card-preview"><div class="loading">그리는 중…</div></div>
       <div class="card-opts">
         ${hasDiary ? `<label class="tg"><input type="checkbox" id="o-diary"> 내 묵상 한 줄 넣기</label>` : ''}
         ${hasMission ? `<label class="tg"><input type="checkbox" id="o-mission" ${opt.missionDone ? 'checked' : ''}> 미션 완료로 표시</label>` : ''}
       </div>
-      <button class="btn big" id="share">카톡으로 공유</button>
-      <button class="btn ghost" id="save">이미지 저장</button>
+      <button class="btn big" id="share" disabled>카톡으로 공유</button>
+      <button class="btn ghost" id="save" disabled>이미지 저장</button>
       <button class="btn ghost" id="home">홈으로</button>`;
-    root.querySelector('.back').onclick = cards;
+    root.querySelector('.back').onclick = isA ? fame : isB ? () => { fameTab = 'badge'; fame(); } : cards;
     root.querySelector('#home').onclick = home;
-    let cv, ticket = 0;
+    let ticket = 0;
     // 마지막으로 요청한 그림만 화면에 올린다 (버튼을 빨리 눌러도 옛 그림이 덮어쓰지 않게)
     const redraw = async () => {
       const my = ++ticket;
       const box = root.querySelector('.card-preview');
       box.classList.add('busy');
       try {
-        const c = isF ? await Card.drawFinale() : isH ? await Card.drawHidden(+epId[1]) : await Card.draw(epId, opt);
+        const cv = isA ? await Card.drawAppoint() : isB ? await Card.drawBadge(epId.slice(2)) : isF ? await Card.drawFinale() : isH ? await Card.drawHidden(+epId[1]) : await Card.draw(epId, opt);
         if (my !== ticket) return;
-        cv = c;
         box.innerHTML = '';
         const img = new Image();
         img.src = cv.toDataURL('image/png');
         img.alt = '인증 카드';
         box.appendChild(img);
+        bindImageActions(root, cv, epId);
       } catch (e) {
         if (my === ticket) box.innerHTML = '<div class="loading">그림을 만들지 못했어요. 다시 눌러 주세요.</div>';
       } finally { if (my === ticket) box.classList.remove('busy'); }
@@ -693,11 +796,16 @@
       redraw();
     };
     await redraw();
-    root.querySelector('#share').onclick = async () => {
+  }
+
+  function bindImageActions(root, cv, epId) {
+    const share = root.querySelector('#share'), save = root.querySelector('#save');
+    share.disabled = save.disabled = false;
+    share.onclick = async () => {
       const r = await Card.share(cv, epId);
-      if (r === 'fallback') saveSheet(cv, epId, true);
+      if (r === 'fallback' && root.isConnected) saveSheet(cv, epId, true);
     };
-    root.querySelector('#save').onclick = () => saveSheet(cv, epId, false);
+    save.onclick = () => saveSheet(cv, epId, false);
   }
 
   // 공유가 안 되는 곳(카톡 인앱 등)과 저장 버튼: 이미지를 크게 띄워 길게 눌러 저장하게 한다
@@ -710,7 +818,7 @@
       ${fromShare ? `<div class="sheet-note">${Core.isKakao ? '카톡 안에서는 바로 공유가 안 돼요.' : '이 브라우저에서는 바로 공유가 안 돼요.'} 저장한 뒤 반 단톡방에 올려 주세요.</div>` : ''}
       <img src="${url}" alt="인증 카드">
       <div class="sheet-note">${how}</div>
-      ${Core.isKakao ? '' : `<a class="btn" download="그밤-${epId}.png" href="${url}">파일로 내려받기</a>`}
+      ${Core.isKakao ? '' : `<a class="btn" download="${esc(Card.fileName(epId, true))}" href="${url}">파일로 내려받기</a>`}
       <button class="btn ghost">닫기</button>
     </div>`;
     document.body.appendChild(sheet);
@@ -723,7 +831,8 @@
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
-  window.App = { home, card, diary, go, cards, fame, codePage, versePage, finale };
+  window.App = { home, card, diary, go, cards, fame, codePage, versePage, finale, notifyBadges, bindImageActions };
   home();
+  if (Core.params.get('trailer') === '1' && window.Trailer) Trailer.play();
   restoreFromLink();
 })();

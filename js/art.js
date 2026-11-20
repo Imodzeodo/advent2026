@@ -713,6 +713,34 @@
     if (!fn) return `<svg viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="#0b1026"/><text x="180" y="270" fill="#888" text-anchor="middle" font-size="14">장면 '${name}' 없음</text></svg>`;
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${fn()}</svg>`;
   }
+  const ADVENT_COLORS = ['#5b2a9a', '#9b7bd4', '#f2b8cf', '#f7f4ee'];
+  let adventId = 0;
+  function advent({ lit = [], wreath = true } = {}) {
+    const glow = `advent-glow-${++adventId}`;
+    const branches = Array.from({ length: 40 }, (_, i) => {
+      const angle = i * Math.PI / 20;
+      const x = 160 + 122 * Math.cos(angle), y = 163 + 24 * Math.sin(angle);
+      return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="17" ry="6" transform="rotate(${(i * 9 + 55) % 180} ${x.toFixed(1)} ${y.toFixed(1)})" fill="${['#266446', '#438452', '#326f46'][i % 3]}"/>`;
+    }).join('');
+    const berries = [[52, 168], [69, 179], [105, 183], [142, 184], [191, 186], [231, 180], [267, 172]]
+      .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="#c95866"/><circle cx="${x + 5}" cy="${y + 2}" r="2.2" fill="#e17b82"/>`).join('');
+    const candles = ADVENT_COLORS.map((color, i) => {
+      const week = i + 1, x = 73 + i * 58, height = 100 - i * 10, top = 159 - height;
+      return `<g class="advent-candle${lit.includes(week) ? ' lit' : ''}" data-week="${week}">
+        <rect x="${x - 15}" y="${top}" width="30" height="${height}" rx="5" fill="${color}"${week === 4 ? ' stroke="#a8a5aa" stroke-width=".8"' : ''}/>
+        <path d="M${x - 9} ${top + 7}v${height - 14}" stroke="#fff" stroke-opacity=".26" stroke-width="3" stroke-linecap="round"/>
+        <path d="M${x} ${top + 1}v-8" stroke="#393039" stroke-width="2.2" stroke-linecap="round"/>
+        <g class="advent-flame"${lit.includes(week) ? '' : ' visibility="hidden"'}>
+          <circle cx="${x}" cy="${top - 16}" r="49" fill="url(#${glow})"/>
+          <path d="M${x} ${top - 35}c-2 11-9 13-8 21 1 9 15 9 16 0 1-5-3-11-8-21Z" fill="#ffc563"/>
+          <path d="M${x} ${top - 24}q-8 15 0 17 8-2 0-17" fill="#fff5d5"/>
+        </g></g>`;
+    }).join('');
+    return `<svg class="advent-art" viewBox="0 0 320 202" width="320" height="202" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs><radialGradient id="${glow}"><stop stop-color="#ffdc8e" stop-opacity=".67"/><stop offset="1" stop-color="#ffa642" stop-opacity="0"/></radialGradient></defs>
+      ${wreath ? `<ellipse cx="160" cy="163" rx="128" ry="28" fill="none" stroke="#173e36" stroke-width="16"/>${branches}` : ''}
+      ${candles}${wreath ? `<path d="M35 169Q160 204 285 169" fill="none" stroke="#3b7650" stroke-width="6" stroke-linecap="round"/>${berries}` : ''}</svg>`;
+  }
 
   // 선생님 얼굴 사진을 미리 받아 두기 (대사창 초상이 늦게 뜨지 않게)
   const faceCache = [];
@@ -725,5 +753,5 @@
   }
   if (window.FACES && Object.keys(window.FACES).length) setTimeout(preloadFaces, 200);
 
-  window.Art = { nameOf, setChapter: n => { A.ch = n; }, castOf, render, bigStar, lampShape, LAMP_DEF, person, portrait, EXPR };
+  window.Art = { nameOf, setChapter: n => { A.ch = n; }, castOf, render, bigStar, lampShape, LAMP_DEF, person, portrait, EXPR, advent };
 })();

@@ -313,6 +313,7 @@
     fire: t => { for (let i = 0; i < 9; i++) noise(t + Math.random() * 1.4, 0.05, 0.05, 2500, 1200); noise(t, 1.5, 0.03, 300, 500); },
     hammer: t => { thud(t, 220, 0.25, 0.06); bell(76, t, 0.03); },
     plane: t => noise(t, 0.45, 0.09, 2600, 900),
+    match: t => { noise(t, 0.16, 0.14, 3000, 1600); noise(t + 0.18, 0.27, 0.075, 1800, 1050); },
     sheep: t => { const o = ctx.createOscillator(), v = ctx.createOscillator(), vg = ctx.createGain(), g = ctx.createGain(), f = ctx.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = 420; v.frequency.value = 22; vg.gain.value = 18; v.connect(vg); vg.connect(o.frequency); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 2; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.07, t + 0.05); g.gain.linearRampToValueAtTime(0.05, t + 0.4); g.gain.linearRampToValueAtTime(0, t + 0.6); o.connect(f); f.connect(g); g.connect(out(sfxBus, 1, 0.3)); o.start(t); v.start(t); o.stop(t + 0.65); v.stop(t + 0.65); },
     angel: t => { pad([72, 76, 79, 84], t, 2.2, 0.03); [84, 88, 91, 96].forEach((m, i) => bell(m, t + 0.15 * i, 0.05)); },
     baby: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(660, t + 0.25); o.frequency.linearRampToValueAtTime(480, t + 0.7); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.08); g.gain.linearRampToValueAtTime(0, t + 0.75); o.connect(g); g.connect(out(sfxBus, 1, 0.5)); o.start(t); o.stop(t + 0.8); }
@@ -369,25 +370,35 @@
   const TONE_SONG = { ch0: 'night', ch1: 'veni', ch2: 'child', ch3: 'joy', ch4: 'silent', end: 'silent', home: 'night' };
   /* ---------- 핵심 장면 음성 (audio/*.mp3, 잔향을 입혀서) ---------- */
   const vcache = {};
+  window.VOICES_EXTRA = [
+    'tr-1', 'tr-2', 'tr-3', 'tr-4', 'tr-5', 'tr-6', 'init-1', 'code-1',
+    'lamb-1', 'lamb-2', 'field-1', 'field-2', 'field-3', 'field-4', 'field-5'
+  ];
   function preload(name) {
     if (!ctx) return Promise.resolve(null);
+    if (/^(tr|init|code|lamb|field)-/.test(name) && !window.VOICES_EXTRA.includes(name)) return Promise.resolve(null);
     if (!vcache[name]) {
       vcache[name] = fetch('audio/' + name + '.mp3').then(r => r.ok ? r.arrayBuffer() : null)
         .then(b => b && new Promise((res, rej) => ctx.decodeAudioData(b, res, rej))).catch(() => null);
     }
     return vcache[name];
   }
-  let curVoice = null;
+  let curVoice = null, voiceRequest = 0;
   function stopVoice() {
+    voiceRequest++;
+    fadeVoice();
+  }
+  function fadeVoice() {
     if (!curVoice || !ctx) return;
     const { s, g } = curVoice; curVoice = null;
     try { g.gain.setTargetAtTime(0, ctx.currentTime, 0.08); s.stop(ctx.currentTime + 0.4); } catch (e) { /* 무시 */ }
   }
   async function voice(name) {
-    if (!on() || !ctx || ctx.state !== 'running') return;
+    if (!on() || !ctx || ctx.state !== 'running') return null;
+    const request = ++voiceRequest;
     const buf = await preload(name);
-    if (!buf || !ctx) return;
-    stopVoice();
+    if (!buf || request !== voiceRequest || !on() || ctx.state !== 'running') return null;
+    fadeVoice();
     const s = ctx.createBufferSource(); s.buffer = buf;
     const g = ctx.createGain(); g.gain.value = /^n-/.test(name) ? 1.0 : 1.1;
     curVoice = { s, g };

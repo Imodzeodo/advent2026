@@ -266,8 +266,9 @@
   /* ---- 어둠 속 등불로 찾기 ---- */
   G['어둠찾기'] = (box, api, what) => {
     const icon = what === '문' ? '🚪' : '🐑';
-    const R = Math.min(120, 64 + (Core.data.oil || 0) * 5);
-    box.innerHTML = head(what === '문' ? '베들레헴 가는 길' : '잃은 양 찾기', `손가락으로 어둠을 비춰 봐 <small>(등불 기름 ${Core.data.oil || 0}방울만큼 밝아)</small>`) +
+    const earned = Core.data.oilEarned || 0;
+    const R = Math.min(120, 64 + earned * 5);
+    box.innerHTML = head(what === '문' ? '베들레헴 가는 길' : '잃은 양 찾기', `손가락으로 어둠을 비춰 봐 <small>(지금까지 모은 기름 ${earned}방울)</small>`) +
       `<div class="dark-field"><span class="dark-target">${icon}</span><div class="dark-mask"></div></div>`;
     const f = box.querySelector('.dark-field'), m = box.querySelector('.dark-mask'), t = box.querySelector('.dark-target');
     // 처음 불빛(아래 가운데)과 멀리, 위쪽 좌우 어딘가에 숨긴다
@@ -535,7 +536,7 @@
   G['짝'] = (box, api, key) => {
     const P = PAIRS[key] || PAIRS['1'];
     const deck = P.flatMap((p, i) => [i, i]).sort(() => Math.random() - 0.5);
-    box.innerHTML = head('🃏 기억의 짝', '같은 그림 두 장을 찾아 뒤집어 봐') + `<div class="mm-grid">${deck.map((p, k) => `<button class="mm" data-p="${p}" data-k="${k}"><span class="mm-back">✦</span><span class="mm-front">${P[p][0]}<small>${P[p][1]}</small></span></button>`).join('')}</div><div class="mm-count">0번 뒤집음</div>`;
+    box.innerHTML = head('🖼️ 기억의 짝', '같은 그림 두 장을 찾아 뒤집어 봐') + `<div class="mm-grid">${deck.map((p, k) => `<button class="mm" data-p="${p}" data-k="${k}"><span class="mm-back">✦</span><span class="mm-front">${P[p][0]}<small>${P[p][1]}</small></span></button>`).join('')}</div><div class="mm-count">0번 뒤집음</div>`;
     let open = [], moves = 0, matched = 0, lock = false;
     box.querySelectorAll('.mm').forEach(c => c.onclick = () => {
       if (lock || c.classList.contains('up')) return;

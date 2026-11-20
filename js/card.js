@@ -271,42 +271,10 @@
       ctx.fillStyle = `rgba(255,240,210,${0.06 + r() * 0.3})`;
       ctx.beginPath(); ctx.arc(r() * W, r() * H, 1 + r() * 2, 0, Math.PI * 2); ctx.fill();
     }
-    // 대림 화환
-    const cx = W / 2, cy = 560;
-    for (let i = 0; i < 70; i++) {
-      const t = i / 70 * Math.PI * 2;
-      ctx.fillStyle = i % 3 ? '#2f6b3a' : '#3f8a4a';
-      ctx.beginPath(); ctx.ellipse(cx + Math.cos(t) * 300, cy + 120 + Math.sin(t) * 90, 46, 22, t, 0, Math.PI * 2); ctx.fill();
-    }
-    for (let i = 0; i < 9; i++) {
-      const t = i / 9 * Math.PI * 2 + 0.3;
-      ctx.fillStyle = '#c0283a';
-      ctx.beginPath(); ctx.arc(cx + Math.cos(t) * 290, cy + 120 + Math.sin(t) * 86, 11, 0, Math.PI * 2); ctx.fill();
-    }
-    // 초 넷: 보라·보라·분홍·보라, 켜진 개수 = n
-    const colors = ['#6b3fa0', '#6b3fa0', '#e58fb0', '#6b3fa0'];
-    const xs = [cx - 210, cx - 70, cx + 70, cx + 210];
-    const ys = [cy + 40, cy + 10, cy + 10, cy + 40];
-    xs.forEach((x, i) => {
-      const lit = i < n, top = ys[i] - 230;
-      if (lit) {
-        const g = ctx.createRadialGradient(x, top - 40, 0, x, top - 40, 150);
-        g.addColorStop(0, 'rgba(255,220,140,.55)'); g.addColorStop(1, 'rgba(255,220,140,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, top - 40, 150, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.fillStyle = grad(ctx, x - 38, 0, x + 38, 0, [colors[i], '#fff', colors[i]].map((c, k) => k === 1 ? 'rgba(255,255,255,.35)' : c));
-      ctx.fillStyle = colors[i];
-      rr(ctx, x - 38, top, 76, ys[i] - top, 10); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(x - 26, top + 8, 12, ys[i] - top - 16);
-      ctx.strokeStyle = '#2a1a10'; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, top - 18); ctx.stroke();
-      if (lit) {
-        ctx.fillStyle = '#ffcf6b';
-        ctx.beginPath(); ctx.moveTo(x - 14, top - 18); ctx.quadraticCurveTo(x - 16, top - 60, x, top - 92); ctx.quadraticCurveTo(x + 16, top - 60, x + 14, top - 18); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#fff6d8';
-        ctx.beginPath(); ctx.moveTo(x - 6, top - 20); ctx.quadraticCurveTo(x - 7, top - 44, x, top - 62); ctx.quadraticCurveTo(x + 7, top - 44, x + 6, top - 20); ctx.closePath(); ctx.fill();
-      }
-    });
+    const cx = W / 2;
+    const svg = Art.advent({ lit: Array.from({ length: n }, (_, i) => i + 1) });
+    const wreath = await within(loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)), 2000, null);
+    if (wreath) ctx.drawImage(wreath, 110, 220, 860, 543);
     // 글자
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffe3a3'; ctx.font = `700 38px ${SANS}`;
@@ -325,6 +293,71 @@
     ctx.fillText(`${D.nickname || '친구'}${D.ban ? ' · ' + D.ban : ''}`, cx, H - P - 100);
     ctx.font = `400 28px ${SANS}`; ctx.fillStyle = 'rgba(255,255,255,.7)';
     ctx.fillText(`${Core.dateLabel(code.from, true)} 주일 · 그 밤을 향하여`, cx, H - P - 54);
+    ctx.restore();
+    return cv;
+  }
+
+  const kstDate = date => new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(date));
+
+  async function drawBadge(id) {
+    const badge = Fame.BADGES.find(b => b.id === id);
+    const D = Core.data, W = 1080, H = 1350;
+    if (!badge || !D.badges?.[id]) throw new Error('잠긴 배지');
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d'), x = W / 2;
+    await fontsReady();
+    ctx.fillStyle = grad(ctx, 0, 0, W, H, STYLE.ch4.frame);
+    rr(ctx, 0, 0, W, H, 54); ctx.fill();
+    ctx.save(); rr(ctx, 26, 26, W - 52, H - 52, 38); ctx.clip();
+    ctx.fillStyle = grad(ctx, 0, 0, 0, H, ['#080c24', '#202747', '#0a1129']);
+    ctx.fillRect(0, 0, W, H);
+    const r = seeded(213);
+    for (let i = 0; i < 100; i++) {
+      ctx.fillStyle = `rgba(255,235,190,${0.1 + r() * .44})`;
+      ctx.beginPath(); ctx.arc(r() * W, r() * H, 1 + r() * 2.6, 0, Math.PI * 2); ctx.fill();
+    }
+    const halo = ctx.createRadialGradient(x, 485, 40, x, 485, 350);
+    halo.addColorStop(0, 'rgba(255,220,145,.52)'); halo.addColorStop(1, 'rgba(255,220,145,0)');
+    ctx.fillStyle = halo; ctx.fillRect(100, 135, 880, 700);
+    ctx.textAlign = 'center';
+    ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#f7dfa9'; ctx.fillText('배지 인증 카드', x, 155);
+    ctx.font = `244px ${EMOJI}`; ctx.textBaseline = 'middle'; ctx.fillText(badge.icon, x, 498);
+    ctx.textBaseline = 'alphabetic'; ctx.font = `700 82px ${SERIF}`; ctx.fillStyle = '#fff4d8'; ctx.fillText(badge.name, x, 788, 900);
+    ctx.font = `400 40px ${SANS}`; ctx.fillStyle = '#e8def7'; ctx.fillText(badge.desc, x, 865, 900);
+    ctx.font = `400 33px ${SANS}`; ctx.fillStyle = '#f7dfa9'; ctx.fillText(kstDate(D.badges[id]), x, 946);
+    ctx.font = `700 43px ${SANS}`; ctx.fillStyle = '#fff8ed'; ctx.fillText([D.nickname || '친구', D.ban].filter(Boolean).join(' · '), x, 1100, 900);
+    ctx.font = `400 30px ${SANS}`; ctx.fillStyle = '#dacbdc'; ctx.fillText(window.SITE?.label || '그 밤을 향하여', x, 1240, 900);
+    ctx.restore();
+    return cv;
+  }
+
+  async function drawAppoint() {
+    const D = Core.data, W = 1080, H = 1350;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d'), x = W / 2;
+    await fontsReady();
+    ctx.fillStyle = grad(ctx, 0, 0, W, H, ['#523d56', '#b47e47', '#503a50']);
+    rr(ctx, 0, 0, W, H, 54); ctx.fill();
+    ctx.save(); rr(ctx, 35, 35, W - 70, H - 70, 30); ctx.clip();
+    ctx.fillStyle = grad(ctx, 0, 40, W, H, ['#f9e7bd', '#fff2d3', '#dec291']); ctx.fillRect(0, 0, W, H);
+    const r = seeded(129);
+    ctx.fillStyle = '#7b522317';
+    for (let i = 0; i < 2800; i++) ctx.fillRect(r() * W, r() * H, 1 + 2 * r(), 1 + 2 * r());
+    ctx.strokeStyle = '#a16b41'; ctx.lineWidth = 3;
+    rr(ctx, 69, 69, W - 138, H - 138, 20); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillStyle = '#715039'; ctx.font = `400 35px ${SANS}`; ctx.fillText('그 밤을 향하여', x, 181);
+    ctx.fillStyle = '#412a3c'; ctx.font = `700 84px ${SERIF}`; ctx.fillText('등불지기 임명장', x, 334, 860);
+    ctx.fillStyle = '#50313c'; ctx.font = `700 60px ${SERIF}`;
+    ctx.fillText([D.ban, D.nickname || '친구'].filter(Boolean).join(' '), x, 505, 830);
+    ctx.fillStyle = '#5c3a2d'; ctx.font = `400 42px ${SERIF}`;
+    ctx.fillText('위 사람을 그 밤을 지키는', x, 610);
+    ctx.fillText('등불지기로 임명합니다.', x, 668);
+    ctx.font = `700 37px ${SERIF}`; ctx.fillText('“깨어 있으라” (막 13:33)', x, 775);
+    ctx.font = `400 34px ${SANS}`; ctx.fillText(kstDate(D.appointedOn || Core.nowKST().date), x, 871);
+    const svg = `<svg viewBox="-42 -66 105 94" width="300" height="270" xmlns="http://www.w3.org/2000/svg"><defs>${Art.LAMP_DEF}</defs>${Art.lampShape(0, 0, 1)}</svg>`;
+    const lamp = await within(loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)), 1800, null);
+    if (lamp) ctx.drawImage(lamp, x - 145, 903, 290, 261);
+    ctx.fillText(window.SITE?.label || '그 밤을 향하여', x, 1217, 820);
     ctx.restore();
     return cv;
   }
@@ -376,9 +409,19 @@
   }
 
   const toBlob = cv => new Promise(res => cv.toBlob(res, 'image/png'));
+  function fileName(id, download = false) {
+    if (id.startsWith('B:')) return `그밤-배지-${id.slice(2)}.png`;
+    if (id === 'APPOINT') return '그밤-등불지기-임명장.png';
+    if (id === 'FIELD') return '그밤-나의-들판.png';
+    if (download) return `그밤-${id}.png`;
+    if (id === 'FIN') return '그밤-완주.png';
+    if (/^H\d$/.test(id)) return `그밤-히든${id[1]}.png`;
+    return `그밤-No${cardNo(id)}.png`;
+  }
   async function share(cv, epId) {
     const blob = await toBlob(cv);
-    const file = new File([blob], epId === 'FIN' ? '그밤-완주.png' : /^H\d$/.test(epId) ? `그밤-히든${epId[1]}.png` : `그밤-No${cardNo(epId)}.png`, { type: 'image/png' });
+    if (!blob) return 'fallback';
+    const file = new File([blob], fileName(epId), { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file] }); return 'shared'; }
       catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
@@ -386,5 +429,6 @@
     return 'fallback';
   }
 
-  window.Card = { draw, drawHidden, drawFinale, share, toBlob, STYLE, cardNo };
+  const drawField = async () => window.Field?.drawCard();
+  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, share, toBlob, fileName, STYLE, cardNo };
 })();

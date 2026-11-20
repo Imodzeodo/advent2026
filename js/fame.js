@@ -66,7 +66,10 @@
     { id: 'diary10', icon: '📔', name: '일기 작가', desc: '일기 10편을 썼어요', ok: () => count(D().diary) >= 10 },
     { id: 'medi10', icon: '📖', name: '말씀 묵상가', desc: '말씀 묵상을 10번 적었어요', ok: () => Object.values(D().medi || {}).filter(m => m.a.some(Boolean)).length >= 10 },
     { id: 'codes4', icon: '🕯️', name: '네 개의 초', desc: '주일 암호 4개를 모두 찾았어요', ok: () => Object.keys(D().codes || {}).length >= 4 },
-    { id: 'oil10', icon: '🫙', name: '기름 가득', desc: '등불 기름 10방울', ok: () => (D().oil || 0) >= 10 }
+    { id: 'oil10', icon: '🫙', name: '기름 가득', desc: '등불 기름 10방울', ok: () => D().oilEarned >= 10 },
+    { id: 'shepherd', icon: '🐑', name: '좋은 목자', desc: '양 5마리 돌보기', ok: () => (window.Field?.stats().sheep || 0) >= 5 },
+    { id: 'field7', icon: '🌾', name: '한 주 내내', desc: '7일 꼴 주기', ok: () => (window.Field?.stats().careDays || 0) >= 7 },
+    { id: 'found', icon: '🔦', name: '찾았다!', desc: '잃은 양 찾기', ok: () => (window.Field?.stats().found || 0) >= 1 }
   ].filter(b => b.id !== 'codes4' || (window.CODES || []).length);
 
   // 새로 딴 배지 목록을 돌려주고 저장
@@ -90,6 +93,19 @@
   }
 
   // 주일 암호: 띄어쓰기·문장부호 무시, .dev/make-code.py 와 같은 방식
+  const CODE_ITEMS = ['보라 방울', '은 종', '분홍 리본', '금빛 별 목걸이'];
+  function deliverCodeItems() {
+    if (!window.Field) return;
+    const pending = D().codeItems || {};
+    for (const id of Object.keys(pending)) {
+      if (!pending[id]) continue;
+      const n = pending[id];
+      delete pending[id];
+      Field.giveItem(id, n);
+      Core.save();
+    }
+  }
+
   function codeHash(s) {
     s = '그밤:' + String(s).normalize('NFC').toLowerCase().replace(/[\s.,!?~·\-'"]/g, '');
     let h = 0x811c9dc5;
@@ -101,12 +117,20 @@
     const h = codeHash(word);
     const c = (window.CODES || []).find(x => x.hash === h);
     if (!c) return { ok: false };
-    if (!Core.PREVIEW_ALL && today < c.from) return { ok: false, early: c };
+    if (!Core.IS_TEST && today < c.from) return { ok: false, early: c };
     const d = D(); d.codes = d.codes || {};
     const isNew = !d.codes[c.n];
-    if (isNew) { d.codes[c.n] = Date.now(); Core.save(); }
-    return { ok: true, code: c, isNew };
+    const item = CODE_ITEMS[c.n - 1];
+    if (isNew) {
+      d.codes[c.n] = Date.now();
+      Core.addOil(5, 'code');
+      d.codeItems = d.codeItems || {};
+      d.codeItems[item] = (d.codeItems[item] || 0) + 1;
+      deliverCodeItems();
+      Core.save();
+    }
+    return { ok: true, code: c, isNew, item };
   }
 
-  window.Fame = { BADGES, checkNew, streaks, missionYes, missionStatus, onTime, tryCode, codeHash };
+  window.Fame = { BADGES, checkNew, streaks, missionYes, missionStatus, onTime, tryCode, codeHash, deliverCodeItems };
 })();

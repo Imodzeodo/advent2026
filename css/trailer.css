@@ -1,0 +1,36 @@
+/* 예고편 */
+.tr-overlay { position: fixed; inset: 0; margin: 0; padding: 0; width: 100%; height: 100%; max-width: none; max-height: none; border: 0; background: #050713; color: var(--ink); overflow: hidden; }
+.tr-overlay::backdrop { background: #050713; }
+.tr-stage { position: relative; width: min(100%, 480px); height: 100%; margin: auto; isolation: isolate; overflow: hidden; }
+.tr-skip { position: absolute; z-index: 5; top: calc(24px + var(--safe-t)); right: 15px; min-height: 44px; padding: 0 13px; border: 1px solid #fff1d664; border-radius: 24px; background: #0a0b20bb; cursor: pointer; font-size: 13px; }
+.tr-skip:focus-visible { outline: 1px solid #ffe7b4; outline-offset: 2px; }
+.tr-progress { display: flex; gap: 4px; position: absolute; z-index: 4; top: calc(13px + var(--safe-t)); left: 16px; right: 16px; }
+.tr-progress span { position: relative; flex: 1; height: 2px; overflow: hidden; border-radius: 4px; background: #e6dff23d; }
+.tr-progress span::after { content: ""; position: absolute; inset: 0; transform: scaleX(0); transform-origin: left; background: #ffe3a9; }
+.tr-progress span.seen::after { transform: scaleX(1); }
+.tr-progress span.current::after { animation: tr-meter var(--duration) linear both; }
+.tr-frame, .tr-art, .tr-shade { position: absolute; inset: 0; overflow: hidden; }
+.tr-frame { background: #070a19; }
+.tr-art svg { width: 100%; height: 100%; display: block; }
+.tr-frame.tr-scene .tr-art { animation: tr-pan var(--duration) ease-out both; }
+.tr-shade { background: linear-gradient(180deg, #0507137a, transparent 23%, transparent 64%, #040510ed 98%); pointer-events: none; }
+.tr-scene-1 .tr-art #farstar { animation: tr-star 2.4s ease-in-out infinite alternate; }
+.tr-caption { position: absolute; inset: auto 18px calc(34px + var(--safe-b)); text-align: center; }
+.tr-caption p { margin: 0; color: #fff5dc; font: 700 clamp(15px, 4.5vw, 22px)/1.55 var(--serif); text-shadow: 0 2px 9px #0b0919; animation: tr-reveal .62s ease-out both; }
+.tr-candles { background: radial-gradient(90% 52% at 50% 54%, #3d3157, #090b20 83%); }
+.tr-candles .tr-art { inset: 1% 3% 15%; }
+.tr-flame { animation: tr-light .55s var(--light) both; }
+.tr-caption strong { display: block; margin-top: 9px; color: #ffe2a4; font: 700 clamp(32px, 10vw, 48px)/1.15 var(--serif); animation: tr-reveal .6s 3s ease-out both; }
+.tr-finale .tr-art { opacity: .72; }
+.tr-wake-copy, .tr-title { position: absolute; inset: auto 24px 15%; text-align: center; }
+.tr-title { bottom: 14%; animation: tr-reveal .7s ease-out both; }
+.tr-wake-copy h1, .tr-title h1 { margin: 0 0 14px; color: #ffe7b4; font: 700 clamp(28px, 8vw, 44px)/1.18 var(--serif); text-shadow: 0 0 30px #ffcb7644; }
+.tr-title h1 { font-size: clamp(48px, 15vw, 75px); letter-spacing: -.04em; }
+.tr-title p { margin: 0 0 20px; color: #e3d6c5; font-size: 14px; }
+.tr-title .btn, .tr-wake-copy .btn { margin: 0 auto; max-width: 210px; }
+@keyframes tr-pan { from { opacity: .25; transform: scale(1.13) translateY(1.4%); } 15% { opacity: 1; } to { opacity: 1; transform: scale(1.035) translateY(-.4%); } }
+@keyframes tr-meter { to { transform: scaleX(1); } }
+@keyframes tr-star { from { opacity: .36; } to { opacity: 1; } }
+@keyframes tr-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes tr-light { from { opacity: 0; } 65% { opacity: .82; } to { opacity: 1; } }
+.no-motion .tr-art, .no-motion .tr-caption *, .no-motion .tr-title, .no-motion .tr-flame { animation: none; }
