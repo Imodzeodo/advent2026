@@ -20,6 +20,10 @@
     window.scrollTo(0, 0);
     return document.getElementById(id);
   }
+  async function playTrailer(options) {
+    await window.Field?.prepareDex();
+    return Trailer.play(options);
+  }
 
   function testBanner() {
     if (!Core.IS_TEST) return '';
@@ -127,16 +131,17 @@
     if (s) s.onclick = async () => {
       s.disabled = true;
       if (window.Trailer && !D.trailerSeen && !window.__fast) {
-        await Trailer.play({ fromStart: true });
+        await playTrailer({ fromStart: true });
         D.trailerSeen = true; Core.save();
       }
       if (root.isConnected) go('0');
     };
     const trailer = root.querySelector('[data-trailer]');
-    if (trailer) trailer.onclick = () => Trailer.play();
+    if (trailer) trailer.onclick = () => playTrailer();
     bindTodayMission(root);
     bindSky(root);
     window.Field?.bindPanel(root);
+    window.Field?.prewarm(root);
     if (homeScroll) { const y = homeScroll; requestAnimationFrame(() => window.scrollTo(0, y)); setTimeout(() => window.scrollTo(0, y), 60); }
     const d = root.querySelector('#diary'); if (d) d.onclick = diary;
     const st = root.querySelector('#settings'); if (st) st.onclick = settings;
@@ -629,7 +634,12 @@
     return true;
   }
   let fameTab = 'mission';
-  function fame() {
+  async function fame() {
+    if (window.Field?.has() && !window.SHEEP_DEX) {
+      const from = app.firstChild;
+      await Field.prepareDex();
+      if (app.firstChild !== from) return;
+    }
     const D = Core.data;
     const badges = Fame.checkNew();
     const root = show('fame', 'page');
@@ -843,7 +853,7 @@
   });
   if (!openSharedField()) {
     home();
-    if (Core.params.get('trailer') === '1' && window.Trailer) Trailer.play();
+    if (Core.params.get('trailer') === '1' && window.Trailer) playTrailer();
     restoreFromLink();
   }
 })();

@@ -14,6 +14,7 @@
 .field-panel h2, .field-header h1, .field-sheet h2 { margin: 0; font: 700 22px/1.25 var(--serif); }
 .field-panel p { margin: 5px 0 9px; color: var(--dim); font-size: 13px; line-height: 1.45; }
 .field-panel small { color: var(--gold); font-size: 12px; }
+.field-panel .field-sunday-strip { grid-column: 1 / -1; margin: 0; padding: 7px 14px; background: #443746; color: #ffe6ae; text-align: center; }
 .field-dot { display: inline-block; width: 7px; height: 7px; margin-right: 3px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 9px var(--gold); }
 .field-page { background: linear-gradient(168deg, #181e3b 0%, #0b0e22 85%); }
 .field-header { display: flex; align-items: center; gap: 7px; margin: 6px 0 15px; }
@@ -196,6 +197,8 @@
 .field-page.patrolling .field-top, .field-page.patrolling .field-manage { opacity: .25; }
 .field-visit-banner { display: flex; align-items: center; gap: 8px; width: 100%; margin: -6px 0 10px; padding: 10px 14px; border: 1px solid rgba(255, 210, 122, .55); border-radius: 14px; background: linear-gradient(90deg, rgba(255, 210, 122, .18), rgba(255, 210, 122, .05)); color: #ffeac0; font-size: 14px; text-align: left; animation: glowpulse 3s ease-in-out infinite; }
 .field-visit-banner b { margin-left: auto; color: var(--gold); font-weight: 700; }
+.field-visitor.react-legend i { background: #ffe08a; color: #32253b; box-shadow: 0 0 18px #ffd27a; }
+.field-visitor.react-legend svg { filter: drop-shadow(0 0 8px #ffd27a); }
 .field-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 2px 0 6px; }
 .field-act { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 11px 4px 10px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 14px; background: rgba(255, 255, 255, .06); color: var(--ink, #eee); font-size: 12.5px; line-height: 1.2; }
 .field-act span { font-size: 22px; line-height: 1; }
@@ -265,6 +268,11 @@
 .field-visitor-card .field-skill { text-align: left; }
 .field-verse { margin: 12px 0 0; padding: 10px 14px; border-left: 3px solid var(--gold); border-radius: 0 10px 10px 0; background: rgba(255, 210, 122, .07); color: #f3ead2; font: 400 14px/1.6 var(--serif); text-align: left; }
 .field-verse cite { display: block; margin-top: 4px; color: var(--gold); font: 400 12px/1.3 inherit; }
+.field-daily-word { margin: 0 0 12px; padding: 0 11px 9px; border: 1px solid #ffd27a55; border-radius: 12px; background: #292539; }
+.field-word-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.field-word-head h2 { margin: 0; color: var(--gold); font: 700 14px/1.35 var(--serif); }
+.field-word-close { min-height: 42px; flex: none; }
+.field-daily-word .field-verse { margin: 0; padding: 0; border: 0; background: none; }
 .field-adopt { width: 100%; margin-top: 14px; }
 .field-later { width: 100%; margin-top: 8px; }
 .field-name-art { width: 150px; margin: 0 auto 6px; }
@@ -303,6 +311,8 @@
 .field-patrol-go { width: 100%; }
 .field-patrol-no { color: var(--dim); font-size: 13px; text-align: center; }
 .field-patrol-result { text-align: center; }
+.field-patrol-rating { font: 700 35px/1.15 var(--serif); color: #ffe08a; letter-spacing: .16em; padding-left: .16em; }
+.field-patrol-rating .empty-stars { color: #ada3be; }
 .field-patrol-score { margin: 6px 0 0; font: 800 64px/1 var(--serif); color: #ffe08a; text-shadow: 0 0 26px rgba(255, 200, 100, .45); }
 .field-patrol-score span { font-size: 26px; color: var(--dim); }
 .field-patrol-result > p:not(.field-patrol-score) { margin: 4px 0 12px; color: var(--dim); font-size: 13px; }

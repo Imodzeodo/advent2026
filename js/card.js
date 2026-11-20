@@ -420,12 +420,13 @@
     if (/^H\d$/.test(id)) return `그밤-히든${id[1]}.png`;
     return `그밤-No${cardNo(id)}.png`;
   }
-  async function share(cv, epId) {
-    const blob = await toBlob(cv);
+  async function share(cv, epId, text, preparedBlob) {
+    const blob = preparedBlob || await toBlob(cv);
     if (!blob) return 'fallback';
     const file = new File([blob], fileName(epId), { type: 'image/png' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file] }); return 'shared'; }
+    const payload = text ? { files: [file], text } : { files: [file] };
+    if (navigator.canShare && navigator.canShare(payload)) {
+      try { await navigator.share(payload); return 'shared'; }
       catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
     }
     return 'fallback';
@@ -515,16 +516,19 @@
     ctx.fillStyle = lamp; ctx.fillRect(0, 60, W, 860);
     ctx.textAlign = 'center';
     ctx.font = `700 38px ${SANS}`; ctx.fillStyle = '#f7dfa9'; ctx.fillText('🔦 오늘 밤 순찰 기록', x, 150);
-    ctx.font = `800 260px ${SERIF}`; ctx.fillStyle = '#ffe08a'; ctx.fillText(String(rec.penned ?? 0), x - 70, 470);
-    ctx.font = `700 110px ${SERIF}`; ctx.fillStyle = 'rgba(255,240,210,.65)'; ctx.fillText('/' + (rec.total ?? 0), x + 150, 470);
+    ctx.font = `700 70px ${SANS}`; ctx.fillStyle = '#ffe08a'; ctx.fillText('★'.repeat(rec.stars || 0) + '☆'.repeat(3 - (rec.stars || 0)), x, 268);
+    ctx.font = `800 178px ${SERIF}`; ctx.fillStyle = '#fff0bd'; ctx.fillText(`${rec.penned ?? 0}/${rec.total ?? 0}`, x, 477, 875);
     ctx.font = `400 40px ${SANS}`; ctx.fillStyle = '#efe7d2'; ctx.fillText(rec.penned === rec.total ? '한 마리도 잃지 않고 다 지켰어!' : '우리 안으로 데려온 양', x, 560);
     const img = await portraitImg(rec.leaderSpecies || 'cotton', { level: 6 });
     if (img) ctx.drawImage(img, x - 170, 600, 340, 340);
     ctx.font = `700 40px ${SANS}`; ctx.fillStyle = '#fff4d8'; ctx.fillText(`순찰 대장 ⭐ ${rec.leader || ''}`, x, 985, 940);
     ctx.font = `400 34px ${SANS}`; ctx.fillStyle = '#e6dcc4';
-    ctx.fillText(`🐺 쫓아낸 늑대 ${rec.scared || 0}마리${rec.best ? ' · 🏆 최고 기록!' : ''}`, x, 1045, 940);
+    const highlights = [`🐺 쫓아낸 늑대 ${rec.scared || 0}마리`];
+    if (rec.timeLeft) highlights.push(`⏱ ${rec.timeLeft}초 남음`);
+    if (rec.best) highlights.push('🏆 최고 기록!');
+    ctx.fillText(highlights.join(' · '), x, 1045, 940);
     ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#fff8ed';
-    ctx.fillText([D.nickname || '친구', D.ban].filter(Boolean).join(' · ') + ' · ' + kstDate(Date.now()), x, H - 110, 940);
+    ctx.fillText([D.nickname || '친구', D.ban].filter(Boolean).join(' · ') + ' · ' + kstDate(rec.date || Date.now()), x, H - 110, 940);
     ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.7)'; ctx.fillText('"밤에 자기 양 떼를 지키더니" (눅 2:8)', x, H - 64, 940);
     ctx.restore();
     return cv;

@@ -17,6 +17,12 @@
     { target: '.field-market', title: '🏪 장터', text: '장터에서 산 물건을 놓으면 새 양이 올지도 몰라.', action: '장터 보기' },
     { target: '.field-patrol', title: '🔦 밤 순찰', text: '등불을 비춰 양을 우리까지 데려가 봐.', action: '순찰 보기' }
   ];
+  const SHEPHERD_VERSES = [
+    { verse: '시 23:1' }, { verse: '시 23:2' }, { verse: '시 23:3' }, { verse: '시 23:4' },
+    { verse: '요 10:3' }, { verse: '요 10:11' }, { verse: '요 10:14' }, { verse: '사 40:11' },
+    { verse: '눅 15:4' }, { verse: '겔 34:12', label: '에스겔 34:12' }, { verse: '겔 34:16', label: '에스겔 34:16' },
+    { verse: '시 100:3' }, { verse: '벧전 2:25', label: '베드로전서 2:25' }, { verse: '계 7:17', label: '요한계시록 7:17' }
+  ];
   const PRICE = { common: 3, rare: 6, legend: 0 };
   const RARITY = { common: '일반', rare: '희귀', legend: '전설' };
   const PATROL_TYPES = ['patrolTime', 'patrolSpeed', 'lamp'];
@@ -44,6 +50,7 @@
   const VIEW_LIMIT = 16384;             // 공개 들판 한 장의 최대 바이트
 
   const date = () => Core.nowKST().date;
+  const isSunday = day => new Date(day).getUTCDay() === 0;
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[c]);
@@ -57,6 +64,9 @@
   const spec = id => (window.SHEEP_DEX?.byId || {})[id] || window.SHEEP_DEX?.byId?.cotton || FALLBACK;
   // 주일 암호가 없는 판(main)에서는 금빛 양털(codes4)을 도감에서 뺀다
   const dexList = () => DEX().filter(s => s.attract !== 'cond:codes4' || (window.CODES || []).length);
+  const dexTotal = () => window.SHEEP_DEX ? dexList().length : MAX_SHEEP - ((window.CODES || []).length ? 0 : 1);
+  const fieldScript = new URL(document.currentScript.src);
+  const dexScript = new URL('sheepdex.js' + fieldScript.search, fieldScript);
   const stage = s => { const lv = s.level || 1; return lv >= 10 ? 3 : lv >= 5 ? 2 : lv >= 2 ? 1 : 0; };
   const stageName = s => STAGES[stage(s)];
   function sheepSound(sheep) {
@@ -110,7 +120,7 @@
     const today = date();
     if (!Array.isArray(f.visitors)) f.visitors = [];
     const seen = new Set();
-    f.visitors = f.visitors.filter(v => v && v.until >= today && (window.SHEEP_DEX?.byId || {})[v.species] &&
+    f.visitors = f.visitors.filter(v => v && v.until >= today && (!window.SHEEP_DEX || Object.hasOwn(window.SHEEP_DEX.byId, v.species)) &&
       !f.dex[v.species] && !seen.has(v.species) && seen.add(v.species));
     if (typeof f.visitRoll !== 'number') f.visitRoll = 0;
     if (typeof f.patrolDay !== 'string') f.patrolDay = '';
@@ -237,21 +247,51 @@
     if (commons.length) return pick(commons).id;
     return rares.length ? pick(rares).id : null;   // 일반 종을 다 모았으면 유인된 희귀 종이라도
   }
+  function addVisitor(data, species, today) {
+    const visitor = { id: 'visit-' + Date.now().toString(36) + Math.floor(Math.random() * 1e4), species, until: today };
+    data.visitors.push(visitor);
+    return visitor;
+  }
+  function sundayGuestDue(data, today) {
+    return isSunday(today) && data.sundayVisitDay !== today && data.sheep.length < MAX_SHEEP &&
+      (!window.SHEEP_DEX || DEX().some(s => s.rarity === 'rare' && !data.dex[s.id]));
+  }
+  function welcomeSundayGuest(data, today) {
+    if (!sundayGuestDue(data, today)) return null;
+    let visitor = data.visitors.find(v => spec(v.species).rarity === 'rare');
+    if (!visitor) {
+      const species = pickSpecies(data, 'rare');
+      if (!species) return null;
+      // 이미 입구가 꽉 찼다면 전설 손님은 기다리게 두고 일반 손님의 자리를 내 준다.
+      if (data.visitors.length >= 2) {
+        const ordinary = data.visitors.findIndex(v => spec(v.species).rarity === 'common');
+        if (ordinary !== -1) data.visitors.splice(ordinary, 1);
+      }
+      visitor = addVisitor(data, species, today);
+    }
+    visitor.sunday = true;
+    data.visitors = [visitor, ...data.visitors.filter(v => v !== visitor)];
+    data.sundayVisitDay = today;
+    data.visitRoll = nowMs();
+    Core.save();
+    return visitor;
+  }
   function visitCheck(force) {
     if (!has()) return null;
     const data = ensure();
     if (data.sheep.length >= MAX_SHEEP) return null;
+    const today = date();
     const legendDue = dexList().some(s => s.rarity === 'legend' && !data.dex[s.id] &&
       !data.visitors.some(v => v.species === s.id) && legendReady(s, data));
+    let sundayGuest = null;
     if (!force) {
-      if (data.visitors.length >= 2) return null;
-      if (!legendDue && nowMs() - (data.visitRoll || 0) < VISIT_GAP) return null;
-      data.visitRoll = nowMs();
+      sundayGuest = welcomeSundayGuest(data, today);
+      const now = nowMs();
+      if (data.visitors.length >= 2 || (!legendDue && (sundayGuest || now - (data.visitRoll || 0) < VISIT_GAP))) return sundayGuest;
+      data.visitRoll = now;
     }
     const species = pickSpecies(data, force === 'rare' ? 'rare' : null);
-    if (!species) { Core.save(); return null; }
-    const visitor = { id: 'visit-' + Date.now().toString(36) + Math.floor(Math.random() * 1e4), species, until: date() };
-    data.visitors.push(visitor);
+    const visitor = species ? addVisitor(data, species, today) : sundayGuest;
     Core.save();
     return visitor;
   }
@@ -395,23 +435,64 @@
   }
 
   /* ---------- 초상 (3D가 되면 Field3D.portrait, 아니면 SVG) ---------- */
+  let loadingDex = null;
+  function prepareDex() {
+    if (window.SHEEP_DEX) return Promise.resolve(true);
+    if (!loadingDex) {
+      loadingDex = new Promise(resolve => {
+        const script = document.createElement('script');
+        script.src = dexScript.href;
+        script.onload = script.onerror = () => {
+          script.remove();
+          resolve(!!window.SHEEP_DEX);
+        };
+        document.head.append(script);
+      }).then(ready => {
+        loadingDex = null;
+        const home = document.getElementById('home');
+        const panel = home?.querySelector('.field-panel');
+        if (ready && panel && !panel.contains(document.activeElement)) {
+          panel.outerHTML = panelHTML();
+          bindPanel(home);
+        }
+        return ready;
+      });
+    }
+    return loadingDex;
+  }
+
   function can3D() {
     try { return !!(window.Field3D && typeof Field3D.supported === 'function' && Field3D.supported()); } catch { return false; }
   }
-  let loading = null, loaded = false;
+  let loading = null;
   function load3D() {
+    if (loading) return loading;
     if (!can3D()) return Promise.resolve(false);
-    if (!loading) {
-      loading = Promise.resolve().then(() => Field3D.load()).then(() => (loaded = true), () => (loaded = false));
-    }
+    loading = Promise.resolve().then(() => Field3D.load()).then(() => true, () => {
+      loading = null;
+      return false;
+    });
     return loading;
+  }
+  function prewarm(root) {
+    const saveData = () => navigator.connection?.saveData || window.matchMedia('(prefers-reduced-data: reduce)').matches;
+    if (saveData()) return;
+    setTimeout(() => {
+      const warm = () => {
+        if (!root.isConnected || document.hidden || saveData()) return;
+        prepareDex();
+        load3D();
+      };
+      if (window.requestIdleCallback) requestIdleCallback(warm);
+      else warm();
+    }, 2000);
   }
   function portraitSVG(species, opts = {}) {
     const body = sheepArt({ species, level: opts.level || 5, wear: opts.wear || null }, { silhouette: opts.silhouette });
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-42 -60 84 84" width="${opts.px || 256}" height="${opts.px || 256}">${body}</svg>`;
   }
   async function portrait(species, opts = {}) {
-    if (!opts.silhouette && can3D() && await load3D() && typeof Field3D.portrait === 'function') {
+    if (!opts.silhouette && window.SHEEP_DEX && can3D() && await load3D() && typeof Field3D.portrait === 'function') {
       try {
         const url = await Field3D.portrait(species, { level: opts.level || 5, wear: opts.wear || null });
         if (url) return url;
@@ -517,6 +598,7 @@
     if (!Array.isArray(payload?.s) || payload.s.length > MAX_SHEEP || !payload.s.every(s =>
       Array.isArray(s) && s.length === 4 && typeof s[0] === 'string' && typeof s[1] === 'string'
     )) throw new Error('잘못된 양 정보');
+    await prepareDex();
     return publicField({
       sheep: payload.s.map(([species, name, level, wear]) => ({ species, name, level, wear })),
       slots: payload.p, items: { '마구간': payload.b }
@@ -543,7 +625,7 @@
     content.innerHTML = `<div class="field-stage is-2d"><div class="field-map" role="img" aria-label="별이 뜬 들판">${svg(mapArt(data, true))}</div></div>
       <p class="field-guest-count">🐑 양 ${count}마리</p>
       ${count ? `<ul class="field-guest-flock">${data.sheep.map(s => `<li><b>${esc(s.name)}</b> <span>Lv${s.level}</span><small>${esc(spec(s.species).name)}${s.wear ? ' · ' + esc(s.wear) : ''}</small></li>`).join('')}</ul>` : ''}`;
-    if (!can3D() || !await load3D() || !root.isConnected) return;
+    if (!window.SHEEP_DEX || !can3D() || !await load3D() || !root.isConnected) return;
     const stageEl = root.querySelector('.field-stage');
     const fallback = stageEl.firstElementChild;
     const host = document.createElement('div');
@@ -574,6 +656,7 @@
     const remaining = daysBetween(today, episode?.date || '2026-11-29');
     const notice = Core.REL ? '첫 번째 이야기가 열리면, 할아버지가 선물을 들고 와요 🎁' : '11/29 주일 예배 후, 들판의 할아버지가 선물을 들고 와요 🎁';
     const thumb = open && readThumb();
+    const sundayNotice = open && (data.visitors.some(v => v.sunday) || sundayGuestDue(data, today));
     const dots = open ? [
       data.cared !== today && '꼴 주기',
       data.visitors.length && '온 양 만나기',
@@ -582,11 +665,11 @@
     return `<section class="field-panel">
       <div class="field-panel-picture">${thumb ? `<img src="${thumb}" alt="">` : svg(mapArt(data, false, !open))}</div>
       <div class="field-panel-copy"><h2>나의 들판</h2>
-        ${open ? `<p>양 ${data.sheep.length}마리 · 도감 ${Object.keys(data.dex).length}/${dexList().length}</p>
+        ${open ? `<p>양 ${data.sheep.length}마리 · 도감 ${Object.keys(data.dex).length}/${dexTotal()}</p>
           <div class="field-today"><strong>오늘 할 일</strong>${dots.length ? `<ul>${dots.map(t => `<li>${t}</li>`).join('')}</ul>` : '<span>모두 완료 ✓</span>'}</div>` : `<p>${esc(notice)}</p>`}
         ${open ? '<button type="button" class="btn small field-enter">들판 가기</button>' : `<small>${remaining > 0 ? 'D-' + remaining : '🔒 첫 이야기를 마치면 열려요'}</small>`}
         ${!open && Core.PREVIEW_ALL ? '<button type="button" class="btn small field-test-lamb">🧪 미리보기: 양 받기</button>' : ''}
-      </div></section>`;
+      </div>${sundayNotice ? '<p class="field-sunday-strip">✦ 오늘은 주일 손님이 와요</p>' : ''}</section>`;
   }
 
   function bindPanel(root) {
@@ -606,22 +689,41 @@
   function rarityBadge(sp) {
     return `<span class="field-rarity ${sp.rarity}">${RARITY[sp.rarity] || '일반'}</span>`;
   }
-  function verseHTML(ref) {
+  function verseHTML(ref, label) {
     const list = window.Bible ? Bible.verses(ref) : [];
     if (!list.length) return '';
-    return `<blockquote class="field-verse">${esc(list.map(v => v.text).join(' '))}<cite>${esc(Bible.full(ref))}</cite></blockquote>`;
+    return `<blockquote class="field-verse">${esc(list.map(v => v.text).join(' '))}<cite>${esc(label || Bible.full(ref))}</cite></blockquote>`;
+  }
+
+  function dailyWord(data) {
+    const today = date();
+    if (data.wordDay === today) return '';
+    const index = Math.floor(Date.parse(today) / DAY_MS) % SHEPHERD_VERSES.length;
+    const passage = SHEPHERD_VERSES.at(index);
+    if (!passage) return '';
+    const markup = verseHTML(passage.verse, passage.label);
+    if (markup) {
+      data.wordDay = today;
+      Core.save();
+    }
+    return markup;
   }
 
   /* ---------- 들판 화면 ---------- */
-  function page() {
+  async function page() {
     if (!has()) return App.home();
+    const app = document.getElementById('app');
+    if (!window.SHEEP_DEX) {
+      const from = app.firstChild;
+      await prepareDex();
+      if (app.firstChild !== from) return;
+    }
     current?.teardown();
     lostCheck();
     visitCheck();
     Sound.music('night');
     Sound.ambience('나의 들판');
     Sound.stopVoice();
-    const app = document.getElementById('app');
     const root = document.createElement('main');
     root.id = 'field';
     root.className = 'screen page field-page';
@@ -633,8 +735,10 @@
     const holdFeedback = root.querySelector('.field-hold-feedback');
     const manage = root.querySelector('.field-manage');
     let moving = null, view = null, busy = false, selected = null, alive = true, thumbTimer = 0, holdTimer = 0;
-    let mode = can3D() ? 'loading' : '2d';
+    let mode = window.SHEEP_DEX && can3D() ? 'loading' : '2d';
     let tourStep = field().tourSeen ? FIELD_TOUR.length : 0;
+    let word = dailyWord(field());
+    const greetedLegends = new Set();
     const api = { get view() { return view; }, teardown };
     current = api;
     const observer = new MutationObserver(() => { if (!root.isConnected) teardown(); });
@@ -654,7 +758,8 @@
     const state = () => stateOf(ensure(), { moving, selected });
     const react = (id, kind) => {
       if (view) { try { view.react(id, kind); } catch { /* 연출 실패는 무시 */ } return; }
-      const el = stageEl.querySelector(`[data-sheep-id="${CSS.escape(id)}"]`);
+      const escaped = CSS.escape(id);
+      const el = stageEl.querySelector(`[data-sheep-id="${escaped}"], [data-visitor="${escaped}"]`);
       if (!el) return;
       el.classList.remove('react-' + kind);
       void el.offsetWidth;
@@ -727,14 +832,17 @@
           ${tourStep === 0 && mode === '3d' ? '<p>양을 꾹 누르면 쓰다듬을 수 있어.</p>' : ''}
           <div class="field-coach-actions"><button type="button" class="btn small field-coach-try" ${tourStep === 0 && !due ? 'hidden' : ''} ${tourStep === 2 && mode === 'loading' ? 'disabled' : ''}>${tip.action}</button>
           <button type="button" class="link field-coach-next">${tourStep === FIELD_TOUR.length - 1 ? '마치기' : '다음'}</button></div></aside>` : ''}
-        ${visitor && !moving ? `<button type="button" class="field-visit-banner" data-visit="${esc(visitor.id)}"><span aria-hidden="true">🐑</span> 누군가 들판 입구에 왔어!<b>보러 가기 ›</b></button>` : ''}`;
+        ${visitor && !moving ? `<button type="button" class="field-visit-banner" data-visit="${esc(visitor.id)}"><span aria-hidden="true">🐑</span> ${visitor.sunday ? '주일 손님이 왔어!' : '누군가 들판 입구에 왔어!'}<b>보러 가기 ›</b></button>` : ''}
+        ${word ? `<aside class="field-daily-word" aria-labelledby="field-word-title">
+          <div class="field-word-head"><h2 id="field-word-title">할아버지의 말씀 한 줄</h2><button type="button" class="link field-word-close" aria-label="말씀 카드 닫기">닫기</button></div>
+          ${word}</aside>` : ''}`;
       const dex = Object.keys(data.dex).length;
       manage.innerHTML = `${missing ? `<aside class="field-lost"><span aria-hidden="true">🐑</span><div><strong>${esc(josa(missing.name, '이가'))} 안 보여!</strong><button type="button" class="link field-find">찾으러 가자 →</button></div></aside>` : ''}
         ${moving ? `<p class="field-move-tip"><span>${esc(josa(moving.item, '을를'))} 놓을 빈 칸을 골라 줘.</span><button type="button" class="link field-cancel-move">취소</button></p>` :
           `<button type="button" class="btn field-feed ${due ? 'due' : ''}" ${due ? '' : 'disabled'}>${due ? '🌾 꼴 주기' : '✓ 오늘 꼴 주기 완료'}</button>
           <div class="field-actions">
             <button type="button" class="field-act field-patrol"><span aria-hidden="true">🔦</span>밤 순찰${data.patrolDay !== today ? '<i class="field-dot" aria-label="오늘 보상 전"></i>' : ''}</button>
-            <button type="button" class="field-act field-dex"><span aria-hidden="true">📖</span>도감 <small>${dex}/${dexList().length}</small></button>
+            <button type="button" class="field-act field-dex"><span aria-hidden="true">📖</span>도감 <small>${dex}/${dexTotal()}</small></button>
             <button type="button" class="field-act field-market"><span aria-hidden="true">🏪</span>장터</button>
             <button type="button" class="field-act field-card"><span aria-hidden="true">🖼️</span>들판 카드</button>
           </div>`}
@@ -742,6 +850,11 @@
         <p class="field-feedback" role="status">${esc(message)}</p>
         ${moving ? '' : testTools(data)}`;
       top.querySelector('.back').onclick = () => App.home();
+      top.querySelector('.field-word-close')?.addEventListener('click', event => {
+        word = '';
+        event.currentTarget.closest('.field-daily-word').remove();
+        top.querySelector('.back').focus({ preventScroll: true });
+      });
       top.querySelector('.field-visit-banner')?.addEventListener('click', event => {
         const id = event.currentTarget.dataset.visit;
         if (view) { focus(id); setTimeout(() => alive && visitorSheet(id), 650); } else visitorSheet(id);
@@ -776,6 +889,14 @@
       } else if (view) {
         try { view.update(state()); } catch { /* 다음 갱신에서 다시 */ }
         queueThumb();
+      }
+      if (mode !== 'loading') {
+        for (const guest of data.visitors) {
+          if (spec(guest.species).rarity !== 'legend' || greetedLegends.has(guest.id)) continue;
+          greetedLegends.add(guest.id);
+          react(guest.id, 'legend');
+          Sound.sfx('legendArrival');
+        }
       }
     }
 
@@ -1010,12 +1131,13 @@
       const visitor = data.visitors.find(v => v.id === id);
       if (!visitor) return render('그 양은 벌써 떠났어.');
       const sp = spec(visitor.species);
+      if (sp.id !== visitor.species) return render('손님 정보를 불러오지 못했어. 들판에 다시 와 줘.');
       const price = PRICE[sp.rarity] ?? 3;
       const oil = Core.data.oil || 0;
       const full = data.sheep.length >= MAX_SHEEP;
       const short = price > oil;
       if (view) focus(id);
-      const modal = sheet(sp.rarity === 'legend' ? '전설의 양이 찾아왔어' : '들판 입구의 손님', `<div class="field-visitor-card ${sp.rarity}">
+      const modal = sheet(sp.rarity === 'legend' ? '전설의 양이 찾아왔어' : visitor.sunday ? '주일 손님' : '들판 입구의 손님', `<div class="field-visitor-card ${sp.rarity}">
           ${portraitHTML(sp.id, { level: 5 }, 'big')}
           <h3>${esc(sp.name)} ${rarityBadge(sp)}</h3>
           <p class="field-visitor-desc">${esc(sp.desc)}</p>
@@ -1300,21 +1422,27 @@
       const best = penned > data.patrolBest;
       if (best) data.patrolBest = penned;
       Core.save();
-      const record = { penned, total, scared, timeLeft: Math.max(0, Math.round(Number(result.timeLeft) || 0)), leader: leader?.name || '', leaderSpecies: leader?.species || 'cotton', best, date: today };
+      const timeLeft = Math.max(0, Math.round(Number(result.timeLeft) || 0));
+      const ratio = penned / total;
+      const stars = penned === total || (ratio >= 7 / 8 && timeLeft >= 10) ? 3 : ratio >= 7 / 8 ? 2 : ratio >= 5 / 8 ? 1 : 0;
+      const record = { penned, total, scared, timeLeft, stars, leader: leader?.name || '', leaderSpecies: leader?.species || 'cotton', best, date: today };
+      const rating = '★'.repeat(stars);
+      const caption = `오늘 밤 순찰 ${rating ? rating + ' ' : ''}${penned}/${total}! 너도 해 봐`;
       render(first ? `순찰 끝! 기름 +${oil}` : '연습 순찰 끝!');
       const modal = sheet('순찰 결과', `<div class="field-patrol-result">
+          <div class="field-patrol-rating" role="img" aria-label="별 ${stars}/3"><span>${rating}</span><span class="empty-stars">${'☆'.repeat(3 - stars)}</span></div>
           <p class="field-patrol-score"><b>${penned}</b><span>/${total}</span></p><p>우리 안에 들어온 양</p>
-          <ul><li>🐺 쫓은 늑대 ${scared}</li>${first ? `<li>◕ 기름 +${oil}</li><li>⭐ ${esc(leader?.name || '')} 경험치 +${exp}</li>` : '<li>오늘 보상은 이미 받았어 · 연습 판</li>'}
+          <ul>${timeLeft ? `<li>⏱ ${timeLeft}초 남음</li>` : ''}<li>🐺 쫓은 늑대 ${scared}</li>${first ? `<li>◕ 기름 +${oil}</li><li>⭐ ${esc(leader?.name || '')} 경험치 +${exp}</li>` : '<li>오늘 보상은 이미 받았어 · 연습 판</li>'}
           ${best ? '<li class="best">🏆 최고 기록 갱신!</li>' : `<li>최고 기록 ${data.patrolBest}마리</li>`}</ul></div>
         <button type="button" class="btn field-patrol-card">순찰 기록 카드 공유</button>
         <button type="button" class="btn ghost field-patrol-again">한 번 더</button>`, 'field-patrol-sheet');
-      modal.querySelector('.field-patrol-card').onclick = () => cardSheet('순찰 기록 카드', () => Card.drawPatrol(record), 'PATROL', '밤 순찰 기록 카드');
+      modal.querySelector('.field-patrol-card').onclick = () => cardSheet('순찰 기록 카드', () => Card.drawPatrol(record), 'PATROL', '밤 순찰 기록 카드', caption);
       modal.querySelector('.field-patrol-again').onclick = () => { modal.close(); patrolSheet(); };
       if (up) setTimeout(() => celebrate([up]), 500);
       badges();
     }
 
-    async function cardSheet(title, draw, fileId, alt) {
+    async function cardSheet(title, draw, fileId, alt, caption) {
       const modal = sheet(title, '<p class="field-sheet-meta" role="status">카드를 그리고 있어요…</p>', 'field-card-sheet');
       try {
         const canvas = await draw();
@@ -1323,14 +1451,29 @@
         const url = URL.createObjectURL(blob);
         modal.addEventListener('close', () => URL.revokeObjectURL(url), { once: true });
         modal.querySelector('.field-sheet-meta').outerHTML = `<img class="field-card-preview" src="${url}" alt="${esc(alt)}">
+          ${caption ? `<label class="field-share-url">공유 문구<input type="text" readonly value="${esc(caption)}"></label>
+          <button type="button" class="btn ghost field-caption-copy">공유 문구 복사</button>` : ''}
           <div class="row"><button type="button" class="btn field-share">카톡으로 공유</button>
           <a class="btn ghost" href="${url}" download="${esc(Card.fileName?.(fileId, true) || '그밤-들판.png')}">이미지 저장</a></div>
           <p class="field-save-note" role="status"></p>`;
+        const status = modal.querySelector('.field-save-note');
+        const copy = modal.querySelector('.field-caption-copy');
+        if (copy) copy.onclick = async () => {
+          const input = modal.querySelector('.field-share-url input');
+          try {
+            await navigator.clipboard.writeText(caption);
+            status.textContent = '공유 문구를 복사했어!';
+          } catch {
+            input.focus();
+            input.select();
+            status.textContent = '선택된 문구를 복사해 줘.';
+          }
+        };
         modal.querySelector('.field-share').onclick = async () => {
           try {
-            if (await Card.share(canvas, fileId) !== 'fallback') return;
+            if (await Card.share(canvas, fileId, caption, blob) !== 'fallback') return;
           } catch { /* 이미지를 길게 눌러 저장하는 방법으로 안내한다. */ }
-          modal.querySelector('.field-save-note').textContent = '이미지를 길게 누르거나 이미지 저장을 눌러 주세요.';
+          status.textContent = '이미지를 길게 누르거나 이미지 저장을 눌러 주세요.';
         };
       } catch {
         if (modal.open) modal.querySelector('.field-sheet-meta').textContent = '카드를 그리지 못했어. 다시 열어 봐.';
@@ -1365,7 +1508,7 @@
       const call = kind => {
         const v = visitCheck(kind || true);
         render(v ? `🧪 ${spec(v.species).name}${Core.josa(spec(v.species).name, '이가').slice(-1)} 들판 입구에 왔어요` : '🧪 부를 수 있는 양이 없어요');
-        if (v && view) focus(v.id);
+        if (v && view && spec(v.species).rarity !== 'legend') focus(v.id);
       };
       on('visit', () => call());
       on('rare', () => call('rare'));
@@ -1477,12 +1620,13 @@
 
   async function flockScene(box) {
     if (!has()) return;
+    if (!window.__fast) await prepareDex();
     const data = ensure();
     const flock = data.sheep.slice(0, FLOCK_SHOW);
     const line = '네가 돌본 양들도, 그 밤 구유 곁에 있었다.';
     if (!window.__fast) {
       let played = false;
-      if (can3D() && await load3D()) {
+      if (window.SHEEP_DEX && can3D() && await load3D()) {
         box.innerHTML = `<section class="field-story field-flock is-3d"><div class="field-story-3d"></div>
           <div class="field-story-content"><div class="field-story-talk"><p>${line}</p>
           <button type="button" class="btn ghost" disabled>계속</button></div></div></section>`;
@@ -1531,13 +1675,13 @@
   function summary() {
     const data = ensure();
     const top = data.sheep.slice().sort((a, b) => b.level - a.level || b.exp - a.exp)[0] || null;
-    return { sheep: data.sheep.length, dex: Object.keys(data.dex).length, dexTotal: dexList().length, top, oilEarned: Core.data.oilEarned || 0 };
+    return { sheep: data.sheep.length, dex: Object.keys(data.dex).length, dexTotal: dexTotal(), top, oilEarned: Core.data.oilEarned || 0 };
   }
 
   const drawCard = () => Card.drawField();
 
   window.Field = {
     ensure, has, panelHTML, bindPanel, page, receiveFirstLamb, flockScene, giveItem, drawCard, lostCheck, stats,
-    bonus, portrait, snapshot, summary, spec, dexList, visitCheck, gainExp, sheepArt, visitShared
+    bonus, portrait, snapshot, summary, spec, dexList, visitCheck, gainExp, sheepArt, visitShared, prepareDex, prewarm
   };
 })();
