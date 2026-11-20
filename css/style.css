@@ -38,7 +38,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 #home { padding: 0 16px calc(32px + var(--safe-b)); background: radial-gradient(120% 60% at 50% 0%, #1b2350 0%, var(--bg) 70%); min-height: 100vh; }
 .test-banner { background: #5b2d6e; color: #fff; font-size: 12px; padding: 7px 10px; margin: 0 -16px; text-align: center; }
 .page .test-banner { margin: 0 -16px 8px; }
-.home-head { position: relative; text-align: center; padding: calc(18px + var(--safe-t)) 0 10px; }
+.home-head { position: relative; text-align: center; padding: calc(10px + var(--safe-t)) 0 8px; }
 .home-head.has-field-backdrop { isolation: isolate; }
 .home-field-backdrop {
   position: absolute; z-index: -1; inset: 0 -16px; overflow: hidden; pointer-events: none;
@@ -47,12 +47,14 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 }
 .home-field-backdrop img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 45%; transform: scale(1.08); filter: blur(7px) saturate(.8); }
 .home-field-backdrop::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #080c2055, #080c20b8 58%, #080c20); }
-.home-star { height: 150px; display: flex; align-items: center; justify-content: center; }
+.home-star { height: 80px; display: flex; align-items: center; justify-content: center; }
 .home-star svg { animation: breathe 5s ease-in-out infinite; }
 .home-head h1 { font-family: var(--serif); font-size: 30px; margin: 6px 0 2px; letter-spacing: 1px; }
 .sub { color: var(--dim); margin: 0; font-size: 14px; }
-.stats { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-.stats span { background: rgba(255, 255, 255, .07); border: 1px solid var(--line); border-radius: 99px; padding: 5px 11px; font-size: 13px; }
+.stats { display: flex; justify-content: center; align-items: center; gap: 7px; margin-top: 7px; }
+.stats span { white-space: nowrap; color: var(--dim); font-size: 12px; }
+.stats .home-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.stats span + span::before { content: '·'; margin-right: 7px; color: var(--dim); }
 .warn { background: #6e2d2d; padding: 10px 12px; border-radius: 10px; font-size: 13px; margin: 8px 0; }
 .start { margin: 16px 0 6px; animation: glowpulse 2.4s ease-in-out infinite; }
 .install-note { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 14px; margin: 12px 0; padding: 12px 14px; background: #151a37; }
@@ -207,6 +209,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .mission-tag { display: inline-block; font-size: 13px; font-weight: 700; color: #2a1a05; background: var(--gold); padding: 4px 12px; border-radius: 99px; }
 .mission-text { font-family: var(--serif); font-size: 19px; line-height: 1.65; margin: 14px 0 10px; word-break: keep-all; }
 .mission-help { font-size: 13px; color: var(--dim); line-height: 1.6; margin-bottom: 12px; }
+.rules-flow { margin: 8px 0 10px; color: #ffe9b0; font: 400 17px/1.5 var(--serif); }
 .rules-title { font-weight: 700; font-size: 18px; margin-bottom: 8px; }
 .rules ul { padding-left: 18px; margin: 0 0 12px; line-height: 1.65; font-size: 14.5px; }
 .rules li { margin-bottom: 6px; }
@@ -401,15 +404,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 @keyframes smoke { 0%, 100% { transform: translateX(0); opacity: .8; } 50% { transform: translateX(6px); opacity: 1; } }
 @keyframes angelin { 0% { opacity: 0; } 60% { opacity: 1; } 100% { opacity: .95; } }
 
-/* 홈: 인물 쪽지, 밤 한 줄 */
-.note-card { display: block; width: 100%; text-align: left; margin: 14px 0 4px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255, 210, 122, .55); background: linear-gradient(135deg, rgba(255, 226, 160, .16), rgba(255, 255, 255, .04)); cursor: pointer; position: relative; animation: glowpulse 3s ease-in-out infinite; }
-.note-from { display: block; font-size: 13px; color: var(--gold); font-weight: 700; }
-.note-from em { font-style: normal; font-weight: 400; color: var(--dim); margin-left: 4px; }
 .note-text { display: block; font-family: var(--serif); font-size: 17px; line-height: 1.6; margin: 6px 0 4px; }
-.note-go { font-size: 13px; color: var(--gold); }
-.note-more { float: right; font-size: 12px; color: var(--dim); margin-top: 1px; }
-.night-line { text-align: center; font-size: 13px; color: #cfd6ff; margin: 10px 0 0; }
-.night-line.holy { color: #ffe3a3; font-size: 14px; }
 .menu .btn.wide { grid-column: 1 / -1; }
 .sec { font-size: 16px; margin: 26px 0 6px; }
 .sec small { color: var(--dim); font-weight: 400; margin-left: 4px; }
@@ -417,8 +412,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 /* 주일 암호 */
 .advent-art { display: block; width: 100%; height: auto; overflow: visible; }
 .advent-candle.lit .advent-flame { transform-box: fill-box; transform-origin: 50% 70%; animation: flicker .32s ease-in-out infinite alternate; }
-.home-wreath { display: block; width: min(100%, 245px); margin: -9px auto -4px; padding: 0; border: 0; background: transparent; cursor: pointer; }
-.code-reminder { display: block; width: 100%; padding: 10px 12px; border: 1px solid #e8bf78; border-radius: 12px; color: #342006; background: #f4cf8e; font-weight: 700; cursor: pointer; }
+.home-wreath { display: block; width: min(100%, 165px); margin: -6px auto -3px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.code-reminder { display: block; width: 100%; padding: 8px 10px; border: 1px solid #a87f4a; border-radius: 12px; color: #ffe2ac; background: #f4cf8e22; font-size: 13px; font-weight: 700; cursor: pointer; }
 .home-head .sub { margin-bottom: 5px; }
 .code-test { margin: 0 0 8px; color: #e0c7ff; font-size: 13px; }
 .candles { max-width: 320px; margin: 8px auto 20px; }
@@ -629,22 +624,38 @@ html.no-motion .who.speaking { animation: none; }
 
 .card-preview.busy img { opacity: .5; transition: opacity .2s; }
 
-/* ---------- 홈: 위쪽 메뉴, 오늘의 미션 ---------- */
+/* ---------- 홈: 모아 보기와 오늘 밤 할 일 ---------- */
 .menu.top { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 4px 0 6px; }
 .menu.top button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .06); font-size: 13px; cursor: pointer; }
 .menu.top button span { font-size: 21px; }
 .menu.top button small { font-size: 11px; color: var(--gold); }
 .menu.top button:active { transform: scale(.96); }
-.today-m { margin: 14px 0 4px; padding: 14px 16px; border-radius: 16px; background: linear-gradient(135deg, rgba(120, 200, 150, .14), rgba(255, 255, 255, .03)); border: 1px solid rgba(150, 220, 170, .45); }
-.today-m.ok { opacity: .85; }
-.tm-head { display: flex; align-items: baseline; gap: 8px; }
-.tm-head b { color: #a8e6b8; font-size: 14px; }
-.tm-head span { font-size: 12px; color: var(--dim); }
-.tm-text { font-family: var(--serif); font-size: 17px; line-height: 1.6; margin: 8px 0; }
-.tm-btns .btn { margin: 4px 0 0; padding: 11px; }
-.tm-note { font-size: 11.5px; color: var(--dim); text-align: center; margin-top: 6px; }
-.tm-state { font-size: 14px; color: #a8e6b8; }
-.tm-more { background: none; border: 0; color: var(--dim); font-size: 12.5px; padding: 6px 0 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.home-collection-title { margin-top: 20px; }
+.tonight { margin: 4px 0 12px; padding: 14px 12px 12px; border-radius: 18px; border: 1px solid #ffd27a65; background: linear-gradient(150deg, #282d50, #171c37 72%); }
+.tonight > header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 0 3px; }
+.tonight > header h2 { margin: 0; font: 700 21px/1.25 var(--serif); }
+.tonight > header span { color: var(--gold); font-size: 12px; white-space: nowrap; }
+.tonight-steps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.tonight-step { min-width: 0; display: grid; grid-template-columns: 22px minmax(0, 1fr) 16px; gap: 6px; padding: 7px 8px; align-items: start; border-radius: 10px; }
+.tonight-step.is-next { background: #fff4cc16; box-shadow: inset 2px 0 var(--gold); }
+.tonight-step b { font-size: 14px; }
+.tonight-step p, .tonight-step small { display: block; color: var(--dim); margin: 1px 0 0; font-size: 12px; line-height: 1.4; }
+.tonight-step.is-next p { color: #fff0c8; }
+.tonight-ellipsis { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tonight-mark { color: #b6bbd6; font-weight: 700; text-align: right; }
+.tonight-step[data-done] .tonight-mark { color: #b4e6bf; }
+.tonight-step.is-next .tonight-mark { color: var(--gold); }
+.tonight .tonight-next { margin: 9px 0 0; }
+.tonight-done { margin: 9px 0 0; padding: 8px 9px; border-radius: 10px; background: #f5d28414; color: #ffe5a9; text-align: center; font-size: 14px; }
+.tonight .tm-btns { gap: 7px; }
+.tonight .tm-btns .btn { margin: 5px 0 0; min-height: 40px; padding: 7px 4px; font-size: 13px; }
+@media (max-height: 720px) {
+  .home-head .home-star { height: 59px; }
+  .home-head .home-star svg { width: 74px; height: 74px; }
+  .home-head .home-wreath { width: min(100%, 132px); }
+  .tonight-step { padding-block: 5px; }
+}
+
 
 /* ---------- 나의 밤하늘 ---------- */
 .sky-panel { margin: 18px 0 6px; }
@@ -784,12 +795,6 @@ html.no-motion .who.speaking { animation: none; }
 .sky-redo i { font-style: normal; color: var(--gold); font-size: 13px; white-space: nowrap; }
 
 /* 홈 쪽지: 오늘 나오는 선생님 */
-.note-cast { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; padding: 8px 10px; border-radius: 12px; background: rgba(255, 230, 170, .08); }
-.nc-faces { display: flex; flex: 0 0 auto; }
-.nc-faces img { width: 30px; height: 30px; object-fit: contain; margin-left: -9px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
-.nc-faces img:first-child { margin-left: 0; }
-.nc-txt { display: flex; flex-direction: column; font-size: 12px; opacity: .85; min-width: 0; }
-.nc-txt b { font-size: 13.5px; color: #ffe2a0; font-weight: 700; margin-top: 1px; }
 
 /* 편 끝: 다음 편 */
 .next-tease { margin: 12px 0 4px; font-size: 14px; color: #ffe2a0; line-height: 1.5; }

@@ -25,11 +25,12 @@
     return Trailer.play(options);
   }
 
-  function testBanner() {
+  function testBanner(showLamb = false) {
     if (!Core.IS_TEST) return '';
     const n = Core.nowKST();
     return `<div class="test-banner">테스트 모드 · ${Core.PREVIEW_ALL ? '전체 열림' : esc(n.date) + ' ' + n.hour + '시 기준'} · 기록은 따로 저장됨
-      <button class="link" id="test-reset">테스트 기록 지우기</button></div>`;
+      <button class="link" id="test-reset">테스트 기록 지우기</button>
+      ${showLamb && Core.PREVIEW_ALL && !window.Field?.has() ? '<button type="button" class="link field-test-lamb">양 받기</button>' : ''}</div>`;
   }
 
   // 그날 편의 형식 꼬리표: 💬 대화창 · 🎬 보는 날 · 🧩 말씀 퍼즐 · 🎮 미니게임
@@ -44,9 +45,10 @@
     return null;
   }
   /* ---------- 홈 ---------- */
-  function home() {
+  function home({ top = false } = {}) {
     const D = Core.data;
     Fame.deliverCodeItems();
+    if (top) homeScroll = 0;
     const root = show('home');
     const b = Core.starCount() / Core.starTotal();
     const started = !!D.done['0'];
@@ -83,23 +85,26 @@
     }
 
     root.innerHTML = `
-      ${testBanner()}
+      ${testBanner(true)}
       ${codeReminder()}
       <header class="home-head${fieldThumb ? ' has-field-backdrop' : ''}">
         ${fieldThumb ? `<div class="home-field-backdrop" aria-hidden="true"><img src="${esc(fieldThumb)}" alt=""></div>` : ''}
         <button class="snd-home" id="snd" aria-label="소리 켜기 또는 끄기">${Sound.on ? '🔊' : '🔇'}</button>
-        <div class="home-star">${Art.bigStar(Math.max(0.04, b), 170)}</div>
+        <div class="home-star">${Art.bigStar(Math.max(0.04, b), 96)}</div>
         <h1>그 밤을 향하여</h1>
         <p class="sub">${esc((window.SITE || {}).label || '')}</p>
         ${(window.CODES || []).length ? `<button class="home-wreath" data-code-page aria-label="대림 화환 · ${litWeeks().length}개 점등 · 주일 암호">${Art.advent({ lit: litWeeks() })}</button>` : ''}
         ${started ? `<div class="stats">
-          <span>${esc(D.nickname)}${D.ban ? ' · ' + esc(D.ban) : ''}</span>
+          <span class="home-who">${esc(D.nickname)}${D.ban ? ' · ' + esc(D.ban) : ''}</span>
           <span>⭐ 별빛 ${Core.starCount()}/${Core.starTotal()}</span>
           <span>🪔 기름 ${D.oil || 0}</span>
         </div>` : ''}
       </header>
       ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록이 저장되지 않아요(사생활 보호 모드일 수 있어요). 일반 모드로 열어 주세요.</div>` : ''}
-      ${started ? `<nav class="menu top">
+      ${started ? tonightCard(today) : '<button class="btn big start" id="start">시작하기</button>'}
+      ${window.Field?.has() ? Field.panelHTML() : ''}
+      ${started ? skyPanel() : ''}
+      ${started ? `<h2 class="sec home-collection-title" id="home-collection">모아 보기</h2><nav class="menu top" aria-labelledby="home-collection">
         <button id="cards"><span>🖼️</span>카드 도감<small>${Core.starCount()}/${Core.starTotal()}</small></button>
         <button id="fame"><span>📜</span>나의 기록</button>
         <button id="diary"><span>📔</span>묵상 노트</button>
@@ -107,16 +112,12 @@
         ${(window.CODES || []).length ? `<button id="code"><span>🔑</span>주일 암호<small>${Object.keys(D.codes || {}).length}/4</small></button>` : ''}
         <button id="settings"><span>⚙️</span>설정</button>
       </nav>` : ''}
-      ${nightLine()}
       ${backupNudge()}
       ${homeInstallNote()}
-      ${!started ? `<button class="btn big start" id="start">시작하기</button>` : D.done.end ? `<button class="btn big finale-go" id="finale">🌟 27일의 기록 다시 보기</button>` : noteCard()}
-      ${started ? todayMission() : ''}
-      ${started ? skyPanel() : ''}
-      ${window.Field?.panelHTML() || ''}
       ${castStrip()}
       ${list}
       <footer class="home-foot">
+        ${D.done.end ? '<button class="btn ghost small" id="finale">🌟 27일의 기록 다시 보기</button>' : ''}
         ${window.Trailer ? '<button class="btn ghost small" data-trailer>🎬 예고편 다시 보기</button>' : ''}
         <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
       </footer>`;
@@ -155,11 +156,66 @@
     const cs = root.querySelector('#cast'); if (cs) cs.onclick = castPage;
     const fi = root.querySelector('#finale'); if (fi) fi.onclick = finale;
     const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => sendKey().then(() => { if (Core.data.lastBackup && Date.now() - Core.data.lastBackup < 6e4) nu.remove(); });
-    const nc = root.querySelector('.note-card'); if (nc) nc.onclick = () => go(nc.dataset.id);
+    const next = root.querySelector('.tonight-next');
+    if (next) next.onclick = () => next.dataset.step === 'story' ? go(next.dataset.id) : Field.page({ tonight: next.dataset.id });
     const dismiss = root.querySelector('[data-dismiss-install]');
     if (dismiss) dismiss.onclick = () => { D.a2hsSeen = true; Core.save(); dismiss.closest('.install-note').remove(); };
     root.querySelector('#snd').onclick = e => { e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇'; };
     bindTestReset(root);
+  }
+
+  function christmasLabel(today = Core.nowKST().date) {
+    const days = Math.round((Date.parse(Core.XMAS) - Date.parse(today)) / 864e5);
+    return days > 0 ? `성탄까지 D-${days}` : days === 0 ? '오늘은 성탄!' : `성탄 D+${-days}`;
+  }
+
+  function tonightCard(today) {
+    const D = Core.data;
+    const episodes = Core.mainEpisodes().filter(e => window.STORY[e.id]);
+    const unfinished = episodes.filter(e => Core.isOpen(e) && !D.done[e.id]);
+    const playedTonight = episodes.findLast(e => D.done[e.id] && D.doneOn?.[e.id] === today);
+    const firstStory = unfinished.find(e => e.id === '1-0');
+    // 첫 양을 받는 편부터 시작하고, 오늘 한 편을 끝냈다면 들판으로 이어진다.
+    const episode = firstStory || (playedTonight ? null : unfinished.at(-1));
+    const later = episodes.find(e => !Core.isOpen(e) && !D.done[e.id]);
+    const fieldOpen = !!window.Field?.has();
+    const fed = fieldOpen && D.field.cared === today;
+    const mission = episodes.findLast(e => D.done[e.id] && D.mission[e.id]);
+    const status = mission ? Fame.missionStatus(mission) : 'none';
+    const feedNext = !episode && fieldOpen && !fed;
+    const missionNext = !episode && !feedNext && status === 'wait';
+    const linkedEpisode = playedTonight || episodes.findLast(e => D.done[e.id]);
+    const storyDone = !episode && (!!playedTonight || !later);
+    const watched = unfinished.length ? '오늘 한 편 봤어' : '다 봤어';
+    const storyLine = episode ? `${esc(Core.dateLabel(episode.date))} 「${esc(episode.title)}」` :
+      later ? `${storyDone ? watched + ' · ' : ''}다음 이야기 ${esc(Core.dateLabel(later.date))}${later.openHour == null ? '' : ' ' + esc(Core.hourLabel(later.openHour))}에 열려` : watched;
+    const nextButton = episode ? `<button type="button" class="btn tonight-next" data-step="story" data-id="${episode.id}">📖 오늘 이야기 보기</button>` :
+      feedNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${linkedEpisode?.id || ''}">🐑 들판에서 꼴 주기</button>` : '';
+    const complete = !episode && !feedNext && !missionNext && (storyDone || fieldOpen);
+    return `<section class="tonight" aria-labelledby="tonight-title">
+      <header><h2 id="tonight-title">🌙 오늘 밤 할 일</h2><span>${esc(christmasLabel(today))}</span></header>
+      <ol class="tonight-steps">
+        <li class="tonight-step${episode ? ' is-next' : ''}" data-tonight="story"${storyDone ? ' data-done="true"' : ''}>
+          <span aria-hidden="true">📖</span><div><b>오늘 이야기</b><p>${storyLine}</p>
+          ${episode?.note ? `<small class="tonight-ellipsis">“${esc(episode.note)}”</small>` : ''}
+          ${unfinished.length > Number(!!episode) ? `<small>못 한 편 ${unfinished.length - Number(!!episode)}개</small>` : ''}</div>
+          ${tonightMark(storyDone)}</li>
+        <li class="tonight-step${feedNext ? ' is-next' : ''}" data-tonight="field"${fed ? ' data-done="true"' : ''}>
+          <span aria-hidden="true">🐑</span><div><b>오늘 밤 들판</b><p>${fed ? '꼴 줬어' : fieldOpen ? '오늘 꼴 주기' : '🔒 첫 이야기를 마치면 할아버지가 양을 맡겨 줘'}</p></div>
+          ${tonightMark(fed)}</li>
+        <li class="tonight-step${missionNext ? ' is-next' : ''}" data-tonight="mission"${status === 'yes' || status === 'no' ? ' data-done="true"' : ''}>
+          <span aria-hidden="true">🎯</span><div><b>미션</b>
+          ${mission ? `<p class="tonight-ellipsis">${esc(Bible.full(D.mission[mission.id]))}</p>` : '<p>이야기를 마치면 나와</p>'}
+          ${status === 'yes' ? '<small>했어</small>' : status === 'no' ? '<small>못 했어 · 괜찮아</small>' : status === 'wait' ? '<small>아직 확인 안 했어</small>' : ''}
+          ${missionNext ? `<div class="row tm-btns"><button class="btn ghost" data-m="no" data-id="${mission.id}">못 했어</button><button class="btn" data-m="yes" data-id="${mission.id}">했어!</button></div>` : ''}</div>
+          ${tonightMark(status === 'yes' || status === 'no')}</li>
+      </ol>
+      ${nextButton || (complete ? '<p class="tonight-done">오늘 밤 할 일 끝! 🌟 내일 밤에 또 만나</p>' : '')}
+    </section>`;
+  }
+
+  function tonightMark(done) {
+    return `<span class="tonight-mark" aria-label="${done ? '완료' : '아직'}">${done ? '✓' : '•'}</span>`;
   }
 
   function homeInstallNote() {
@@ -214,26 +270,10 @@
     }));
     root.querySelectorAll('.sky-redo').forEach(b => b.onclick = () => go(b.dataset.id));
   }
-  // 오늘의 미션: 가장 최근에 끝낸 편의 미션 (아직 안 한 편의 미션은 당연히 안 보임)
-  function todayMission() {
-    const D = Core.data;
-    const played = Core.mainEpisodes().filter(e => D.done[e.id] && D.mission[e.id]);
-    const e = played[played.length - 1];
-    if (!e) return '';
-    const st = Fame.missionStatus(e);
-    const label = { yes: '✅ 했어', no: '🤍 못 했어 (괜찮아)', wait: '아직 안 했어', none: '' }[st];
-    return `<section class="today-m${st === 'yes' ? ' ok' : ''}">
-      <div class="tm-head"><b>🎯 오늘의 미션</b><span>${esc(Core.dateLabel(e.date))} ${esc(e.title)}</span></div>
-      <div class="tm-text">${esc(Bible.full(D.mission[e.id]))}</div>
-      ${st === 'wait' ? `<div class="row tm-btns"><button class="btn ghost" data-m="no" data-id="${e.id}">못 했어</button><button class="btn" data-m="yes" data-id="${e.id}">했어! ✓</button></div>
-        <div class="tm-note">정직하게 체크하면 등불 기름 +1 · 다음 편을 열 때 물어보기도 해</div>`
-      : `<div class="tm-state">${label}</div>`}
-      <button class="tm-more" id="tm-more">지난 미션 모두 보기 →</button>
-    </section>`;
-  }
   function bindTodayMission(root) {
     root.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
       const D = Core.data, id = b.dataset.id, ans = b.dataset.m;
+      if (Fame.missionStatus({ id }) !== 'wait') return;
       D.missionAns[id] = ans;
       if (ans === 'yes') D.missionDone[id] = true;
       Core.addOil(1, 'mission');
@@ -243,42 +283,8 @@
       home();
       if (!notifyBadges(badges)) Player.toast(ans === 'yes' ? '잘했어! 등불 기름 +1' : '정직하게 말해 줘서 고마워. 기름 +1');
     });
-    const m = root.querySelector('#tm-more'); if (m) m.onclick = () => { fameTab = 'mission'; fame(); };
   }
 
-  // 오늘 열린 편(또는 가장 최근에 열렸는데 아직 안 한 편)의 인물 쪽지
-  // 그 편에 나오는 선생님 (story/cast.js가 있을 때만)
-  function castOfEp(e) {
-    if (!window.CAST_LIST || !CAST_LIST.length || !window.FACES) return [];
-    const names = [];
-    for (const line of (window.STORY[e.id] || '').split('\n'))
-      for (const part of line.replace(/^[*-] /, '').split(/ \| | -> /)) {
-        const m = part.match(/^([가-힣0-9 ]{1,8})(\([가-힣]+\))?:/);
-        if (m && !names.includes(m[1].trim())) names.push(m[1].trim());
-      }
-    Art.setChapter(e.ch);
-    const out = [], seen = new Set();
-    for (const n of names) { const t = Art.castOf(n === '가브리엘' ? '천사' : n); if (t && !seen.has(t)) { seen.add(t); out.push({ t, name: FACES[t].name, role: Art.nameOf(n) }); } }
-    return out;
-  }
-  function noteCard() {
-    const D = Core.data;
-    const open = Core.mainEpisodes().filter(e => Core.isOpen(e) && !D.done[e.id] && window.STORY[e.id]);
-    const e = open[open.length - 1];
-    if (!e || !e.note) return '';
-    const more = open.length > 1 ? `<span class="note-more">못 한 편이 ${open.length - 1}개 더 있어요</span>` : '';
-    return `<button class="note-card" data-id="${e.id}">
-      <span class="note-from">📩 ${esc(e.host)}의 쪽지 <em>${esc(Core.dateLabel(e.date))} ${esc(e.day)}</em></span>
-      <span class="note-text">“${esc(e.note)}”</span>
-      ${(() => {
-        const c = castOfEp(e);
-        if (!c.length) return '';
-        const names = c.slice(0, 4).map(x => x.name).join(' · ') + (c.length > 4 ? ` 외 ${c.length - 4}명` : '');
-        return `<span class="note-cast"><span class="nc-faces">${c.slice(0, 6).map(x => `<img src="img/faces/${x.t}.webp" alt="">`).join('')}</span><span class="nc-txt">🎭 오늘 나오는 선생님<b>${esc(names)}</b></span></span>`;
-      })()}
-      <span class="note-go">이야기 열기 →</span>${more}
-    </button>`;
-  }
   function backupNudge() {
     const D = Core.data, n = Core.starCount();
     if (n < 3) return '';
@@ -312,15 +318,6 @@
       }
     } catch (err) { Player.toast(err.message || '열쇠를 읽을 수 없어요'); }
   }
-  // 지금 한국 시간이 밤이면 한 줄
-  function nightLine() {
-    const n = Core.nowKST();
-    if (n.date.slice(5) === '12-24' && n.hour >= 18) return `<div class="night-line holy">✨ 오늘 밤이 바로 그 밤이야. 목자들이 들판에서 양을 지키던 그 밤.</div>`;
-    if (n.date.slice(5) === '12-25') return `<div class="night-line holy">⭐ 메리 크리스마스! 구주가 나셨어.</div>`;
-    if (n.hour >= 19 || n.hour < 5) return `<div class="night-line">🌙 지금 밖도 밤이야. 잠깐 창밖 하늘을 올려다봐.</div>`;
-    return '';
-  }
-
   function bindTestReset(root) {
     const t = root.querySelector('#test-reset');
     if (t) t.onclick = () => { if (confirm('테스트 기록을 지울까요?')) { Core.reset(); home(); } };
@@ -844,7 +841,7 @@
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
-  window.App = { home, card, diary, go, cards, fame, codePage, versePage, finale, notifyBadges, bindImageActions };
+  window.App = { home, christmasLabel, card, diary, go, cards, fame, codePage, versePage, finale, notifyBadges, bindImageActions };
   function openSharedField() {
     if (!location.hash.startsWith('#v=')) return false;
     Field.visitShared(location.hash, show('field-guest', 'page field-page'));

@@ -731,15 +731,13 @@
         const ov = showOverlay(`
           <div class="card rules">
             <div class="rules-title">이렇게 진행돼</div>
+            <p class="rules-flow">매일 밤 3분 — <b>이야기 한 편 → 내 양 돌보기</b>.<br>성탄 밤, 네가 지킨 양 떼와 구유로.</p>
             <ul>
-              <li><b>하루 한 편</b>, 3분이면 끝나. 한국 시간 자정에 새 편이 열려.${Core.REL ? '' : ' 주일 편은 <b>오전 11시</b>에.'}</li>
-              <li>놓친 날은 <b>언제든 따라잡을 수</b> 있어. 앞날 이야기는 그날이 되어야 열려.</li>
-              <li>인물이 묻는 말에 답하면 <b>일기장</b>에 남아. 다음 날 그 사람이 기억하고 있을 거야.</li>
-              <li>매일 끝나면 <b>오늘의 미션</b>. 다음 날 정직하게 답하면 <b>등불 기름</b>을 받아.</li>
-              <li>한 편 끝낼 때마다 <b>별이 조금씩</b> 밝아져.</li>
+              <li>새 편은 한국 시간 자정에 열려.${Core.REL ? '' : ' 주일은 오전 11시.'} 놓쳐도 나중에 볼 수 있어.</li>
+              <li>한 편을 끝내면 별이 켜져. 네 답은 묵상 노트에 남아.</li>
+              <li>미션에 정직하게 답하면 등불 기름을 받아.</li>
             </ul>
-            <div class="rules-warn">🔑 <b>설정 → 기록 열쇠</b>를 가끔 카톡 나와의 채팅에 보내 둬. 폰을 바꿔도 그대로 이어서 할 수 있어.</div>
-            <div class="rules-warn">⚠️ 기록은 <b>지금 이 브라우저</b>에만 저장돼. 카톡에서 열었으면 앞으로도 카톡에서, 사파리·크롬에서 열었으면 거기서 계속해 줘. 아무도(선생님도) 네 일기를 볼 수 없어.</div>
+            <div class="rules-warn">기록은 이 브라우저에만 남아. <b>설정 → 기록 열쇠</b>를 카톡 나와의 채팅에 보내 두면 폰을 바꿔도 이어서 할 수 있어.</div>
             <button class="btn">알겠어</button>
           </div>`, 'center hold');
         ov.querySelector('button').onclick = () => { hideOverlay(); res(); };
@@ -1006,7 +1004,7 @@
           <div class="done-sub">${Core.REL ? '성탄 26일 전, 첫 번째 이야기가 열려.<br>그날 0시에 만나자.' : '📅 <b>11월 29일 주일 오전 11시</b><br>첫 번째 초가 켜지는 날, 첫 이야기가 열려.<br>예배 끝나고 반에서 같이 시작하자!'}</div>
           <button class="btn">홈으로</button>
         </div>`, 'center full hold');
-      ov.querySelector('button').onclick = () => App.home();
+      ov.querySelector('button').onclick = () => App.home({ top: true });
       return;
     }
     // 다음 편: 열려 있으면 바로 이어서, 아니면 언제 열리는지 예고
@@ -1014,17 +1012,22 @@
     const nextOpen = nx && Core.isOpen(nx) && !D.done[nx.id] && window.STORY[nx.id];
     const nextLine = !nx || nextOpen || D.done[nx.id] ? '' : `<div class="next-tease">🌙 다음 이야기 「${esc(nx.title)}」<br><small>${esc(Core.dateLabel(nx.date))} ${Core.hourLabel(nx.openHour)}에 열려요</small></div>`;
     const firstDay = first && ep.id === '1-0';
+    const fieldOpen = !!window.Field?.has();
+    const firstSheep = firstDay && Core.data.field?.sheep?.[0];
+    const fieldLabel = firstSheep ? `${Core.josa(firstSheep.name, '이가')} 기다려` :
+      Core.data.field?.cared === Core.nowKST().date ? '들판 들르기' : '오늘 밤 들판으로';
     const ov = showOverlay(`
       <div class="card done">
         ${firstDay ? '<div class="first-day-banner">대림절이 시작됐어요 · 첫째 초</div>' : ''}
         <div class="done-star">${Art.bigStar(before / total, 150)}</div>
         <div class="done-title">${first ? '별이 조금 더 밝아졌어' : '다시 보기 끝'}</div>
         <div class="done-sub">별빛 ${after} / ${total}${first ? ` · 카드 No.${Card.cardNo(ep.id)} 획득` : ''}${gemLine ? `<br><span class="gem-line">${esc(gemLine)}</span>` : ''}</div>
+        ${fieldOpen ? `<button class="btn" data-v="field">🐑 ${esc(fieldLabel)}</button>` : ''}
         ${chapterGuest ? '<p class="done-field-guest">🐑 들판에 손님이 찾아왔어</p>' : ''}
         ${skyLine()}
         ${newBadges.length ? `<div class="new-badges">${newBadges.map(b => `<div class="nb"><span>${b.icon}</span><b>${esc(b.name)}</b><small>새 배지</small><button class="btn ghost small" data-badge="${b.id}">카드 보기</button></div>`).join('')}</div>` : ''}
         ${nextLine}
-        <button class="btn" data-v="card">인증 카드 보기</button>
+        <button class="btn${fieldOpen ? ' ghost' : ''}" data-v="card">인증 카드 보기</button>
         ${nextOpen ? `<button class="btn ghost next-go" data-v="next">다음 편 이어서 ▶ 「${esc(nx.title)}」</button>` : ''}
         <button class="btn ghost" data-v="home">홈으로</button>
       </div>`, 'center full');
@@ -1037,15 +1040,17 @@
       if (box) box.innerHTML = Art.bigStar(after / total, 150);
       box && box.classList.add('pulse');
     }, 700);
-    ov.querySelector('[data-v=card]').onclick = () => App.card(ep.id);
+    const finishedId = ep.id;
+    ov.querySelector('[data-v=field]')?.addEventListener('click', () => Field.page({ tonight: finishedId }));
+    ov.querySelector('[data-v=card]').onclick = () => App.card(finishedId);
     ov.querySelectorAll('[data-badge]').forEach(button => { button.onclick = () => App.card('B:' + button.dataset.badge); });
     if (ep.id === 'end') {
       const fin = document.createElement('button');
-      fin.className = 'btn big finale-go'; fin.textContent = '🌟 27일의 기록 보기';
+      fin.className = 'btn ghost finale-go'; fin.textContent = '🌟 27일의 기록 보기';
       fin.onclick = () => App.finale();
-      ov.querySelector('.done-sub').after(fin);
+      (ov.querySelector('[data-v=field]') || ov.querySelector('.done-sub')).after(fin);
     }
-    ov.querySelector('[data-v=home]').onclick = () => App.home();
+    ov.querySelector('[data-v=home]').onclick = () => App.home({ top: true });
     const nb = ov.querySelector('[data-v=next]'); if (nb) nb.onclick = () => App.go(nx.id);
   }
 
