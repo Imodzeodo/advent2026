@@ -80,8 +80,8 @@
     root.innerHTML = `
       ${testBanner()}
       ${codeReminder()}
-      <button class="snd-home" id="snd">${Sound.on ? '🔊' : '🔇'}</button>
       <header class="home-head">
+        <button class="snd-home" id="snd" aria-label="소리 켜기 또는 끄기">${Sound.on ? '🔊' : '🔇'}</button>
         <div class="home-star">${Art.bigStar(Math.max(0.04, b), 170)}</div>
         <h1>그 밤을 향하여</h1>
         <p class="sub">${esc((window.SITE || {}).label || '')}</p>

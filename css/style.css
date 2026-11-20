@@ -38,7 +38,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 #home { padding: 0 16px calc(32px + var(--safe-b)); background: radial-gradient(120% 60% at 50% 0%, #1b2350 0%, var(--bg) 70%); min-height: 100vh; }
 .test-banner { background: #5b2d6e; color: #fff; font-size: 12px; padding: 7px 10px; margin: 0 -16px; text-align: center; }
 .page .test-banner { margin: 0 -16px 8px; }
-.home-head { text-align: center; padding: calc(18px + var(--safe-t)) 0 10px; }
+.home-head { position: relative; text-align: center; padding: calc(18px + var(--safe-t)) 0 10px; }
 .home-star { height: 150px; display: flex; align-items: center; justify-content: center; }
 .home-star svg { animation: breathe 5s ease-in-out infinite; }
 .home-head h1 { font-family: var(--serif); font-size: 30px; margin: 6px 0 2px; letter-spacing: 1px; }
@@ -285,8 +285,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 /* ---------- 소리 버튼 ---------- */
 .snd, .snd-home { position: absolute; z-index: 30; width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .4); font-size: 16px; }
 .snd { top: calc(8px + var(--safe-t)); right: 54px; }
-.snd-home { position: absolute; top: calc(10px + var(--safe-t)); right: 12px; }
-.test-banner ~ .snd-home { top: calc(52px + var(--safe-t)); }
+.snd-home { top: calc(10px + var(--safe-t)); right: 0; }
 #home { position: relative; }
 
 /* ---------- 홈 메뉴 ---------- */
@@ -412,8 +411,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .home-wreath { display: block; width: min(100%, 245px); margin: -9px auto -4px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .code-reminder { display: block; width: 100%; padding: 10px 12px; border: 1px solid #e8bf78; border-radius: 12px; color: #342006; background: #f4cf8e; font-weight: 700; cursor: pointer; }
 .home-head .sub { margin-bottom: 5px; }
-#home:has(.code-reminder) .snd-home { top: calc(62px + var(--safe-t)); }
-#home:has(.code-reminder):has(.test-banner) .snd-home { top: calc(96px + var(--safe-t)); }
 .code-test { margin: 0 0 8px; color: #e0c7ff; font-size: 13px; }
 .candles { max-width: 320px; margin: 8px auto 20px; }
 .candle-labels { display: flex; justify-content: space-between; margin: -27px 13% 0; text-align: center; }
