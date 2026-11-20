@@ -13,9 +13,9 @@
     bump: ['patrolBump', 40], end: ['patrolEnd', 30]
   };
   const FIELD_TOUR = [
-    { target: '.field-feed', title: '🌾 꼴 주기', text: '하루 한 번. 양이 자라고 기름도 받아.', action: '꼴 주기' },
-    { target: '.field-market', title: '🏪 장터', text: '장터에서 산 물건을 놓으면 새 양이 올지도 몰라.', action: '장터 보기' },
-    { target: '.field-patrol', title: '🔦 밤 순찰', text: '등불을 비춰 양을 우리까지 데려가 봐.', action: '순찰 보기' }
+    { target: '.field-feed', title: '🌾 꼴 주기', text: '하루에 한 번 꼴을 주면 양이 자라고 기름도 받아.', action: '꼴 주기' },
+    { target: '.field-market', title: '🏪 장터', text: '장터 물건을 놓으면 새 양이 찾아올 수 있어.', action: '장터 보기' },
+    { target: '.field-patrol', title: '🔦 밤 순찰', text: '등불로 양을 우리까지 데려가 봐.', action: '순찰 보기' }
   ];
   const SHEPHERD_VERSES = [
     { verse: '시 23:1' }, { verse: '시 23:2' }, { verse: '시 23:3' }, { verse: '시 23:4' },
@@ -24,6 +24,7 @@
     { verse: '시 100:3' }, { verse: '벧전 2:25', label: '베드로전서 2:25' }, { verse: '계 7:17', label: '요한계시록 7:17' }
   ];
   const PRICE = { common: 3, rare: 6, legend: 0 };
+  const CHAPTER_GUESTS = { '1-6': 'lantern', '2-6': 'camper', '3-6': 'flower', '4-4': 'stargazer' };
   const RARITY = { common: '일반', rare: '희귀', legend: '전설' };
   const PATROL_TYPES = ['patrolTime', 'patrolSpeed', 'lamp'];
   const STAGES = ['새끼 양', '어린 양', '큰 양', '빛나는 양'];
@@ -120,7 +121,7 @@
     const today = date();
     if (!Array.isArray(f.visitors)) f.visitors = [];
     const seen = new Set();
-    f.visitors = f.visitors.filter(v => v && v.until >= today && (!window.SHEEP_DEX || Object.hasOwn(window.SHEEP_DEX.byId, v.species)) &&
+    f.visitors = f.visitors.filter(v => v && (v.until >= today || (v.chapterGift && !v.until)) && (!window.SHEEP_DEX || Object.hasOwn(window.SHEEP_DEX.byId, v.species)) &&
       !f.dex[v.species] && !seen.has(v.species) && seen.add(v.species));
     if (typeof f.visitRoll !== 'number') f.visitRoll = 0;
     if (typeof f.patrolDay !== 'string') f.patrolDay = '';
@@ -252,6 +253,37 @@
     data.visitors.push(visitor);
     return visitor;
   }
+  function deliverChapterGuests(data) {
+    const arrived = [];
+    if (!window.SHEEP_DEX || !has() || !data.chapterGuestQueue?.length) return arrived;
+    for (const episode of data.chapterGuestQueue) {
+      const preferred = CHAPTER_GUESTS[episode];
+      if (!preferred || data.sheep.length >= MAX_SHEEP) continue;
+      const available = DEX().filter(s => s.rarity === 'rare' && !data.dex[s.id] &&
+        !data.visitors.some(v => v.species === s.id && v.chapterGift));
+      const choice = available.find(s => s.id === preferred) || available.find(s => !data.visitors.some(v => v.species === s.id)) || available[0];
+      if (!choice) continue;
+      const visitor = data.visitors.find(v => v.species === choice.id) || addVisitor(data, choice.id, null);
+      visitor.chapterGift = episode;
+      visitor.until = null;   // 처음 직접 만나는 날까지 기다린다.
+      data.visitors = [visitor, ...data.visitors.filter(v => v !== visitor)];
+      arrived.push(episode);
+    }
+    delete data.chapterGuestQueue;
+    Core.save();
+    return arrived;
+  }
+  async function awardChapterGuest(episode) {
+    if (!Object.hasOwn(CHAPTER_GUESTS, episode)) return false;
+    const data = ensure();
+    (data.chapterGuestQueue ||= []).push(episode);
+    Core.save();
+    if (!has() || !await Promise.race([prepareDex(), wait(2500)]) || data !== field()) return false;
+    return deliverChapterGuests(ensure()).includes(episode);
+  }
+  function activeVisitors(data) {
+    return data.visitors.slice(0, 2);
+  }
   function sundayGuestDue(data, today) {
     return isSunday(today) && data.sundayVisitDay !== today && data.sheep.length < MAX_SHEEP &&
       (!window.SHEEP_DEX || DEX().some(s => s.rarity === 'rare' && !data.dex[s.id]));
@@ -279,6 +311,7 @@
   function visitCheck(force) {
     if (!has()) return null;
     const data = ensure();
+    deliverChapterGuests(data);
     if (data.sheep.length >= MAX_SHEEP) return null;
     const today = date();
     const legendDue = dexList().some(s => s.rarity === 'legend' && !data.dex[s.id] &&
@@ -519,7 +552,7 @@
     return {
       sheep: data.sheep.map(s => ({ id: s.id, species: s.species, name: s.name, level: s.level, wear: s.wear || null, lost: !!s.lost, highlight: s.id === extra.selected })),
       slots: Object.fromEntries(Object.entries(data.slots).filter(([, v]) => v)),
-      visitors: data.visitors.map(v => ({ id: v.id, species: v.species })),
+      visitors: activeVisitors(data).map(v => ({ id: v.id, species: v.species })),
       stable: !!data.items['마구간'],
       moving: moving ? { item: moving.item, allowed: allowedSlots(data, moving) } : null
     };
@@ -531,6 +564,11 @@
   function readThumb() {
     try { const url = localStorage.getItem(THUMB); return url && url.startsWith('data:image/') ? url : null; } catch { return null; }
   }
+  function saveThumb(url) {
+    if (typeof url !== 'string' || !url.startsWith('data:image/')) return;
+    try { localStorage.setItem(THUMB, url); } catch { /* 저장 공간이 부족하면 건너뜀 */ }
+  }
+  const homeThumb = () => has() ? readThumb() : null;
 
   /* ---------- 친구 들판 링크 ---------- */
   function publicField(data, nickname) {
@@ -616,7 +654,7 @@
     const content = root.querySelector('.field-guest-content');
     let data;
     try { data = await readFieldLink(hash); } catch {
-      content.textContent = '들판을 열 수 없어요. 친구에게 링크를 다시 받아 봐.';
+      content.textContent = '들판이 열리지 않아. 친구에게 링크를 다시 받아 봐.';
       return;
     }
     if (!root.isConnected) return;
@@ -654,12 +692,12 @@
     const today = date();
     const episode = Core.epById('1-0');
     const remaining = daysBetween(today, episode?.date || '2026-11-29');
-    const notice = Core.REL ? '첫 번째 이야기가 열리면, 할아버지가 선물을 들고 와요 🎁' : '11/29 주일 예배 후, 들판의 할아버지가 선물을 들고 와요 🎁';
-    const thumb = open && readThumb();
+    const notice = Core.REL ? '첫 이야기가 열리면 할아버지가 선물을 들고 와 🎁' : '11/29 주일 예배 후에 할아버지가 선물을 들고 와 🎁';
+    const thumb = homeThumb();
     const sundayNotice = open && (data.visitors.some(v => v.sunday) || sundayGuestDue(data, today));
     const dots = open ? [
       data.cared !== today && '꼴 주기',
-      data.visitors.length && '온 양 만나기',
+      data.visitors.length && '손님 만나기',
       data.patrolDay !== today && '밤 순찰'
     ].filter(Boolean) : [];
     return `<section class="field-panel">
@@ -667,9 +705,9 @@
       <div class="field-panel-copy"><h2>나의 들판</h2>
         ${open ? `<p>양 ${data.sheep.length}마리 · 도감 ${Object.keys(data.dex).length}/${dexTotal()}</p>
           <div class="field-today"><strong>오늘 할 일</strong>${dots.length ? `<ul>${dots.map(t => `<li>${t}</li>`).join('')}</ul>` : '<span>모두 완료 ✓</span>'}</div>` : `<p>${esc(notice)}</p>`}
-        ${open ? '<button type="button" class="btn small field-enter">들판 가기</button>' : `<small>${remaining > 0 ? 'D-' + remaining : '🔒 첫 이야기를 마치면 열려요'}</small>`}
+        ${open ? '<button type="button" class="btn small field-enter">들판 가기</button>' : `<small>${remaining > 0 ? 'D-' + remaining : '🔒 첫 이야기를 마치면 열려'}</small>`}
         ${!open && Core.PREVIEW_ALL ? '<button type="button" class="btn small field-test-lamb">🧪 미리보기: 양 받기</button>' : ''}
-      </div>${sundayNotice ? '<p class="field-sunday-strip">✦ 오늘은 주일 손님이 와요</p>' : ''}</section>`;
+      </div>${sundayNotice ? '<p class="field-sunday-strip">✦ 오늘은 주일 손님이 와!</p>' : ''}</section>`;
   }
 
   function bindPanel(root) {
@@ -773,7 +811,7 @@
       thumbTimer = setTimeout(() => {
         if (!alive || !view) return;
         Promise.resolve().then(() => view.snapshot(360, 400)).then(url => {
-          if (alive && typeof url === 'string' && url.startsWith('data:image/')) { try { localStorage.setItem(THUMB, url); } catch { /* 공간 부족 */ } }
+          if (alive) saveThumb(url);
         }).catch(() => {});
       }, delay);
     }
@@ -819,20 +857,26 @@
       if (!alive) return;
       const data = ensure();
       const today = date();
+      const visitors = activeVisitors(data);
+      const justMet = mode === 'loading' ? [] : visitors.filter(v => v.chapterGift && !v.until);
+      if (justMet.length) {
+        justMet.forEach(v => { v.until = today; });
+        Core.save();
+      }
       const due = data.cared !== today;
       const tip = !moving && FIELD_TOUR[tourStep];
       const missing = data.sheep.find(s => s.lost);
-      const visitor = data.visitors[0];
+      const visitor = visitors[0];
       top.innerHTML = `<header class="field-header"><button class="back" type="button" aria-label="홈으로">←</button>
         <div><h1>나의 들판</h1><p>양 ${data.sheep.length}마리</p></div>
         <span class="field-oil"><span aria-hidden="true">◕</span> 기름 ${Core.data.oil || 0}</span></header>
         ${tip ? `<aside class="field-coach" aria-labelledby="field-coach-title">
           <div class="field-coach-head"><small>첫 들판 안내 · ${tourStep + 1}/${FIELD_TOUR.length}</small><button type="button" class="link field-coach-close" aria-label="첫 들판 안내 닫기">닫기</button></div>
           <b id="field-coach-title">${tip.title}</b><p>${tip.text}</p>
-          ${tourStep === 0 && mode === '3d' ? '<p>양을 꾹 누르면 쓰다듬을 수 있어.</p>' : ''}
+          ${tourStep === 0 && mode === '3d' ? '<p>양을 꾹 눌러 쓰다듬어 봐.</p>' : ''}
           <div class="field-coach-actions"><button type="button" class="btn small field-coach-try" ${tourStep === 0 && !due ? 'hidden' : ''} ${tourStep === 2 && mode === 'loading' ? 'disabled' : ''}>${tip.action}</button>
           <button type="button" class="link field-coach-next">${tourStep === FIELD_TOUR.length - 1 ? '마치기' : '다음'}</button></div></aside>` : ''}
-        ${visitor && !moving ? `<button type="button" class="field-visit-banner" data-visit="${esc(visitor.id)}"><span aria-hidden="true">🐑</span> ${visitor.sunday ? '주일 손님이 왔어!' : '누군가 들판 입구에 왔어!'}<b>보러 가기 ›</b></button>` : ''}
+        ${visitor && !moving ? `<button type="button" class="field-visit-banner" data-visit="${esc(visitor.id)}"><span aria-hidden="true">🐑</span> ${visitor.sunday ? '주일 손님이 왔어!' : '들판에 손님이 왔어!'}<b>보러 가기 ›</b></button>` : ''}
         ${word ? `<aside class="field-daily-word" aria-labelledby="field-word-title">
           <div class="field-word-head"><h2 id="field-word-title">할아버지의 말씀 한 줄</h2><button type="button" class="link field-word-close" aria-label="말씀 카드 닫기">닫기</button></div>
           ${word}</aside>` : ''}`;
@@ -841,7 +885,7 @@
         ${moving ? `<p class="field-move-tip"><span>${esc(josa(moving.item, '을를'))} 놓을 빈 칸을 골라 줘.</span><button type="button" class="link field-cancel-move">취소</button></p>` :
           `<button type="button" class="btn field-feed ${due ? 'due' : ''}" ${due ? '' : 'disabled'}>${due ? '🌾 꼴 주기' : '✓ 오늘 꼴 주기 완료'}</button>
           <div class="field-actions">
-            <button type="button" class="field-act field-patrol"><span aria-hidden="true">🔦</span>밤 순찰${data.patrolDay !== today ? '<i class="field-dot" aria-label="오늘 보상 전"></i>' : ''}</button>
+            <button type="button" class="field-act field-patrol"><span aria-hidden="true">🔦</span>밤 순찰${data.patrolDay !== today ? '<i class="field-dot" aria-label="오늘 보상 남음"></i>' : ''}</button>
             <button type="button" class="field-act field-dex"><span aria-hidden="true">📖</span>도감 <small>${dex}/${dexTotal()}</small></button>
             <button type="button" class="field-act field-market"><span aria-hidden="true">🏪</span>장터</button>
             <button type="button" class="field-act field-card"><span aria-hidden="true">🖼️</span>들판 카드</button>
@@ -891,7 +935,7 @@
         queueThumb();
       }
       if (mode !== 'loading') {
-        for (const guest of data.visitors) {
+        for (const guest of visitors) {
           if (spec(guest.species).rarity !== 'legend' || greetedLegends.has(guest.id)) continue;
           greetedLegends.add(guest.id);
           react(guest.id, 'legend');
@@ -929,7 +973,7 @@
     }
 
     function shareSheet() {
-      const modal = sheet('내 들판 자랑하기', `<p class="field-sheet-meta">친구가 링크로 양과 장식을 구경할 수 있어.</p>
+      const modal = sheet('내 들판 자랑하기', `<p class="field-sheet-meta">링크를 보내면 친구가 양과 장식을 볼 수 있어.</p>
         ${Core.data.nickname ? '<label class="field-share-option"><input type="checkbox"> 내 닉네임도 보여 주기</label>' : ''}
         <label class="field-share-url">들판 링크<input type="url" readonly></label>
         <div class="row"><button type="button" class="btn field-copy" disabled>링크 복사</button>
@@ -953,7 +997,7 @@
           input.value = url;
           copy.disabled = false;
           if (share) share.disabled = false;
-        } catch { if (request === generation) status.textContent = '링크를 만들 수 없어요. 다시 열어 봐.'; }
+        } catch { if (request === generation) status.textContent = '링크를 만들지 못했어. 다시 열어 봐.'; }
       }
       if (checkbox) checkbox.onchange = refresh;
       input.onclick = () => input.select();
@@ -964,7 +1008,7 @@
         } catch {
           input.focus();
           input.select();
-          status.textContent = '선택된 링크를 복사해 줘.';
+          status.textContent = '선택한 링크를 복사해 줘.';
         }
       };
       if (share) share.onclick = async () => {
@@ -1121,7 +1165,7 @@
         sheep.name = nameSheep(input.value, sheep.name);
         Core.save();
         modal.close();
-        render(`이제 ${josa(sheep.name, '이라고는라고').replace(/이라고는라고$|라고$/, '')}`.trim() ? `이름을 「${sheep.name}」(으)로 바꿨어.` : '');
+        render(`이제 ${josa(sheep.name, '이라고는라고').replace(/이라고는라고$|라고$/, '')}`.trim() ? `이름을 바꿨어 · ${sheep.name}` : '');
         sheepSheet(sheep);
       };
     }
@@ -1131,7 +1175,7 @@
       const visitor = data.visitors.find(v => v.id === id);
       if (!visitor) return render('그 양은 벌써 떠났어.');
       const sp = spec(visitor.species);
-      if (sp.id !== visitor.species) return render('손님 정보를 불러오지 못했어. 들판에 다시 와 줘.');
+      if (sp.id !== visitor.species) return render('손님 정보를 불러오지 못했어. 들판에 다시 들어와 봐.');
       const price = PRICE[sp.rarity] ?? 3;
       const oil = Core.data.oil || 0;
       const full = data.sheep.length >= MAX_SHEEP;
@@ -1141,11 +1185,11 @@
           ${portraitHTML(sp.id, { level: 5 }, 'big')}
           <h3>${esc(sp.name)} ${rarityBadge(sp)}</h3>
           <p class="field-visitor-desc">${esc(sp.desc)}</p>
-          ${sp.skill ? `<p class="field-skill">✦ 특기(Lv3부터) · ${esc(sp.skill.label)}</p>` : ''}
+          ${sp.skill ? `<p class="field-skill">✦ 특기 (Lv3부터) · ${esc(sp.skill.label)}</p>` : ''}
           ${sp.rarity === 'legend' && sp.verse ? verseHTML(sp.verse) : ''}
         </div>
         <button type="button" class="btn field-adopt" ${full || short ? 'disabled' : ''}>데려오기 · ${price ? `기름 ${price}` : '무료'}</button>
-        ${full ? `<p class="field-sheet-meta">들판이 가득 찼어(최대 ${MAX_SHEEP}마리).</p>` : short ? `<p class="field-sheet-meta">기름이 ${price - oil}방울 모자라. 오늘 밤까지 기다려 줄 거야.</p>` : ''}
+        ${full ? `<p class="field-sheet-meta">들판이 가득 찼어. 최대 ${MAX_SHEEP}마리까지 키울 수 있어.</p>` : short ? `<p class="field-sheet-meta">기름 ${price - oil}방울이 더 필요해. 손님은 오늘 밤까지 기다려.</p>` : ''}
         <button type="button" class="btn ghost field-later">다음에</button>`, 'field-visitor-sheet', () => focus(null));
       modal.querySelector('.field-later').onclick = () => modal.close();
       modal.querySelector('.field-adopt').onclick = () => {
@@ -1173,7 +1217,7 @@
       const data = ensure();
       const list = dexList();
       const got = list.filter(s => data.dex[s.id]).length;
-      const modal = sheet('양 도감', `<p class="field-sheet-meta">모은 양 <strong>${got}/${list.length}</strong> · 들판 입구에 찾아온 양을 데려오면 채워져요.</p>
+      const modal = sheet('양 도감', `<p class="field-sheet-meta">모은 양 <strong>${got}/${list.length}</strong> · 찾아온 양을 데려오면 도감이 채워져.</p>
         <div class="field-dex-grid">${list.map(s => {
           const mine = data.dex[s.id];
           const sheep = data.sheep.find(x => x.species === s.id);
@@ -1200,11 +1244,11 @@
       } else if (sp.rarity === 'legend') {
         body = `<div class="field-visitor-card legend"><span class="field-dex-q big">???</span>
           <h3>전설의 양 ${rarityBadge(sp)}</h3><p class="field-visitor-desc">조건: ${esc(sp.cond || '')}</p>
-          <p class="field-sheet-meta">조건을 채우면 반드시 한 번 찾아와요.</p></div>`;
+          <p class="field-sheet-meta">조건을 채우면 한 번 찾아와.</p></div>`;
       } else {
         body = `<div class="field-visitor-card ${sp.rarity}">${portraitHTML(sp.id, { level: 5, silhouette: true }, 'big')}
           <h3>? ${rarityBadge(sp)}</h3>
-          <p class="field-visitor-desc">${sp.rarity === 'rare' ? `들판에 「${esc(sp.attract)}」${Core.josa(sp.attract, '이가').slice(-1)} 있으면…` : '아직 만나지 못한 양. 언젠가 들판 입구에 찾아와요.'}</p></div>`;
+          <p class="field-visitor-desc">${sp.rarity === 'rare' ? `들판에 「${esc(sp.attract)}」${Core.josa(sp.attract, '이가').slice(-1)} 있으면…` : '아직 못 만난 양이야. 언젠가 들판에 찾아와.'}</p></div>`;
       }
       const modal = sheet(met ? sp.name : '도감', body + '<button type="button" class="btn ghost field-dex-back">도감으로</button>', 'field-dex-detail');
       modal.querySelector('.field-dex-back').onclick = dexSheet;
@@ -1215,14 +1259,14 @@
       const oil = Core.data.oil || 0;
       const hint = id => {
         const want = lureOf(id).filter(s => !data.dex[s.id]);
-        return want.length ? `<small class="field-lure">이걸 놓으면 ${esc(want.map(s => s.name).join('·'))}${Core.josa(want[want.length - 1].name, '이가').slice(-1)} 올지도</small>` : '';
+        return want.length ? `<small class="field-lure">이걸 놓으면 ${esc(want.map(s => s.name).join('·'))}${Core.josa(want[want.length - 1].name, '이가').slice(-1)} 올지도 몰라.</small>` : '';
       };
       const places = market.filter(([, kind]) => kind !== 'wear');
       const wears = market.filter(([, kind]) => kind === 'wear');
-      const modal = sheet('들판 장터', `<p class="field-sheet-meta">기름 <strong>${oil}방울</strong> · 양은 들판 입구에 찾아온 손님을 데려와요.</p>
+      const modal = sheet('들판 장터', `<p class="field-sheet-meta">기름 <strong>${oil}방울</strong> · 새 양은 들판 입구에서 만날 수 있어.</p>
         <div class="field-shop-list">${places.map(([id, kind, cost]) => `<div class="field-shop-row">
           ${icon(id, kind)}<div><b>${esc(id)}</b>${kind === 'sky' ? '<small>하늘 칸</small>' : ''}${hint(id)}
-          ${available(id) ? `<button type="button" class="link" data-place="${esc(id)}">가진 것 ${available(id)}개 · 놓기 ›</button>` : ''}</div>
+          ${available(id) ? `<button type="button" class="link" data-place="${esc(id)}">${available(id)}개 보유 · 놓기 ›</button>` : ''}</div>
           <button type="button" class="btn small" data-buy="${esc(id)}" ${oil < cost ? 'disabled' : ''}>${cost}방울</button></div>`).join('')}</div>
         <h3 class="field-sub">꾸미기</h3>
         <div class="field-shop-grid">${wears.map(([id, kind, cost]) =>
@@ -1246,7 +1290,7 @@
 
     function startPlacing(item, prefix = '') {
       const data = field();
-      if (!allowedSlots(data, { item }).length) return render(`${prefix} 놓을 빈 칸이 없어. 놓인 물건을 눌러 치울 수 있어.`.trim());
+      if (!allowedSlots(data, { item }).length) return render(`${prefix} 놓을 자리가 없어. 들판에 있는 물건을 눌러 치워 봐.`.trim());
       moving = { index: null, item };
       render(prefix);
     }
@@ -1273,7 +1317,7 @@
         const modal = sheet(id, `<div class="field-inventory-icon">${sprite(objects[id] || '')}</div>
           <div class="row"><button type="button" class="btn field-move">옮기기</button><button type="button" class="btn ghost field-remove">치우기</button></div>`);
         modal.querySelector('.field-move').onclick = () => {
-          if (!allowedSlots(data, { item: id }).length) { modal.close(); return render('옮겨 놓을 빈 칸이 없어.'); }
+          if (!allowedSlots(data, { item: id }).length) { modal.close(); return render('옮길 자리가 없어.'); }
           moving = { index, item: id };
           modal.close();
           render();
@@ -1307,7 +1351,7 @@
     function dress(sheep) {
       const items = Object.keys(catalog).filter(id => catalog[id] === 'wear' && (available(id) || sheep.wear === id));
       const modal = sheet(sheep.name + ' 꾸미기', `<div class="field-pet-art">${portraitHTML(sheep.species, { level: sheep.level, wear: sheep.wear })}</div>
-        ${items.length ? `<div class="field-shop-grid">${items.map(id => `<button type="button" data-wear="${esc(id)}" aria-pressed="${sheep.wear === id}">${icon(id, 'wear')}<span>${esc(id)}</span><b>${sheep.wear === id ? '착용 중' : '달아 주기'}</b></button>`).join('')}</div>` : '<p class="field-sheet-meta">들판 장터에서 꾸미기를 고를 수 있어.</p>'}
+        ${items.length ? `<div class="field-shop-grid">${items.map(id => `<button type="button" data-wear="${esc(id)}" aria-pressed="${sheep.wear === id}">${icon(id, 'wear')}<span>${esc(id)}</span><b>${sheep.wear === id ? '착용 중' : '달아 주기'}</b></button>`).join('')}</div>` : '<p class="field-sheet-meta">장터에서 꾸미기 아이템을 골라 봐.</p>'}
         ${sheep.wear ? '<button type="button" class="btn ghost field-unwear">벗기기</button>' : ''}`);
       const wear = id => {
         if (id && sheep.wear !== id && !available(id)) return;
@@ -1315,7 +1359,7 @@
         Core.save();
         Sound.sfx('pop');
         modal.close();
-        render(id ? `${josa(id, '을를')} 달았어.` : '꾸미기를 벗겼어.');
+        render(id ? `${josa(id, '을를')} 달았어.` : '장식을 벗겼어.');
         dress(sheep);
       };
       modal.querySelectorAll('[data-wear]').forEach(button => { button.onclick = () => wear(button.dataset.wear); });
@@ -1357,15 +1401,15 @@
       const rewarded = data.patrolDay === today;
       const ok3d = !!view && typeof view.patrol === 'function';
       const skill = sp.skill && PATROL_TYPES.includes(sp.skill.type) ? sp.skill : null;
-      const effect = skill ? (active(leader) ? `✦ ${skill.label}` : `🔒 Lv3에 열림 · ${skill.label}`) : '순찰 특기는 없어요 · 꾸벅이·까망이·콩알이 같은 양이 대장이면 좋아요';
+      const effect = skill ? (active(leader) ? `✦ ${skill.label}` : `🔒 Lv3에 열림 · ${skill.label}`) : '순찰 특기 없음 · 꾸벅이, 까망이, 콩알이를 대장으로 세워 봐.';
       const modal = sheet('🔦 밤 순찰', `<div class="field-patrol-head">
           <div class="field-sheep-portrait ${sp.rarity}">${portraitHTML(leader.species, { level: leader.level, wear: leader.wear })}</div>
           <div><small>순찰 대장 ⭐</small><b>${esc(leader.name)} · Lv${leader.level}</b><p class="field-skill ${skill && active(leader) ? '' : 'locked'}">${esc(effect)}</p></div></div>
-        <p class="field-patrol-how">손가락으로 등불을 비추면 빛 안의 양이 우리로 걸어가요. 늑대 그림자는 등불로 비춰 쫓아내요.</p>
-        <ul class="field-patrol-meta"><li>${rewarded ? '오늘 보상은 받았어 · 지금은 연습' : '오늘 첫 판 보상: 기름 최대 5 + 대장 경험치'}</li><li>최고 기록 ${data.patrolBest}마리</li></ul>
+        <p class="field-patrol-how">등불을 비추면 양이 우리로 걸어가. 늑대 그림자도 빛으로 쫓아내 봐.</p>
+        <ul class="field-patrol-meta"><li>${rewarded ? '오늘 보상은 받았어 · 지금은 연습' : '오늘 첫 판 보상 · 기름 최대 5방울 + 대장 경험치'}</li><li>최고 기록 ${data.patrolBest}마리</li></ul>
         ${ok3d ? '<button type="button" class="btn field-patrol-go">🔦 순찰 시작</button>' :
-          `<p class="field-sheet-meta field-patrol-no">${mode === 'loading' ? '들판을 불러오는 중이에요. 잠시 뒤 다시 눌러 줘.' : '이 기기에서는 3D 순찰을 할 수 없어요.'}</p>`}
-        <small class="field-sheet-tip">대장을 바꾸려면 양을 눌러 「대장으로」</small>`, 'field-patrol-sheet');
+          `<p class="field-sheet-meta field-patrol-no">${mode === 'loading' ? '들판을 불러오는 중이야. 잠깐 뒤에 다시 눌러 줘.' : '이 기기에서는 3D 순찰을 할 수 없어.'}</p>`}
+        <small class="field-sheet-tip">양을 눌러 순찰 대장을 바꿀 수 있어.</small>`, 'field-patrol-sheet');
       modal.querySelector('.field-patrol-go')?.addEventListener('click', () => { modal.close(); runPatrol(); });
     }
 
@@ -1432,7 +1476,7 @@
       const modal = sheet('순찰 결과', `<div class="field-patrol-result">
           <div class="field-patrol-rating" role="img" aria-label="별 ${stars}/3"><span>${rating}</span><span class="empty-stars">${'☆'.repeat(3 - stars)}</span></div>
           <p class="field-patrol-score"><b>${penned}</b><span>/${total}</span></p><p>우리 안에 들어온 양</p>
-          <ul>${timeLeft ? `<li>⏱ ${timeLeft}초 남음</li>` : ''}<li>🐺 쫓은 늑대 ${scared}</li>${first ? `<li>◕ 기름 +${oil}</li><li>⭐ ${esc(leader?.name || '')} 경험치 +${exp}</li>` : '<li>오늘 보상은 이미 받았어 · 연습 판</li>'}
+          <ul>${timeLeft ? `<li>⏱ ${timeLeft}초 남음</li>` : ''}<li>🐺 쫓은 늑대 ${scared}</li>${first ? `<li>◕ 기름 +${oil}</li><li>⭐ ${esc(leader?.name || '')} 경험치 +${exp}</li>` : '<li>오늘 보상은 이미 받았어 · 연습 순찰</li>'}
           ${best ? '<li class="best">🏆 최고 기록 갱신!</li>' : `<li>최고 기록 ${data.patrolBest}마리</li>`}</ul></div>
         <button type="button" class="btn field-patrol-card">순찰 기록 카드 공유</button>
         <button type="button" class="btn ghost field-patrol-again">한 번 더</button>`, 'field-patrol-sheet');
@@ -1443,7 +1487,7 @@
     }
 
     async function cardSheet(title, draw, fileId, alt, caption) {
-      const modal = sheet(title, '<p class="field-sheet-meta" role="status">카드를 그리고 있어요…</p>', 'field-card-sheet');
+      const modal = sheet(title, '<p class="field-sheet-meta" role="status">카드를 그리는 중…</p>', 'field-card-sheet');
       try {
         const canvas = await draw();
         const blob = await Card.toBlob(canvas);
@@ -1466,14 +1510,14 @@
           } catch {
             input.focus();
             input.select();
-            status.textContent = '선택된 문구를 복사해 줘.';
+            status.textContent = '선택한 문구를 복사해 줘.';
           }
         };
         modal.querySelector('.field-share').onclick = async () => {
           try {
             if (await Card.share(canvas, fileId, caption, blob) !== 'fallback') return;
           } catch { /* 이미지를 길게 눌러 저장하는 방법으로 안내한다. */ }
-          status.textContent = '이미지를 길게 누르거나 이미지 저장을 눌러 주세요.';
+          status.textContent = '이미지를 꾹 누르거나 「이미지 저장」을 눌러 줘.';
         };
       } catch {
         if (modal.open) modal.querySelector('.field-sheet-meta').textContent = '카드를 그리지 못했어. 다시 열어 봐.';
@@ -1541,7 +1585,7 @@
       return `<button type="button" class="field-sheep" style="${position(x, y)};--delay:${-i * 1.47}s;--drift:${i % 2 ? -12 : 12}px;z-index:${3 + Math.round(y / 40)}" data-sheep-id="${esc(sheep.id)}" data-stage="${stage(sheep)}"
         aria-label="${esc(sheep.name)} · Lv${sheep.level}" ${moving ? 'disabled' : ''}>${sprite(sheepArt(sheep), '-40 -50 80 58')}</button>`;
     }).join('');
-    const visitorsHTML = data.visitors.slice(0, 2).map((v, i) => {
+    const visitorsHTML = activeVisitors(data).map((v, i) => {
       const [x, y] = gate[i];
       return `<button type="button" class="field-visitor" style="${position(x, y)}" data-visitor="${esc(v.id)}" aria-label="들판 입구에 온 양" ${moving ? 'disabled' : ''}>
         ${sprite(sheepArt({ species: v.species, level: 5 }), '-40 -50 80 58')}<i aria-hidden="true">!</i></button>`;
@@ -1568,10 +1612,70 @@
       <div class="field-story-content">
         <div class="field-story-talk"><strong>할아버지</strong><p></p><button type="button" class="btn ghost">계속</button></div>
       </div></section>`;
-    const content = box.querySelector('.field-story-content');
+    const scene = box.querySelector('.field-first');
+    const content = scene.querySelector('.field-story-content');
     const lines = ['오늘 새벽에 태어난 녀석이다.', '성탄까지 네가 맡아 주겠니? 이름을 지어 주렴.'];
+    const viewport = window.visualViewport;
+    const fit = () => {
+      box.style.setProperty('--lamb-viewport', `${viewport?.height || window.innerHeight}px`);
+      box.style.setProperty('--lamb-top', `${viewport?.offsetTop || 0}px`);
+    };
     return new Promise(resolve => {
       let i = 0;
+      let active = true, allow3D = true, view = null, followTimer = 0;
+      const observer = new MutationObserver(() => {
+        if (!scene.isConnected) finish();
+      });
+      // Canvas 안의 이름표는 매 프레임 바뀌므로 오버레이를 떼는 부모만 관찰한다.
+      for (let node = scene.parentElement; node; node = node.parentElement) observer.observe(node, { childList: true });
+
+      function drop3D() {
+        clearInterval(followTimer);
+        viewport?.removeEventListener('resize', fit);
+        viewport?.removeEventListener('scroll', fit);
+        window.removeEventListener('resize', fit);
+        box.style.removeProperty('--lamb-viewport');
+        box.style.removeProperty('--lamb-top');
+        box.classList.remove('field-welcome-overlay');
+        scene.classList.remove('is-3d');
+        try { view?.destroy(); } catch { /* 이미 정리됨 */ }
+        view = null;
+        scene.querySelector('.field-story-3d')?.remove();
+      }
+      function finish() {
+        if (!active) return;
+        active = false;
+        observer.disconnect();
+        drop3D();
+        resolve();
+      }
+
+      const initial = { ...stateOf(ensure()), sheep: [], visitors: [] };
+      const supports3D = can3D();
+      const opening = (async () => {
+        if (!supports3D || !await prepareDex() || !await load3D() || !active || !allow3D) return;
+        const host = document.createElement('div');
+        host.className = 'field-story-3d';
+        host.style.visibility = 'hidden';
+        scene.insertBefore(host, content);
+        let mounted;
+        try {
+          mounted = await Field3D.mount(host, initial);
+          if (!active || !allow3D || typeof mounted.welcome !== 'function') {
+            mounted.destroy();
+            host.remove();
+            return;
+          }
+          view = mounted;
+          fit();
+          viewport?.addEventListener('resize', fit);
+          viewport?.addEventListener('scroll', fit);
+          window.addEventListener('resize', fit);
+          box.classList.add('field-welcome-overlay');
+          scene.classList.add('is-3d');
+          host.style.visibility = '';
+        } catch { host.remove(); }
+      })();
       const say = () => {
         content.querySelector('p').textContent = lines[i];
         voice('lamb-' + (i + 1));
@@ -1582,21 +1686,44 @@
         content.innerHTML = `<div class="field-story-lamb">${sprite(sheepArt({ species: 'cotton', level: 1 }), '-37 -43 74 51')}</div>${nameForm('이 이름으로 맡을게', '첫눈')}`;
         content.querySelector('form').onsubmit = async event => {
           event.preventDefault();
-          const name = nameSheep(content.querySelector('input').value, '첫눈');
-          if (!has()) {
-            const data = ensure();
-            data.since = date();
-            data.sheep.push(newSheep(data, name, 'cotton'));
-            data.dex.cotton = data.dex.cotton || date();
-            Core.save();
+          if (has()) return finish();
+          const name = nameSheep(event.currentTarget.elements['sheep-name'].value, '첫눈');
+          const data = ensure();
+          data.since = date();
+          const sheep = newSheep(data, name, 'cotton');
+          data.sheep.push(sheep);
+          data.dex.cotton = data.dex.cotton || date();
+          Core.save();
+          if (supports3D) content.innerHTML = '<div class="field-arrival field-welcome-progress" role="status">🐑 오솔길에서 이쪽으로 오고 있어…</div>';
+          await Promise.race([opening, wait(3500)]);
+          allow3D = false;
+          if (!active) return;
+          if (view) {
+            try {
+              view.update(stateOf(data));
+              const arrival = view.welcome(sheep.id);
+              const follow = () => { try { view?.focus(sheep.id); } catch { /* 걷기 연출은 계속 */ } };
+              follow();
+              followTimer = setInterval(follow, 600);
+              await Promise.race([arrival, wait(12000)]);
+            } catch { drop3D(); }
+            finally { clearInterval(followTimer); }
+          }
+          if (!active) return;
+          if (view) {
+            try {
+              const thumb = await view.snapshot(360, 400);
+              if (active) saveThumb(thumb);
+            } catch { /* 썸네일 없이도 도착 표시 */ }
+            if (!active) return;
           }
           Sound.sfx('star');
-          content.innerHTML = `<div class="field-arrival"><div class="field-burst" aria-hidden="true">${Array.from({ length: 12 }, (_, i) => {
+          content.innerHTML = `<div class="field-arrival" role="status">${view ? '' : `<div class="field-burst" aria-hidden="true">${Array.from({ length: 12 }, (_, i) => {
             const angle = i * Math.PI / 6;
             return `<span style="--dx:${Math.cos(angle) * 105}px;--dy:${Math.sin(angle) * 65}px;--delay:${i % 3 * .045}s">${i % 2 ? '✧' : '✦'}</span>`;
-          }).join('')}</div><p>🐑 ${esc(josa(name, '이가'))} 네 들판에 왔어!</p></div>`;
-          await wait(950);
-          resolve();
+          }).join('')}</div>`}<p>🐑 ${esc(josa(name, '이가'))} 네 들판에 왔어!</p></div>`;
+          await wait(view ? 1700 : 950);
+          finish();
         };
       };
     });
@@ -1682,6 +1809,6 @@
 
   window.Field = {
     ensure, has, panelHTML, bindPanel, page, receiveFirstLamb, flockScene, giveItem, drawCard, lostCheck, stats,
-    bonus, portrait, snapshot, summary, spec, dexList, visitCheck, gainExp, sheepArt, visitShared, prepareDex, prewarm
+    bonus, portrait, snapshot, summary, spec, dexList, visitCheck, awardChapterGuest, gainExp, sheepArt, visitShared, prepareDex, prewarm, homeThumb
   };
 })();

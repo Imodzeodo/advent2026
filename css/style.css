@@ -39,6 +39,14 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .test-banner { background: #5b2d6e; color: #fff; font-size: 12px; padding: 7px 10px; margin: 0 -16px; text-align: center; }
 .page .test-banner { margin: 0 -16px 8px; }
 .home-head { position: relative; text-align: center; padding: calc(18px + var(--safe-t)) 0 10px; }
+.home-head.has-field-backdrop { isolation: isolate; }
+.home-field-backdrop {
+  position: absolute; z-index: -1; inset: 0 -16px; overflow: hidden; pointer-events: none;
+  -webkit-mask-image: linear-gradient(#000 58%, transparent);
+  mask-image: linear-gradient(#000 58%, transparent);
+}
+.home-field-backdrop img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 45%; transform: scale(1.08); filter: blur(7px) saturate(.8); }
+.home-field-backdrop::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #080c2055, #080c20b8 58%, #080c20); }
 .home-star { height: 150px; display: flex; align-items: center; justify-content: center; }
 .home-star svg { animation: breathe 5s ease-in-out infinite; }
 .home-head h1 { font-family: var(--serif); font-size: 30px; margin: 6px 0 2px; letter-spacing: 1px; }
@@ -218,6 +226,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .appoint-card .card-preview { width: min(100%, 262px, 44dvh); margin: 0 auto; }
 .done-title { font-family: var(--serif); font-size: 22px; margin-top: 6px; }
 .done-sub { color: var(--dim); margin: 6px 0 14px; line-height: 1.6; }
+.done-field-guest { margin: 0 0 12px; padding: 7px 10px; border-radius: 10px; background: #ffd27a1a; color: #ffe1a4; }
 
 /* 표제 카드 */
 .titlecard { position: absolute; inset: 0; z-index: 40; background: #04050d; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; opacity: 0; transition: opacity .45s; padding: 24px; }

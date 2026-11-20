@@ -6,6 +6,8 @@
   let T = null, loading = null;
 
   /* ---------- 공용 도우미 ---------- */
+  // 설정의 '움직임 줄이기' 또는 기기의 동작 줄이기
+  const calm = () => document.documentElement.classList.contains('no-motion') || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   function seeded(seed) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = s * 16807 % 2147483647) / 2147483647; }
   const hashStr = str => [...String(str)].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0, 2166136261);
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -461,6 +463,7 @@
     const sheepObjs = new Map(), itemObjs = new Map(), visitorObjs = new Map();
     const clock = new T.Clock();
     const perf = { n: 0, done: false };
+    const CALM = calm();
     let raf = 0, alive = true, last = state, selected = null, meteorT = 2;
     const meteors = [];
 
@@ -615,7 +618,7 @@
       }
     }
     function floatText(pos, text, color) {
-      const sp = textSprite(text, { color, size: 92 }); sp.scale.setScalar(0.8); sp.position.copy(pos).add(new T.Vector3(0, 2.2, 0));
+      const sp = textSprite(text, { color, size: 92 }); sp.scale.setScalar(0.7); sp.position.copy(pos).add(new T.Vector3(0, 0.7, 0));
       sp.userData = { v: new T.Vector3(0, 0.9, 0), life: 1.4, text: true }; scene.add(sp); fxList.push(sp);
     }
     function legendBeam(o) {
@@ -674,6 +677,30 @@
         setTimeout(res, 2500);
       });
     }
+    // 첫 양 맞이: 그 양이 오솔길 끝에서 걸어 들어와 가운데 앞에서 폴짝·하트 → Promise
+    function welcome(id) {
+      return new Promise(resolve => {
+        const o = sheepObjs.get(id); if (!o) return resolve();
+        o.userData.appear = 0;
+        const sx = -6.4, sz = 8.1;
+        o.position.set(sx, groundY(sx, sz), sz); o.rotation.y = Math.atan2(0 - sx, 5.6 - sz);
+        o.userData.ai = { mode: 'walk', tx: 0.2, tz: 5.6, then: 'idle', t: 12, sleepy: false, fast: 1.7 };
+        cam.want = new T.Vector3(-1.5, 0, 6.5); selected = id;
+        const t0 = performance.now();
+        const check = () => {
+          if (!alive) return resolve();
+          const d = Math.hypot(o.position.x - 0.2, o.position.z - 5.6);
+          if (d < 0.25 || performance.now() - t0 > 9000) {
+            o.userData.ai = { mode: 'idle', t: 4, tx: o.position.x, tz: o.position.z };
+            o.rotation.y = Math.atan2(camera.position.x - o.position.x, camera.position.z - o.position.z);
+            react(id, 'join'); setTimeout(() => react(id, 'heart'), 500);
+            cam.want = o.position.clone();
+            setTimeout(resolve, 1300);
+          } else setTimeout(check, 120);
+        };
+        check();
+      });
+    }
     function focus(id) {
       selected = id;
       const o = id && (sheepObjs.get(id) || visitorObjs.get(id));
@@ -691,7 +718,7 @@
       // 저사양 폰: 처음 2.5초 평균이 40fps 아래면 해상도를 낮춘다(한 번만)
       if (!perf.done) { perf.n++; if (t > 2.5) { perf.done = true; const fps = perf.n / t; if (fps < 40 && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); resize(); } if (fps < 24) world.flies.forEach(f => { f.visible = false; }); } }
       // 카메라
-      cam.drift += dt; if (!pointers.size && cam.drift > 6 && !cam.want) cam.az += Math.sin(t * 0.05) * dt * 0.02;
+      cam.drift += dt; if (!CALM && !pointers.size && cam.drift > 6 && !cam.want) cam.az += Math.sin(t * 0.05) * dt * 0.02;
       const tgt = cam.want ? tmpV.set(cam.want.x * 0.7, cam.want.y + 1.0, cam.want.z * 0.7 + 0.4) : tmpV.set(0, 1.7, 2.2);
       cam.target.lerp(tgt, 1 - Math.pow(0.02, dt));
       const d = cam.want ? Math.min(cam.dist, 11) : cam.dist;
@@ -700,7 +727,7 @@
       // 하늘
       world.twinkles.forEach(s => { s.material.opacity = 0.45 + 0.55 * Math.abs(Math.sin(t * 1.3 + s.userData.ph)); });
       world.bigStar.material.opacity = 0.85 + 0.15 * Math.sin(t * 2.1); world.bigStar.material.rotation = Math.sin(t * 0.2) * 0.05;
-      world.flies.forEach(f => { const u = f.userData; f.position.set(u.x + Math.sin(t * u.sp + u.ph) * 1.4, groundY(u.x, u.z) + u.y + Math.sin(t * 1.7 + u.ph) * 0.35, u.z + Math.cos(t * u.sp * 0.8 + u.ph) * 1.1); f.material.opacity = 0.4 + 0.6 * Math.max(0, Math.sin(t * 2.3 + u.ph)); });
+      world.flies.forEach((f, fi) => { const u = f.userData; if (CALM && fi % 2) { f.visible = false; return; } f.position.set(u.x + Math.sin(t * u.sp + u.ph) * 1.4, groundY(u.x, u.z) + u.y + Math.sin(t * 1.7 + u.ph) * 0.35, u.z + Math.cos(t * u.sp * 0.8 + u.ph) * 1.1); f.material.opacity = 0.4 + 0.6 * Math.max(0, Math.sin(t * 2.3 + u.ph)); });
       // 물건
       for (const o of itemObjs.values()) {
         const u = o.userData;
@@ -772,7 +799,7 @@
         else {
           const want = Math.atan2(dx + ax, dz + az); let diff = want - o.rotation.y; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
           o.rotation.y += diff * Math.min(1, dt * 3.2);
-          const sp = 0.85 * dt * (u.data?.species === 'tiny' ? 1.4 : 1);
+          const sp = 0.85 * dt * (u.data?.species === 'tiny' ? 1.4 : 1) * (ai.fast || 1);
           o.position.x += Math.sin(o.rotation.y) * sp; o.position.z += Math.cos(o.rotation.y) * sp; moving = 1;
         }
       }
@@ -993,7 +1020,7 @@
         cam.az = -0.08; cam.el = 0.34; cam.dist = 14.5; selected = null;
         // 눈처럼 내리는 빛가루
         const dust = [];
-        for (let i = 0; i < 70; i++) {
+        for (let i = 0; i < (CALM ? 24 : 70); i++) {
           const sp = new T.Sprite(new T.SpriteMaterial({ map: ctx.dotTex, color: i % 3 ? '#fff6dc' : '#ffe2a0', transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
           sp.scale.setScalar(0.12 + Math.random() * 0.14);
           sp.userData = { x: (Math.random() - 0.5) * 16, z: -4 + Math.random() * 10, y: Math.random() * 9, sp: 0.35 + Math.random() * 0.5, ph: Math.random() * 6 };
@@ -1054,7 +1081,7 @@
     update(state); update.ready = true;
     frame();
     setTimeout(() => handlers.onReady?.(), 0);
-    const view = { update, react, feed, focus, snapshot, patrol, procession, destroy, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
+    const view = { update, react, feed, focus, welcome, snapshot, patrol, procession, destroy, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
     return view;
   }
 

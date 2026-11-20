@@ -993,6 +993,8 @@
       else gemLine = `✦ 빛 조각 ${got}/${gemTotal}` + (got < gemTotal ? ' · 다시 보기로 마저 모을 수 있어' : '');
     }
     Core.save();
+    const chapterGuest = first && await window.Field?.awardChapterGuest(ep.id);
+    if (my !== runId || !el.root.isConnected) return;
     const newBadges = Fame.checkNew();
     const after = Core.starCount(), total = Core.starTotal();
     clearDialog('');
@@ -1018,6 +1020,7 @@
         <div class="done-star">${Art.bigStar(before / total, 150)}</div>
         <div class="done-title">${first ? '별이 조금 더 밝아졌어' : '다시 보기 끝'}</div>
         <div class="done-sub">별빛 ${after} / ${total}${first ? ` · 카드 No.${Card.cardNo(ep.id)} 획득` : ''}${gemLine ? `<br><span class="gem-line">${esc(gemLine)}</span>` : ''}</div>
+        ${chapterGuest ? '<p class="done-field-guest">🐑 들판에 손님이 찾아왔어</p>' : ''}
         ${skyLine()}
         ${newBadges.length ? `<div class="new-badges">${newBadges.map(b => `<div class="nb"><span>${b.icon}</span><b>${esc(b.name)}</b><small>새 배지</small><button class="btn ghost small" data-badge="${b.id}">카드 보기</button></div>`).join('')}</div>` : ''}
         ${nextLine}

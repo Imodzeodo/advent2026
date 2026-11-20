@@ -327,9 +327,20 @@
 @keyframes field-shine { 50% { filter: drop-shadow(0 0 22px rgba(255, 226, 140, .9)); } }
 .field-grow small { display: block; margin-top: 8px; color: var(--dim); }
 
-/* 이야기 속 3D(엔딩) */
+/* 이야기 속 3D */
 .field-story-3d { position: absolute; inset: 0; }
 .field-flock.is-3d { min-height: min(78vh, 640px); }
+.field-welcome-overlay .field-first.is-3d {
+  position: absolute; top: calc(var(--lamb-top, 0px) + var(--lamb-viewport, 100vh) * .085);
+  left: 50%; transform: translateX(-50%); width: calc(100% - 24px); max-width: 460px;
+  height: calc(var(--lamb-viewport, 100vh) * .82); min-height: 0;
+}
+.field-first.is-3d .field-story-art, .field-first.is-3d .field-story-lamb { display: none; }
+.field-first.is-3d .field-story-3d { pointer-events: none; }
+.field-first.is-3d .field-story-content { padding: 0 10px 10px; }
+.field-first.is-3d .field-name { background: #10172bf7; border-color: #ffd27a80; }
+.field-first.is-3d .field-name input { font-size: 16px; }
+.field-welcome-progress { color: var(--gold); font: 700 15px/1.5 var(--serif); }
 
 /* 미리보기 시험 도구 */
 .field-test-tools { margin-top: 18px; padding: 10px; border: 1px dashed rgba(255, 210, 122, .45); border-radius: 14px; }
