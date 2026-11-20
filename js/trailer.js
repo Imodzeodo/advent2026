@@ -2,10 +2,10 @@
 (function () {
   const scenes = [
     ['밤하늘', 0, '사백 년 동안, 하늘은 조용했다.', 4400],
-    ['성전', 1, '늙은 제사장은 대답 없는 기도를 드렸고,', 4400],
-    ['작업장', 2, '한 목수는 말 못 할 고민을 품었고,', 4400],
-    ['마리아집', 3, "갈릴리의 한 소녀는 '네'라고 대답했다.", 4400],
-    ['들판', 4, '그리고 들판의 목동들은, 그 밤을 보았다.', 4400],
+    ['성전', 1, '늙은 제사장은 대답 없는 기도를 드렸고,', 4400, { actor: '사가랴', ground: '#5c3c45', pan: '-1.4%' }],
+    ['작업장', 2, '한 목수는 말 못 할 고민을 품었고,', 4400, { actor: '요셉', ground: '#5a4234', pan: '1.6%' }],
+    ['마리아집', 3, "갈릴리의 한 소녀는 '네'라고 대답했다.", 4400, { actor: '마리아', ground: '#d8c09a', pan: '-1.6%' }],
+    ['들판', 4, '그리고 들판의 목동들은, 그 밤을 보았다.', 4400, { actor: '할아버지', ground: '#141a2a', pan: '1.4%' }],
     ['초', 0, '스물일곱 밤.', 5600],
     ['제목', 0, '', 3400]
   ];
@@ -45,6 +45,33 @@
     </svg>`;
   }
 
+  function framePortrait(frame, { actor, ground, pan }) {
+    const svg = frame.querySelector('.tr-art svg');
+    const subject = svg.querySelector(`[data-who="${actor}"]`);
+    if (!subject || !frame.clientHeight) return;
+
+    const body = subject.getBBox();
+    const { width: sceneWidth, height: sceneHeight } = svg.viewBox.baseVal;
+    const height = 350;
+    const width = Math.min(sceneWidth, height * frame.clientWidth / frame.clientHeight);
+    const x = Math.min(sceneWidth - width, Math.max(0, body.x + body.width / 2 - width / 2));
+    const y = body.y + body.height / 2 - height * .6;
+    if (y + height > sceneHeight) {
+      // 원본 장면의 바닥색을 이어서 가까운 구도에서도 화면 아래를 채운다.
+      const floor = document.createElementNS(svg.namespaceURI, 'rect');
+      floor.setAttribute('y', sceneHeight - 1);
+      floor.setAttribute('width', sceneWidth);
+      floor.setAttribute('height', y + height - sceneHeight + 1);
+      floor.setAttribute('fill', ground);
+      svg.appendChild(floor);
+    }
+    svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+    frame.style.setProperty('--portrait-pan', pan);
+    frame.classList.add('tr-portrait');
+    const dust = Array.from({ length: 15 }, (_, i) => `<i style="--x:${8 + i * 29 % 85}%;--y:${9 + i * 17 % 30}%;--size:${i % 5 === 0 ? 3 : 1.5 + i % 3 * .35}px;--phase:${-i * .41}s"></i>`);
+    frame.insertAdjacentHTML('beforeend', `<div class="tr-dust" aria-hidden="true">${dust.join('')}</div>`);
+  }
+
   function play({ fromStart = false } = {}) {
     if (playing) return playing;
     if (window.__fast) return Promise.resolve();
@@ -80,7 +107,7 @@
       }
 
       function show(i) {
-        const [scene, chapter, caption, duration] = scenes[i];
+        const [scene, chapter, caption, duration, portrait] = scenes[i];
         const shownAt = performance.now();
         const isTitle = scene === '제목';
         const isCandles = scene === '초';
@@ -89,6 +116,7 @@
         frame.className = `tr-frame ${isCandles ? 'tr-candles' : isTitle ? 'tr-finale' : 'tr-scene'} tr-scene-${i + 1}`;
         frame.style.setProperty('--duration', duration + 'ms');
         frame.innerHTML = `<div class="tr-art">${art}</div><div class="tr-shade"></div>`;
+        if (portrait) framePortrait(frame, portrait);
         if (isTitle) {
           frame.insertAdjacentHTML('beforeend', `<div class="tr-title"><h1>그 밤을<br>향하여</h1><p></p>
             <button type="button" class="btn">시작하기</button></div>`);
