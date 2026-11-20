@@ -549,13 +549,12 @@
         <div class="candle-labels">${(window.CODES || []).map(c => `<div><b>${c.n}주</b><small>${esc(Core.dateLabel(c.from))}</small></div>`).join('')}</div></div>
       <input class="code-in" maxlength="20" placeholder="암호를 넣어 줘" autocomplete="off">
       <button class="btn big" id="try">확인</button>
-      <p class="code-msg"></p>`;
+      <p class="code-msg"></p>
+      ${Core.PREVIEW_ALL ? `<div class="code-test-row"><small>🧪 미리보기 전용 · 암호 없이 켜 보기</small>
+        <div class="row">${(window.CODES || []).map(c => `<button class="btn ghost small" data-test-code="${c.n}">${c.n}주</button>`).join('')}</div></div>` : ''}`;
     root.querySelector('.back').onclick = home;
     const inp = root.querySelector('.code-in'), msg = root.querySelector('.code-msg');
-    const go2 = () => {
-      const w = inp.value.trim();
-      if (!w) return;
-      const r = Fame.tryCode(w);
+    const done = r => {
       if (r.ok) {
         const badges = Fame.checkNew();
         if (r.isNew) codeCeremony(r, badges);
@@ -569,6 +568,8 @@
         msg.textContent = r.early ? `이 암호는 ${Core.dateLabel(r.early.from)} 주일부터 쓸 수 있어요.` : '암호가 달라요. 예배 때 들은 말을 다시 떠올려 봐.';
       }
     };
+    const go2 = () => { const w = inp.value.trim(); if (w) done(Fame.tryCode(w)); };
+    root.querySelectorAll('[data-test-code]').forEach(b => b.onclick = () => done(Fame.testUnlock(Number(b.dataset.testCode))));
     root.querySelector('#try').onclick = go2;
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') go2(); });
     bindTestReset(root);
