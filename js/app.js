@@ -531,7 +531,7 @@
     const time = iso => Date.parse(iso + 'T00:00:00Z');
     const week = (window.CODES || []).find(c => {
       const days = (time(date) - time(c.from)) / 86400000;
-      return !Core.data.codes?.[c.n] && days >= 0 && days < 7 && (days > 0 || hour >= 13);
+      return !Core.data.codes?.[c.n] && days >= 0 && days < 7 && (days > 0 || hour >= 11);
     });
     if (!week) return '';
     const ordinal = ['첫째', '둘째', '셋째', '넷째'][week.n - 1];
