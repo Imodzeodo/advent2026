@@ -230,10 +230,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .oil-pop { position: absolute; top: calc(14px + var(--safe-t)); left: 50%; transform: translateX(-50%); z-index: 45; background: #3a2a10; border: 1px solid var(--gold); color: #ffe3a3; padding: 8px 16px; border-radius: 99px; font-size: 14px; white-space: nowrap; }
 .oil-pop span { opacity: .7; font-size: 12px; }
 .oil-pop.show { animation: popin 2.4s ease forwards; }
-.toast { position: fixed; left: 50%; bottom: calc(220px + var(--safe-b)); transform: translate(-50%, 10px); background: rgba(30, 30, 50, .95); color: #fff; padding: 9px 16px; border-radius: 99px; font-size: 14px; opacity: 0; transition: .3s; z-index: 60; pointer-events: none; white-space: nowrap; }
+.toast { position: fixed; left: 50%; bottom: calc(220px + var(--safe-b)); transform: translate(-50%, 10px); width: max-content; max-width: calc(100% - 24px); background: rgba(30, 30, 50, .95); color: #fff; padding: 9px 16px; border-radius: 16px; font-size: 14px; opacity: 0; transition: .3s; z-index: 60; pointer-events: none; white-space: normal; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.has-action { display: flex; gap: 10px; align-items: center; pointer-events: auto; }
-.toast.has-action button { border: 1px solid var(--gold); border-radius: 99px; padding: 4px 8px; color: var(--gold); background: transparent; cursor: pointer; }
+.toast.has-action button { flex: none; border: 1px solid var(--gold); border-radius: 99px; padding: 4px 8px; color: var(--gold); background: transparent; cursor: pointer; }
 
 /* ---------- 미니게임 ---------- */
 .gamebox { width: 100%; max-width: 400px; text-align: center; }

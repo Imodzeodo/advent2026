@@ -833,7 +833,17 @@
   }
 
   window.App = { home, card, diary, go, cards, fame, codePage, versePage, finale, notifyBadges, bindImageActions };
-  home();
-  if (Core.params.get('trailer') === '1' && window.Trailer) Trailer.play();
-  restoreFromLink();
+  function openSharedField() {
+    if (!location.hash.startsWith('#v=')) return false;
+    Field.visitShared(location.hash, show('field-guest', 'page field-page'));
+    return true;
+  }
+  window.addEventListener('hashchange', () => {
+    if (!openSharedField() && app.firstElementChild?.id === 'field-guest') home();
+  });
+  if (!openSharedField()) {
+    home();
+    if (Core.params.get('trailer') === '1' && window.Trailer) Trailer.play();
+    restoreFromLink();
+  }
 })();

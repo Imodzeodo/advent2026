@@ -7,10 +7,28 @@
     ['마리아집', 3, "갈릴리의 한 소녀는 '네'라고 대답했다.", 4400, { actor: '마리아', ground: '#d8c09a', pan: '-1.6%' }],
     ['들판', 4, '그리고 들판의 목동들은, 그 밤을 보았다.', 4400, { actor: '할아버지', ground: '#141a2a', pan: '1.4%' }],
     ['초', 0, '스물일곱 밤.', 5600],
-    ['제목', 0, '', 3400]
+    ['제목', 0, '', 6200]
   ];
   let playing;
   let soundUnlocked = false;
+  let fieldView = null;
+  // 제목 장면: 별 아래 양 떼가 거니는 3D 들판(가능한 기기에서만, 안 되면 2D 밤하늘 그대로)
+  async function mountField(frame) {
+    if (!window.Field3D || !Field3D.supported() || !window.SHEEP_DEX) return;
+    try {
+      await Field3D.load();
+      if (!frame.isConnected || !frame.classList.contains('tr-finale')) return;
+      const host = document.createElement('div'); host.className = 'tr-art tr-3d';
+      const flock = [['a', 'cotton', 6], ['b', 'curly', 4], ['c', 'brown', 7], ['d', 'spotty', 3], ['e', 'lantern', 10], ['f', 'tiny', 2], ['g', 'fleece', 8]]
+        .map(([id, species, level]) => ({ id: 'tr-' + id, species, name: '', level, wear: null }));
+      fieldView = await Field3D.mount(host, { sheep: flock, slots: { 2: '모닥불', 7: '등불 기둥', 8: '하늘 등', 9: '하늘 등' }, visitors: [] }, {});
+      if (!frame.isConnected) { destroyField(); return; }
+      host.style.opacity = '0'; host.style.transition = 'opacity 1.2s';
+      frame.querySelector('.tr-art')?.after(host);
+      requestAnimationFrame(() => { host.style.opacity = '1'; });
+    } catch (e) { destroyField(); }
+  }
+  function destroyField() { try { fieldView?.destroy(); } catch (e) { /* 무시 */ } fieldView = null; }
 
   function countdown() {
     const today = Core.nowKST().date;
@@ -100,6 +118,7 @@
           Sound.stopVoice();
           Sound.music('night');
         }
+        destroyField();
         if (dialog.open) dialog.close();
         dialog.remove();
         if (!fromStart && previous?.isConnected) previous.focus({ preventScroll: true });
@@ -117,6 +136,7 @@
         frame.style.setProperty('--duration', duration + 'ms');
         frame.innerHTML = `<div class="tr-art">${art}</div><div class="tr-shade"></div>`;
         if (portrait) framePortrait(frame, portrait);
+        if (isTitle) mountField(frame);
         if (isTitle) {
           frame.insertAdjacentHTML('beforeend', `<div class="tr-title"><h1>그 밤을<br>향하여</h1><p></p>
             <button type="button" class="btn">시작하기</button></div>`);

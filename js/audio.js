@@ -6,7 +6,7 @@
    - 그 밖: 종소리가 드문드문 울리는 잔잔한 배경(직접 만든 것) */
 (function () {
   let ctx = null, master, musicBus, sfxBus, ambBus, reverb;
-  let current = null, wanted = null, timer = null;
+  let current = null, wanted = null, timer = null, patrolBus = null;
   const on = () => Core.data.sound !== false;
 
   function init() {
@@ -39,9 +39,8 @@
   let stale = false, lastWake = 0;
   function rebuild() {
     stopAmb();
+    stopMusic();
     for (const k in vcache) delete vcache[k];
-    if (timer) clearInterval(timer);
-    timer = null; current = null;
     try { ctx && ctx.close(); } catch (e) { /* 무시 */ }
     ctx = null;
   }
@@ -181,6 +180,7 @@
     if (!ctx || !on()) return;
     current = name;
     if (name === 'calm' || name === 'night') return startAmbient(name);
+    if (name === 'patrol') return startPatrolMusic();
     const song = SONGS[name];
     if (!song) return;
     let i = 0, next = ctx.currentTime + 0.4, chord = null, chordStart = next;
@@ -208,6 +208,28 @@
       }
     }, 120);
   }
+  function startPatrolMusic() {
+    const bus = ctx.createGain();
+    bus.connect(musicBus);
+    patrolBus = bus;
+    const notes = [45, 52, 45, 57, 48, 52, 43, 55];
+    let step = 0, next = ctx.currentTime + 0.08;
+    timer = setInterval(() => {
+      next = Math.max(next, ctx.currentTime);
+      while (next < ctx.currentTime + 0.15) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = step % 2 ? 'sine' : 'triangle';
+        o.frequency.value = hz(notes[step % notes.length]);
+        g.gain.setValueAtTime(0.0001, next);
+        g.gain.exponentialRampToValueAtTime(step % 2 ? 0.038 : 0.085, next + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, next + 0.38);
+        o.connect(g); g.connect(bus);
+        o.start(next); o.stop(next + 0.4);
+        step++;
+        next += 0.29;
+      }
+    }, 80);
+  }
   // 잔잔한 배경: 낮은 화음 위로 종소리가 가끔
   function startAmbient(name) {
     const scale = name === 'night' ? [62, 64, 67, 69, 71, 74, 76] : [60, 62, 64, 67, 69, 72, 74];
@@ -224,6 +246,7 @@
   }
   /* ---------- 장면별 배경 소리 ---------- */
   const AMB = {
+    '나의 들판': 'pasture',
     '밤하늘': 'night', '지붕': 'night', '지붕새벽': 'night', '새벽집': 'night', '새집': 'night', '들판': 'field', '들판새벽': 'day',
     '성소': 'temple', '성소천사': 'temple', '성전뜰': 'crowd', '성전': 'crowd', '베들레헴': 'crowd',
     '나사렛길': 'day', '마리아집': 'day', '유대집': 'day', '할례': 'crowd', '산길': 'wind', '길': 'day', '언덕노을': 'wind',
@@ -254,6 +277,7 @@
     ambCur = kind;
     const beds = { night: [0.05, 'brown', 380], field: [0.05, 'brown', 360], temple: [0.04, 'brown', 160], crowd: [0.05, 'pink', 700, 0.6], day: [0.03, 'brown', 500], wind: [0.07, 'pink', 520, 0.5], room: [0.03, 'brown', 220], stable: [0.035, 'brown', 240], dream: [0.02, 'brown', 300] };
     const bd = beds[kind]; if (bd) loopNoise(bd[0], bd[1], bd[2], bd[3]);
+    if (kind === 'pasture') loopNoise(0.035, 'brown', 320);
     if (kind === 'temple') {
       // 성소의 낮은 울림 (장면이 바뀌면 같이 멈춤)
       [110, 165].forEach(f => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; g.gain.value = 0.008; o.connect(g); g.connect(ambBus); o.start(); ambNodes.push(o); });
@@ -264,6 +288,11 @@
       if (next > now + 0.6) return;
       const t = Math.max(next, now + 0.05);
       if (kind === 'night' || kind === 'field') { for (let k = 0; k < 3; k++) chirp(t + k * 0.07, 4300, 4100, 0.04, 0.012); next = t + 0.5 + Math.random() * 1.1; }
+      if (kind === 'pasture') {
+        const f = 3000 + Math.random() * 850;
+        for (let k = 0; k < 3; k++) chirp(t + k * 0.08, f, f * 0.96, 0.055, 0.008);
+        next = t + 1.2 + Math.random() * 2.1;
+      }
       if (kind === 'field') { if (Math.random() < 0.25) for (let k = 0; k < 6; k++) noise(t + Math.random() * 0.8, 0.04, 0.03, 2600, 1300); if (Math.random() < 0.05) FX.sheep(t + 0.3); }
       if (kind === 'day' || kind === 'wind') { if (Math.random() < 0.55) { const f = 2400 + Math.random() * 1600; chirp(t, f, f * 1.4, 0.07, 0.014); chirp(t + 0.11, f * 1.1, f * 1.5, 0.06, 0.012); } next = t + 1.6 + Math.random() * 2.8; }
       if (kind === 'crowd') { noise(t, 0.9, 0.025, 500 + Math.random() * 500, 700); next = t + 0.6 + Math.random() * 0.8; }
@@ -286,6 +315,12 @@
   function stopMusic() {
     if (timer) clearInterval(timer);
     timer = null; current = null;
+    if (patrolBus) {
+      const bus = patrolBus;
+      patrolBus = null;
+      bus.gain.setTargetAtTime(0, ctx.currentTime, 0.025);
+      setTimeout(() => bus.disconnect(), 150);
+    }
   }
 
   /* ---------- 효과음 ---------- */
@@ -314,10 +349,32 @@
     hammer: t => { thud(t, 220, 0.25, 0.06); bell(76, t, 0.03); },
     plane: t => noise(t, 0.45, 0.09, 2600, 900),
     match: t => { noise(t, 0.16, 0.14, 3000, 1600); noise(t + 0.18, 0.27, 0.075, 1800, 1050); },
-    sheep: t => { const o = ctx.createOscillator(), v = ctx.createOscillator(), vg = ctx.createGain(), g = ctx.createGain(), f = ctx.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = 420; v.frequency.value = 22; vg.gain.value = 18; v.connect(vg); vg.connect(o.frequency); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 2; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.07, t + 0.05); g.gain.linearRampToValueAtTime(0.05, t + 0.4); g.gain.linearRampToValueAtTime(0, t + 0.6); o.connect(f); f.connect(g); g.connect(out(sfxBus, 1, 0.3)); o.start(t); v.start(t); o.stop(t + 0.65); v.stop(t + 0.65); },
+    sheep: bleat,
+    patrolStart: t => { thud(t, 105, 0.12, 0.18); musicBox(64, t + 0.12, 0.072, sfxBus); },
+    patrolPen: t => { musicBox(74, t, 0.077, sfxBus); musicBox(79, t + 0.065, 0.055, sfxBus); },
+    patrolScare: t => { noise(t, 0.28, 0.079, 550, 2100); musicBox(69, t + 0.12, 0.065, sfxBus); },
+    patrolBump: t => { thud(t, 78, 0.13, 0.14); noise(t, 0.13, 0.035, 850, 350); },
+    patrolEnd: t => [69, 72, 76].forEach((m, i) => musicBox(m, t + i * 0.1, 0.08, sfxBus)),
     angel: t => { pad([72, 76, 79, 84], t, 2.2, 0.03); [84, 88, 91, 96].forEach((m, i) => bell(m, t + 0.15 * i, 0.05)); },
     baby: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(660, t + 0.25); o.frequency.linearRampToValueAtTime(480, t + 0.7); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.08); g.gain.linearRampToValueAtTime(0, t + 0.75); o.connect(g); g.connect(out(sfxBus, 1, 0.5)); o.start(t); o.stop(t + 0.8); }
   };
+  function bleat(t, pitch = 420) {
+    const o = ctx.createOscillator(), v = ctx.createOscillator(), wobble = ctx.createGain();
+    const g = ctx.createGain(), f = ctx.createBiquadFilter();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(pitch * 0.94, t);
+    o.frequency.linearRampToValueAtTime(pitch * 1.07, t + 0.09);
+    o.frequency.linearRampToValueAtTime(pitch * 0.86, t + 0.43);
+    v.frequency.value = 19; wobble.gain.value = pitch * 0.038;
+    v.connect(wobble); wobble.connect(o.frequency);
+    f.type = 'bandpass'; f.frequency.value = pitch * 2.6; f.Q.value = 1.8;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.065, t + 0.05);
+    g.gain.linearRampToValueAtTime(0.043, t + 0.29);
+    g.gain.linearRampToValueAtTime(0, t + 0.43);
+    o.connect(f); f.connect(g); g.connect(out(sfxBus, 1, 0.23));
+    o.start(t); v.start(t); o.stop(t + 0.45); v.stop(t + 0.45);
+  }
   function thud(t, f, vol, dur) {
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.05);
@@ -343,9 +400,9 @@
       o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + 0.07);
     } catch (e) { /* 무시 */ }
   }
-  function sfx(name) {
+  function sfx(name, pitch) {
     if (!on() || !ctx || ctx.state !== 'running' || !FX[name]) return;
-    try { FX[name](ctx.currentTime + 0.01); } catch (e) { /* 무시 */ }
+    try { FX[name](ctx.currentTime + 0.01, pitch); } catch (e) { /* 무시 */ }
   }
 
   function music(name) {

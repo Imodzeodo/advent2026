@@ -460,6 +460,7 @@
     const cam = { az: 0, el: 0.19, dist: 16, target: new T.Vector3(0, 1.7, 2.2), want: null, drift: 0 };
     const sheepObjs = new Map(), itemObjs = new Map(), visitorObjs = new Map();
     const clock = new T.Clock();
+    const perf = { n: 0, done: false };
     let raf = 0, alive = true, last = state, selected = null, meteorT = 2;
     const meteors = [];
 
@@ -535,17 +536,21 @@
     // 터치: 회전·확대·탭
     const el = renderer.domElement; el.style.touchAction = 'none';
     const pointers = new Map(); let downAt = null, pinch0 = null, moved = 0;
-    function onDown(e) { if (mode.patrol) { el.setPointerCapture?.(e.pointerId); mode.patrol.lampAt(e.clientX, e.clientY); return; } if (mode.proc) return; el.setPointerCapture?.(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pointers.size === 1) { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; moved = 0; } if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), dist: cam.dist }; } cam.drift = 0; }
+    function onDown(e) { if (mode.patrol) { el.setPointerCapture?.(e.pointerId); mode.patrol.lampAt(e.clientX, e.clientY); return; } if (mode.proc) return; el.setPointerCapture?.(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pointers.size === 1) { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; moved = 0; startPress(e.clientX, e.clientY); } if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), dist: cam.dist }; } cam.drift = 0; }
     function onMove(e) {
       if (mode.patrol) { if (e.buttons || e.pointerType === 'touch') mode.patrol.lampAt(e.clientX, e.clientY); return; }
       if (!pointers.has(e.pointerId)) return;
       const p = pointers.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y;
       p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
+      if (press && moved > 10 && !press.fired) clearPress();
+      if (press && press.fired) return;
       if (pointers.size === 1) { cam.az = clamp(cam.az - dx * 0.006, -1.05, 1.05); cam.el = clamp(cam.el + dy * 0.004, 0.08, 0.7); cam.want = null; }
       else if (pointers.size === 2 && pinch0) { const [a, b] = [...pointers.values()]; cam.dist = clamp(pinch0.dist * pinch0.d / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), 12, 28); }
     }
     function onUp(e) {
       if (mode.patrol) { mode.patrol.lampOff(); return; }
+      const wasPet = press && press.fired; clearPress();
+      if (wasPet) { pointers.delete(e.pointerId); downAt = null; return; }
       pointers.delete(e.pointerId); if (pointers.size < 2) pinch0 = null;
       if (downAt && pointers.size === 0 && moved < 10 && performance.now() - downAt.t < 450) tap(e.clientX, e.clientY);
       if (pointers.size === 0) downAt = null;
@@ -560,6 +565,28 @@
       ray.setFromCamera(new T.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1), camera);
       const out = new T.Vector3(); return ray.ray.intersectPlane(groundPlane, out) ? out : null;
     }
+    let press = null;
+    function sheepAt(cx, cy) {
+      const r = el.getBoundingClientRect();
+      ray.setFromCamera(new T.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1), camera);
+      const hit = ray.intersectObjects([...sheepObjs.values()].map(o => o.userData.hit), false)[0];
+      let o = hit && hit.object; while (o && o.userData.kind !== 'sheep') o = o.parent;
+      return o || null;
+    }
+    function startPress(cx, cy) {
+      clearPress();
+      if (!handlers.onPetSheep) return;   // 읽기 전용(친구 들판 구경)에서는 쓰다듬기 없음
+      const o = sheepAt(cx, cy); if (!o) return;
+      press = { o, fired: false, timer: setTimeout(() => {
+        if (!press) return; press.fired = true;
+        o.userData.ai.mode = 'idle'; o.userData.ai.t = 2.5;
+        const pt = o.position.clone(); pt.y += 1.3 * o.userData.scale;
+        for (let i = 0; i < 3; i++) setTimeout(() => floatText(pt.clone().add(new T.Vector3((i - 1) * 0.35, 0, 0)), '♥', '#ff8fb1'), i * 140);
+        o.userData.hop = 1; burst(pt, '#ffc2d6', 10, 1.2);
+        handlers.onPetSheep?.(o.userData.id);
+      }, 450) };
+    }
+    function clearPress() { if (press) clearTimeout(press.timer); press = null; }
     function tap(cx, cy) {
       const r = el.getBoundingClientRect();
       ray.setFromCamera(new T.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1), camera);
@@ -630,6 +657,8 @@
       raf = requestAnimationFrame(frame);
       if (document.hidden || !wrap.isConnected) return;
       const dt = Math.min(0.05, clock.getDelta()), t = clock.elapsedTime;
+      // 저사양 폰: 처음 2.5초 평균이 40fps 아래면 해상도를 낮춘다(한 번만)
+      if (!perf.done) { perf.n++; if (t > 2.5) { perf.done = true; const fps = perf.n / t; if (fps < 40 && renderer.getPixelRatio() > 1) { renderer.setPixelRatio(1); resize(); } if (fps < 24) world.flies.forEach(f => { f.visible = false; }); } }
       // 카메라
       cam.drift += dt; if (!pointers.size && cam.drift > 6 && !cam.want) cam.az += Math.sin(t * 0.05) * dt * 0.02;
       const tgt = cam.want ? tmpV.set(cam.want.x * 0.7, cam.want.y + 1.0, cam.want.z * 0.7 + 0.4) : tmpV.set(0, 1.7, 2.2);
@@ -747,7 +776,9 @@
         const eg = glowSprite('#ff4040', 0.55, 0.85); eg.position.set(sx * 0.11, 1.05, 0.9); body.add(eg);
       }
       const sh = new T.Mesh(new T.CircleGeometry(0.8, 14), mat('#000000', { basic: true, transparent: true, opacity: 0.4 })); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.03; g.add(sh);
-      Object.assign(g.userData, { body, legs, scale: 1 });
+      const warn = new T.Mesh(new T.RingGeometry(0.95, 1.2, 24), new T.MeshBasicMaterial({ color: '#ff4a4a', transparent: true, opacity: 0.7, side: T.DoubleSide, depthWrite: false }));
+      warn.rotation.x = -Math.PI / 2; warn.position.y = 0.05; g.add(warn);
+      Object.assign(g.userData, { body, legs, scale: 1, warn });
       return g;
     }
     function patrol(params = {}) {
@@ -774,13 +805,13 @@
         const sr2 = seeded(Date.now() % 9973 + 11);
         const flock = list.map((f, i) => {
           const o = buildSheep(f.species, f.level || 5, f.wear, hashStr(f.id || ('p' + i)));
-          let x, z; do { x = (sr2() - 0.5) * 15; z = -6 + sr2() * 9; } while (Math.hypot(x, z - 1) < 1.5);
+          let x, z; do { x = (sr2() - 0.5) * 13; z = -5 + sr2() * 8; } while (Math.hypot(x, z - 1) < 1.5);
           o.position.set(x, groundY(x, z), z); o.rotation.y = sr2() * 6;
           o.userData.pat = { penned: false, wander: sr2() * 6, panic: 0, px: 0, pz: 0 };
           scene.add(o); return o;
         });
         // 등불
-        const R = 3.2 * (1 + (P.lampBonus || 0));
+        const R = 3.9 * (1 + (P.lampBonus || 0));
         const lamp = new T.Group(); lamp.visible = false; scene.add(lamp);
         const lampLight = new T.PointLight('#ffc070', 14, R * 2.4, 1.4); lampLight.position.y = 2.2; lamp.add(lampLight);
         const pool = new T.Mesh(new T.CircleGeometry(R, 40), new T.MeshBasicMaterial({ map: radialTexture('rgba(255,210,130,0.55)', 'rgba(255,190,90,0)'), transparent: true, depthWrite: false, blending: T.AdditiveBlending }));
@@ -793,11 +824,13 @@
         wrap.appendChild(hud);
         const hudT = hud.querySelector('.f3d-timer b'), hudRing = hud.querySelector('.fg'), hudC = hud.querySelector('.f3d-count b'), hudBig = hud.querySelector('.f3d-big');
         const wolves = [];
-        let phase = 'intro', introT = 3.2, left = P.seconds, wolfT = 5, scared = 0, penned = 0, endT = 0;
+        let phase = 'intro', introT = 3.2, left = P.seconds, wolfT = 8, scared = 0, penned = 0, endT = 0;
         sfx('start');
         const st = {
           lampAt(cx, cy) { if (phase !== 'play') return; const g = groundAt(cx, cy); if (g) { lampPos.set(clamp(g.x, -10, 10), 0, clamp(g.z, -8, 9)); lampOn = true; } },
           lampOff() { lampOn = false; },
+          lampWorld(x, z) { if (phase === 'play') { lampPos.set(clamp(x, -10, 10), 0, clamp(z, -8, 9)); lampOn = true; } },   // 시험용
+          peek() { return { phase, left, penned, flock: flock.map(o => ({ x: o.position.x, z: o.position.z, p: o.userData.pat.penned })), wolves: wolves.filter(w => !w.userData.flee).map(w => ({ x: w.position.x, z: w.position.z })) }; },
           step(dt, t) {
             cam.el = lerp(cam.el, phase === 'end' && endT > 0.9 ? saveCam.el : camGoal.el, 1 - Math.pow(0.05, dt));
             cam.dist = lerp(cam.dist, phase === 'end' && endT > 0.9 ? saveCam.dist : camGoal.dist, 1 - Math.pow(0.05, dt));
@@ -813,7 +846,7 @@
               if (left < 6) hud.classList.add('hurry');
               wolfT -= dt * (P.wolfRate || 1);
               if (wolfT <= 0 && wolves.filter(w => !w.userData.flee).length < 2) {
-                wolfT = 6 + Math.random() * 2;
+                wolfT = 7 + Math.random() * 2.5;
                 const w = buildWolf(); const side = Math.random();
                 const x = side < 0.4 ? -11 : side < 0.8 ? 11 : (Math.random() - 0.5) * 16, z = side < 0.8 ? -6 + Math.random() * 9 : -9;
                 w.position.set(x, groundY(x, z), z); w.userData.expose = 0; w.userData.flee = null; w.userData.life = 14; scene.add(w); wolves.push(w);
@@ -827,6 +860,7 @@
             lamp.visible = lampOn && phase === 'play';
             if (lamp.visible) { lamp.position.lerp(tmpV.set(lampPos.x, groundY(lampPos.x, lampPos.z), lampPos.z), 1 - Math.pow(0.0005, dt)); lampLight.intensity = 14 + Math.sin(t * 11) * 1.2; }
             // 양
+            for (const o of flock) o.userData.pat.ledPrev = o.userData.pat.led, o.userData.pat.led = 0;
             for (const o of flock) {
               const u = o.userData.pat; let speed = 0, tx = null, tz = null;
               if (u.penned) { tx = u.px; tz = u.pz; speed = 0.9; }
@@ -835,9 +869,13 @@
                 // 우리 문 쪽으로, 문 앞이면 안으로
                 const nearGate = Math.abs(o.position.x - PEN.x) < 1.3 && o.position.z > GATE_Z - 1.6;
                 tx = PEN.x + (nearGate ? 0 : clamp(o.position.x * 0.25, -0.6, 0.6)); tz = nearGate ? PEN.z : GATE_Z - 0.8;
-                speed = 2.3 * (1 + (P.speedBonus || 0));
+                speed = 2.9 * (1 + (P.speedBonus || 0)); u.led = 1;
+              } else if (phase === 'play' && flock.some(p2 => p2 !== o && (p2.userData.pat.led || p2.userData.pat.ledPrev) && !p2.userData.pat.penned && Math.hypot(p2.position.x - o.position.x, p2.position.z - o.position.z) < 1.9)) {
+                // 양 떼 본능: 끌려가는 이웃을 따라감
+                const nearGate = Math.abs(o.position.x - PEN.x) < 1.3 && o.position.z > GATE_Z - 1.6;
+                tx = PEN.x + (nearGate ? 0 : clamp(o.position.x * 0.25, -0.6, 0.6)); tz = nearGate ? PEN.z : GATE_Z - 0.8; speed = 2.1 * (1 + (P.speedBonus || 0));
               } else if (phase === 'play' || phase === 'intro') {
-                u.wander += dt * 0.4; tx = o.position.x + Math.sin(u.wander + o.id) * 2; tz = o.position.z + Math.cos(u.wander * 0.8 + o.id) * 2; speed = 0.45;
+                u.wander += dt * 0.4; tx = o.position.x * 0.92 + Math.sin(u.wander + o.id) * 2; tz = (o.position.z - 1) * 0.92 + 1 + Math.cos(u.wander * 0.8 + o.id) * 2; speed = 0.32;
               }
               let moving = 0;
               if (tx != null && speed) {
@@ -874,11 +912,12 @@
               else wu.expose = Math.max(0, wu.expose - dt);
               const goal = wu.flee || (target ? { x: target.position.x, z: target.position.z } : { x: w.position.x, z: -12 });
               const dx = goal.x - w.position.x, dz = goal.z - w.position.z, dd = Math.hypot(dx, dz);
-              const sp = (wu.flee ? 5 : 1.55) * dt;
+              const sp = (wu.flee ? 5 : 1.3) * dt;
               if (dd > 0.05) { w.rotation.y = Math.atan2(dx, dz); w.position.x += dx / dd * Math.min(sp, dd); w.position.z += dz / dd * Math.min(sp, dd); }
               w.position.y = groundY(w.position.x, w.position.z);
               legSwing(w, t * 1.4, 1);
-              if (target && !wu.flee && best < 0.95) { const tu = target.userData.pat; tu.panic = 1.4; tu.panicDir = Math.atan2(target.position.x - w.position.x, target.position.z - w.position.z) + (Math.random() - 0.5); sfx('bump'); wu.flee = { x: w.position.x < 0 ? -14 : 14, z: -10 }; }
+              wu.warn.visible = !wu.flee; wu.warn.material.opacity = 0.35 + 0.45 * Math.abs(Math.sin(t * 6)); wu.warn.scale.setScalar(1 + 0.15 * Math.sin(t * 6));
+              if (target && !wu.flee && best < 0.95) { const tu = target.userData.pat; tu.panic = 1.0; tu.panicDir = Math.atan2(target.position.x - w.position.x, target.position.z - w.position.z) + (Math.random() - 0.5); sfx('bump'); wu.flee = { x: w.position.x < 0 ? -14 : 14, z: -10 }; }
               if ((wu.flee && dd < 0.5) || wu.life <= 0 || phase === 'end') { scene.remove(w); disposeObj(w); wolves.splice(i, 1); }
             }
           }
