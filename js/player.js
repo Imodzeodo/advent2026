@@ -731,7 +731,7 @@
         const ov = showOverlay(`
           <div class="card rules">
             <div class="rules-title">이렇게 진행돼</div>
-            <p class="rules-flow">매일 밤 3분 — <b>이야기 한 편 → 내 양 돌보기</b>.<br>성탄 밤, 네가 지킨 양 떼와 구유로.</p>
+            <p class="rules-flow">매일 밤 3분 — <b>이야기 한 편 → 양털 모으기</b>.<br>성탄 밤에 드릴 구유 이불을 만들자.</p>
             <ul>
               <li>새 편은 한국 시간 자정에 열려.${Core.REL ? '' : ' 주일은 오전 11시.'} 놓쳐도 나중에 볼 수 있어.</li>
               <li>한 편을 끝내면 별이 켜져. 네 답은 묵상 노트에 남아.</li>
@@ -1015,7 +1015,7 @@
     const fieldOpen = !!window.Field?.has();
     const firstSheep = firstDay && Core.data.field?.sheep?.[0];
     const fieldLabel = firstSheep ? `${Core.josa(firstSheep.name, '이가')} 기다려` :
-      Core.data.field?.cared === Core.nowKST().date ? '들판 들르기' : '오늘 밤 들판으로';
+      fieldOpen && !Field.shearRemaining() ? '들판 들르기' : '오늘 밤 들판으로';
     const ov = showOverlay(`
       <div class="card done">
         ${firstDay ? '<div class="first-day-banner">대림절이 시작됐어요 · 첫째 초</div>' : ''}
