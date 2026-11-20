@@ -286,8 +286,9 @@
       star.remove();
       D.meteor = D.meteor || {};
       D.meteor[id] = 1;
-      Core.addOil(1, 'meteor'); Core.save();
-      Sound.sfx('gem'); toast('별똥별을 잡았어! 기름 +1');
+      const extra = Math.max(0, Math.round(window.Field?.bonus?.('meteorOil') || 0));
+      Core.addOil(1 + extra, 'meteor'); Core.save();
+      Sound.sfx('gem'); toast(`별똥별을 잡았어! 기름 +${1 + extra}`);
     };
     stage.appendChild(star);
     setTimeout(() => star.remove(), 2500);

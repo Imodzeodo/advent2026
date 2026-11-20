@@ -1,6 +1,6 @@
 /* 성경 구절 꺼내기 + 나의 기록(배지·연속 기록·미션 기록) */
 (function () {
-  const BOOK = { '마': '마태복음', '막': '마가복음', '눅': '누가복음', '요': '요한복음', '사': '이사야', '시': '시편', '삼하': '사무엘하', '말': '말라기', '고전': '고린도전서', '벧후': '베드로후서', '살전': '데살로니가전서', '미': '미가', '롬': '로마서', '레': '레위기', '출': '출애굽기', '창': '창세기' };
+  const BOOK = { '마': '마태복음', '막': '마가복음', '눅': '누가복음', '요': '요한복음', '사': '이사야', '시': '시편', '삼상': '사무엘상', '삼하': '사무엘하', '삿': '사사기', '말': '말라기', '고전': '고린도전서', '벧후': '베드로후서', '살전': '데살로니가전서', '미': '미가', '롬': '로마서', '레': '레위기', '출': '출애굽기', '창': '창세기' };
 
   // "눅 1:5-7; 시 85:10" → [{ ref, label, v, text, heading }]
   function verses(refs) {
@@ -69,7 +69,9 @@
     { id: 'oil10', icon: '🫙', name: '기름 가득', desc: '등불 기름 10방울', ok: () => D().oilEarned >= 10 },
     { id: 'shepherd', icon: '🐑', name: '좋은 목자', desc: '양 5마리 돌보기', ok: () => (window.Field?.stats().sheep || 0) >= 5 },
     { id: 'field7', icon: '🌾', name: '한 주 내내', desc: '7일 꼴 주기', ok: () => (window.Field?.stats().careDays || 0) >= 7 },
-    { id: 'found', icon: '🔦', name: '찾았다!', desc: '잃은 양 찾기', ok: () => (window.Field?.stats().found || 0) >= 1 }
+    { id: 'found', icon: '🔦', name: '찾았다!', desc: '잃은 양 찾기', ok: () => (window.Field?.stats().found || 0) >= 1 },
+    { id: 'dex10', icon: '📖', name: '양 박사', desc: '양 도감 10종 모으기', ok: () => (window.Field?.summary?.().dex || 0) >= 10 },
+    { id: 'legend', icon: '🌟', name: '전설을 만나다', desc: '전설의 양 1마리 데려오기', ok: () => (window.Field?.ensure?.().sheep || []).some(s => window.SHEEP_DEX?.byId?.[s.species]?.rarity === 'legend') }
   ].filter(b => b.id !== 'codes4' || (window.CODES || []).length);
 
   // 새로 딴 배지 목록을 돌려주고 저장
