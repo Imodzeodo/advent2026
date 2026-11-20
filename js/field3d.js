@@ -41,7 +41,7 @@
     [-7.0, 2.6], [-6.4, 7.0], [6.4, 7.0], [7.0, 2.6],
     [-5.2, 6.4, -7], [5.4, 7.4, -9]   // 하늘 칸: x, 높이, z
   ];
-  const GATE = [[-2.9, 7.6], [-1.3, 8.6]];
+  const GATE = [[-1.9, 7.2], [-0.6, 8.0]];
 
   function radialTexture(inner, outer, size = 128) {
     const c = document.createElement('canvas'); c.width = c.height = size;
@@ -467,6 +467,15 @@
     let raf = 0, alive = true, last = state, selected = null, meteorT = 2;
     const meteors = [];
 
+    // 세로 화면에서도 양이 화면 밖으로 나가지 않게: 그 깊이(z)에서 보이는 가로 반폭
+    function xLim(z) {
+      const hf = Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect);
+      return clamp((17.9 - z) * Math.tan(hf) - 1.1, 1.6, PASTURE.x1);
+    }
+    function pickSpot(rnd) {
+      const z = lerp(PASTURE.z0, PASTURE.z1 - 1.2, rnd()), L = xLim(z);
+      return [lerp(-L, L, rnd()), z];
+    }
     function resize() {
       const w = wrap.clientWidth || 360, h = wrap.clientHeight || 480;
       renderer.setSize(w, h, false); camera.aspect = w / h;
@@ -477,8 +486,8 @@
     // 양 배치·동작
     function spawnSheep(s, i, appear) {
       const obj = buildSheep(s.species, s.level, s.wear, hashStr(s.id));
-      const rnd = seeded(hashStr(s.id) + 7);
-      const x = lerp(PASTURE.x0, PASTURE.x1, rnd()), z = lerp(PASTURE.z0, PASTURE.z1, rnd());
+      const rnd = seeded(hashStr(s.id) + 7); rnd(); rnd();
+      const [x, z] = pickSpot(rnd);
       obj.position.set(x, groundY(x, z), z); obj.rotation.y = rnd() * 6;
       obj.userData.id = s.id; obj.userData.ai = { mode: 'idle', t: rnd() * 3, tx: x, tz: z, sleepy: s.species === 'sleepy' };
       obj.userData.data = s;
@@ -705,7 +714,7 @@
       selected = id;
       const o = id && (sheepObjs.get(id) || visitorObjs.get(id));
       cam.want = o ? o.position.clone() : null;
-      if (!o) cam.dist = Math.max(cam.dist, 16.5);
+      if (!o) cam.dist = Math.max(cam.dist, sheepObjs.size <= 2 ? 13.5 : sheepObjs.size <= 4 ? 15 : 16.5);
     }
 
     // 프레임
@@ -785,7 +794,7 @@
       if (ai.t <= 0 && ai.mode !== 'walk') {
         const r = Math.random();
         if (ai.sleepy && r < 0.45 || r < 0.08) { ai.mode = 'sleep'; ai.t = 6 + Math.random() * 8; }
-        else if (r < 0.55) { ai.mode = 'walk'; ai.tx = lerp(PASTURE.x0, PASTURE.x1, Math.random()); ai.tz = lerp(PASTURE.z0, PASTURE.z1, Math.random()); ai.then = 'idle'; ai.t = 9; }
+        else if (r < 0.55) { ai.mode = 'walk'; [ai.tx, ai.tz] = pickSpot(Math.random); ai.then = 'idle'; ai.t = 9; }
         else if (r < 0.85) { ai.mode = 'graze'; ai.t = 2.5 + Math.random() * 3; }
         else { ai.mode = 'idle'; ai.t = 1.5 + Math.random() * 2.5; }
       }
@@ -803,6 +812,7 @@
           o.position.x += Math.sin(o.rotation.y) * sp; o.position.z += Math.cos(o.rotation.y) * sp; moving = 1;
         }
       }
+      if (!ai.fast) { const L = xLim(o.position.z) + 0.3; o.position.x = clamp(o.position.x, -L, L); o.position.z = clamp(o.position.z, PASTURE.z0 - 0.5, PASTURE.z1); }
       o.position.y = groundY(o.position.x, o.position.z);
       legSwing(o, t, moving);
       // 머리·몸 자세
@@ -1079,6 +1089,9 @@
     }
 
     update(state); update.ready = true;
+    // 양이 적은 초반엔 조금 가까이서
+    const few = (state.sheep || []).filter(x => !x.lost).length;
+    if (few && few <= 2) cam.dist = 13.5; else if (few <= 4) cam.dist = 15;
     frame();
     setTimeout(() => handlers.onReady?.(), 0);
     const view = { update, react, feed, focus, welcome, snapshot, patrol, procession, destroy, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
