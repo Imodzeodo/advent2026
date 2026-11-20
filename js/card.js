@@ -413,6 +413,8 @@
     if (id.startsWith('B:')) return `그밤-배지-${id.slice(2)}.png`;
     if (id === 'APPOINT') return '그밤-등불지기-임명장.png';
     if (id === 'FIELD') return '그밤-나의-들판.png';
+    if (id === 'PATROL') return `그밤-순찰-${Core.nowKST().date}.png`;
+    if (id.startsWith('SHEEP:')) return `그밤-발견-${(window.SHEEP_DEX?.byId?.[id.slice(6)]?.name || id.slice(6)).replace(/\s+/g, '')}.png`;
     if (download) return `그밤-${id}.png`;
     if (id === 'FIN') return '그밤-완주.png';
     if (/^H\d$/.test(id)) return `그밤-히든${id[1]}.png`;
@@ -429,6 +431,104 @@
     return 'fallback';
   }
 
-  const drawField = async () => window.Field?.drawCard();
-  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, share, toBlob, fileName, STYLE, cardNo };
+  // 나의 들판 카드: 3D 들판 사진(없으면 저장된 썸네일·2D 그림) + 도감·대장 양
+  async function drawField() {
+    const F = window.Field; if (!F) throw new Error('들판 없음');
+    const D = Core.data, W = 1080, H = 1350, x = W / 2, sum = F.summary ? F.summary() : { sheep: F.stats().sheep };
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.ch4.frame, 515);
+    ctx.textAlign = 'center';
+    ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#f7dfa9'; ctx.fillText('그 밤을 향하여 · 나의 들판', x, 140);
+    ctx.font = `700 78px ${SERIF}`; ctx.fillStyle = '#fff4d8'; ctx.fillText(`${D.nickname || '친구'}의 들판`, x, 236, 940);
+    let photo = null;
+    try { const url = await F.snapshot(960, 760); photo = url ? await loadImg(url) : null; } catch (e) { photo = null; }
+    ctx.save(); rr(ctx, 70, 290, 940, 744, 34); ctx.clip();
+    if (photo) { const s = Math.max(940 / photo.width, 744 / photo.height); ctx.drawImage(photo, x - photo.width * s / 2, 290 + 372 - photo.height * s / 2, photo.width * s, photo.height * s); }
+    else { ctx.fillStyle = '#132136'; ctx.fillRect(70, 290, 940, 744); }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,214,140,.65)'; ctx.lineWidth = 4; rr(ctx, 70, 290, 940, 744, 34); ctx.stroke();
+    ctx.font = `700 44px ${SANS}`; ctx.fillStyle = '#ffe08a';
+    ctx.fillText(`양 ${sum.sheep || 0}마리${sum.dexTotal ? ` · 도감 ${sum.dex}/${sum.dexTotal}` : ''}`, x, 1110, 940);
+    if (sum.top) { ctx.font = `400 34px ${SANS}`; ctx.fillStyle = '#efe7d2'; ctx.fillText(`가장 큰 양 ⭐ ${sum.top.name} · Lv${sum.top.level}`, x, 1166, 940); }
+    ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.72)';
+    ctx.fillText(`${kstDate(Date.now())} · ${window.SITE?.label || '그 밤을 향하여'}`, x, H - 64, 940);
+    ctx.restore();
+    return cv;
+  }
+
+  /* ---------- 들판: 희귀·전설 양 발견 카드, 밤 순찰 기록 카드 ---------- */
+  async function starBack(ctx, W, H, frame, seed) {
+    ctx.fillStyle = grad(ctx, 0, 0, W, H, frame);
+    rr(ctx, 0, 0, W, H, 54); ctx.fill();
+    ctx.save(); rr(ctx, 26, 26, W - 52, H - 52, 38); ctx.clip();
+    ctx.fillStyle = grad(ctx, 0, 0, 0, H, ['#070a1f', '#1b2350', '#0a0f27']); ctx.fillRect(0, 0, W, H);
+    const r = seeded(seed);
+    for (let i = 0; i < 130; i++) { ctx.fillStyle = `rgba(255,240,210,${0.08 + r() * .45})`; ctx.beginPath(); ctx.arc(r() * W, r() * H * 0.75, 0.8 + r() * 2.4, 0, Math.PI * 2); ctx.fill(); }
+    // 아래 언덕
+    ctx.fillStyle = '#13261c'; ctx.beginPath(); ctx.moveTo(0, H * 0.82);
+    for (let x = 0; x <= W; x += 40) ctx.lineTo(x, H * 0.8 + Math.sin(x / 140) * 18);
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
+  }
+  async function portraitImg(species, opt) {
+    try { const url = await window.Field?.portrait?.(species, opt); return url ? await loadImg(url) : null; } catch (e) { return null; }
+  }
+  async function drawDiscover(sheep) {
+    const sp = window.SHEEP_DEX?.byId?.[sheep.species]; if (!sp) throw new Error('없는 양');
+    const D = Core.data, W = 1080, H = 1350, x = W / 2, legend = sp.rarity === 'legend';
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, legend ? ['#fff3c4', '#e0b44a', '#7a5414', '#ffe08a'] : ['#e6f4ff', '#7fc6ff', '#2a4f7a', '#bfe3ff'], 77 + sheep.species.length);
+    const glowC = legend ? '255,214,110' : '150,205,255';
+    const halo = ctx.createRadialGradient(x, 520, 40, x, 520, 380); halo.addColorStop(0, `rgba(${glowC},.55)`); halo.addColorStop(1, `rgba(${glowC},0)`);
+    ctx.fillStyle = halo; ctx.fillRect(60, 120, 960, 800);
+    ctx.textAlign = 'center';
+    ctx.font = `800 40px ${SANS}`; ctx.fillStyle = legend ? '#ffe08a' : '#bfe3ff';
+    ctx.fillText(legend ? '✦ 전설의 양 발견! ✦' : '✦ 희귀 양 발견! ✦', x, 150);
+    const img = await portraitImg(sheep.species, { level: Math.max(5, sheep.level || 1), wear: sheep.wear || null });
+    if (img) ctx.drawImage(img, x - 330, 190, 660, 660);
+    ctx.font = `700 84px ${SERIF}`; ctx.fillStyle = '#fff6dc'; ctx.fillText(sheep.name || sp.name, x, 905, 940);
+    ctx.font = `400 36px ${SANS}`; ctx.fillStyle = legend ? '#ffd86a' : '#9fd4ff';
+    ctx.fillText(`${sp.name} · ${legend ? '전설' : '희귀'}`, x, 962);
+    ctx.font = `400 33px ${SANS}`; ctx.fillStyle = '#e6e2f4';
+    let y = 1026;
+    for (const l of clamp(wrap(ctx, sp.desc, 880), 2)) { ctx.fillText(l, x, y); y += 46; }
+    if (legend && sp.verse && window.Bible) {
+      const v = Bible.verses(sp.verse).map(t => t.text).join(' ');
+      if (v) { ctx.font = `400 29px ${SERIF}`; ctx.fillStyle = '#f7e6b8'; for (const l of clamp(wrap(ctx, '“' + v + '”', 860), 2)) { ctx.fillText(l, x, y + 8); y += 40; } ctx.font = `400 25px ${SANS}`; ctx.fillStyle = '#e0b44a'; ctx.fillText(Bible.full(sp.verse), x, y + 12); y += 30; }
+    }
+    ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#fff8ed';
+    ctx.fillText([D.nickname || '친구', D.ban].filter(Boolean).join(' · ') + ' · ' + kstDate(Date.now()), x, H - 110, 940);
+    ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.7)'; ctx.fillText(window.SITE?.label || '그 밤을 향하여', x, H - 64, 940);
+    ctx.restore();
+    return cv;
+  }
+  async function drawPatrol(rec) {
+    const D = Core.data, W = 1080, H = 1350, x = W / 2;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.ch4.frame, 404);
+    const lamp = ctx.createRadialGradient(x, 470, 30, x, 470, 420); lamp.addColorStop(0, 'rgba(255,196,110,.5)'); lamp.addColorStop(1, 'rgba(255,196,110,0)');
+    ctx.fillStyle = lamp; ctx.fillRect(0, 60, W, 860);
+    ctx.textAlign = 'center';
+    ctx.font = `700 38px ${SANS}`; ctx.fillStyle = '#f7dfa9'; ctx.fillText('🔦 오늘 밤 순찰 기록', x, 150);
+    ctx.font = `800 260px ${SERIF}`; ctx.fillStyle = '#ffe08a'; ctx.fillText(String(rec.penned ?? 0), x - 70, 470);
+    ctx.font = `700 110px ${SERIF}`; ctx.fillStyle = 'rgba(255,240,210,.65)'; ctx.fillText('/' + (rec.total ?? 0), x + 150, 470);
+    ctx.font = `400 40px ${SANS}`; ctx.fillStyle = '#efe7d2'; ctx.fillText(rec.penned === rec.total ? '한 마리도 잃지 않고 다 지켰어!' : '우리 안으로 데려온 양', x, 560);
+    const img = await portraitImg(rec.leaderSpecies || 'cotton', { level: 6 });
+    if (img) ctx.drawImage(img, x - 170, 600, 340, 340);
+    ctx.font = `700 40px ${SANS}`; ctx.fillStyle = '#fff4d8'; ctx.fillText(`순찰 대장 ⭐ ${rec.leader || ''}`, x, 985, 940);
+    ctx.font = `400 34px ${SANS}`; ctx.fillStyle = '#e6dcc4';
+    ctx.fillText(`🐺 쫓아낸 늑대 ${rec.scared || 0}마리${rec.best ? ' · 🏆 최고 기록!' : ''}`, x, 1045, 940);
+    ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#fff8ed';
+    ctx.fillText([D.nickname || '친구', D.ban].filter(Boolean).join(' · ') + ' · ' + kstDate(Date.now()), x, H - 110, 940);
+    ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.7)'; ctx.fillText('"밤에 자기 양 떼를 지키더니" (눅 2:8)', x, H - 64, 940);
+    ctx.restore();
+    return cv;
+  }
+
+  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawPatrol, share, toBlob, fileName, STYLE, cardNo };
 })();

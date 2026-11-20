@@ -372,7 +372,7 @@
   const vcache = {};
   window.VOICES_EXTRA = [
     'tr-1', 'tr-2', 'tr-3', 'tr-4', 'tr-5', 'tr-6', 'init-1', 'code-1',
-    'lamb-1', 'lamb-2', 'field-1', 'field-2', 'field-3', 'field-4', 'field-5'
+    'lamb-1', 'lamb-2', 'field-1', 'field-2', 'field-3', 'field-4', 'field-5', 'field-6', 'field-7'
   ];
   function preload(name) {
     if (!ctx) return Promise.resolve(null);
