@@ -42,3 +42,7 @@
 .no-motion .tr-art, .no-motion .tr-caption *, .no-motion .tr-title, .no-motion .tr-flame { animation: none; }
 .no-motion .tr-frame.tr-portrait .tr-art, .no-motion .tr-dust i { animation: none; }
 @media (prefers-reduced-motion: reduce) { .tr-frame.tr-portrait .tr-art, .tr-dust i { animation: none; } }
+
+/* 제목 장면 3D 들판 */
+.tr-3d { position: absolute; inset: 0; z-index: 0; }
+.tr-finale .tr-3d ~ .tr-shade { background: linear-gradient(180deg, rgba(4,5,16,.15) 0%, rgba(4,5,16,0) 35%, rgba(4,5,16,.55) 75%, rgba(4,5,16,.85) 100%); }

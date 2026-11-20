@@ -8,6 +8,15 @@
   const NEED = [20, 30, 40, 50, 60, 70, 80, 90, 100];   // Lv1→2 … Lv9→10
   const PET_MAX = 3;
   const PATROL_SECONDS = 40;
+  const PATROL_CUES = {
+    start: ['patrolStart', 25], pen: ['patrolPen', 14], scare: ['patrolScare', [18, 30, 24]],
+    bump: ['patrolBump', 40], end: ['patrolEnd', 30]
+  };
+  const FIELD_TOUR = [
+    { target: '.field-feed', title: '🌾 꼴 주기', text: '하루 한 번. 양이 자라고 기름도 받아.', action: '꼴 주기' },
+    { target: '.field-market', title: '🏪 장터', text: '장터에서 산 물건을 놓으면 새 양이 올지도 몰라.', action: '장터 보기' },
+    { target: '.field-patrol', title: '🔦 밤 순찰', text: '등불을 비춰 양을 우리까지 데려가 봐.', action: '순찰 보기' }
+  ];
   const PRICE = { common: 3, rare: 6, legend: 0 };
   const RARITY = { common: '일반', rare: '희귀', legend: '전설' };
   const PATROL_TYPES = ['patrolTime', 'patrolSpeed', 'lamp'];
@@ -32,6 +41,7 @@
   const FALLBACK = { id: 'cotton', name: '솜뭉치', rarity: 'common', desc: '', skill: null,
     look: { wool: '#f4f1ea', face: '#2b2730', ear: '#e9a8a8', size: 1, curl: 0.2, spots: null, horns: false, glow: null, acc: null } };
   const THUMB = 'geubam-field-thumb' + (Core.IS_TEST ? '-test' : '');
+  const VIEW_LIMIT = 16384;             // 공개 들판 한 장의 최대 바이트
 
   const date = () => Core.nowKST().date;
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
@@ -49,6 +59,12 @@
   const dexList = () => DEX().filter(s => s.attract !== 'cond:codes4' || (window.CODES || []).length);
   const stage = s => { const lv = s.level || 1; return lv >= 10 ? 3 : lv >= 5 ? 2 : lv >= 2 ? 1 : 0; };
   const stageName = s => STAGES[stage(s)];
+  function sheepSound(sheep) {
+    const voice = DEX().findIndex(species => species.id === sheep.species);
+    const size = spec(sheep.species).look.size || 1;
+    const pitch = [540, 465, 385, 355][stage(sheep)] * Math.pow(size, -0.6) + Math.max(0, voice) * 5;
+    Sound.sfx('sheep', pitch);
+  }
   const nameSheep = (name, fallback) => Array.from(String(name || '').trim()).slice(0, 8).join('') || fallback;
   const needFor = level => level >= 10 ? 0 : NEED[level - 1];
   const josa = (word, pair) => Core.josa(String(word), pair);
@@ -435,6 +451,120 @@
     try { const url = localStorage.getItem(THUMB); return url && url.startsWith('data:image/') ? url : null; } catch { return null; }
   }
 
+  /* ---------- 친구 들판 링크 ---------- */
+  function publicField(data, nickname) {
+    const wearItems = new Set([...market.filter(([, kind]) => kind === 'wear').map(([item]) => item), ...specials]);
+    const sheep = data.sheep.slice(0, MAX_SHEEP).map((entry, index) => {
+      if (!entry || typeof entry !== 'object' || entry.lost) return null;
+      const species = DEX().find(s => s.id === entry.species)?.id || FALLBACK.id;
+      return {
+        id: 'guest-' + index, species, name: nameSheep(entry.name, spec(species).name),
+        level: Number.isInteger(entry.level) ? Math.min(10, Math.max(1, entry.level)) : 1,
+        wear: wearItems.has(entry.wear) ? entry.wear : null
+      };
+    }).filter(Boolean);
+    const placement = slots.flatMap((_, index) => {
+      const item = data.slots?.[index];
+      return typeof item === 'string' && catalog[item] === (index < 8 ? 'ground' : 'sky') ? [[index, item]] : [];
+    });
+    return {
+      nickname: typeof nickname === 'string' ? Array.from(nickname.trim()).slice(0, 10).join('') : '',
+      sheep, slots: Object.fromEntries(placement), visitors: [], items: { '마구간': data.items?.['마구간'] === true }
+    };
+  }
+
+  async function fieldLink(data, includeNickname) {
+    const snapshot = publicField(data, includeNickname ? Core.data.nickname : '');
+    const payload = {
+      ...(snapshot.nickname ? { n: snapshot.nickname } : {}),
+      s: snapshot.sheep.map(s => [s.species, s.name, s.level, s.wear]),
+      p: snapshot.slots, ...(data.items['마구간'] ? { b: true } : {})
+    };
+    let bytes = new TextEncoder().encode(JSON.stringify(payload)), format = '1';
+    if (window.CompressionStream) {
+      try {
+        bytes = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+        format = '1z';
+      } catch { /* 압축 없이도 링크를 열 수 있음 */ }
+    }
+    const code = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return location.origin + location.pathname + '#v=' + format + '.' + code;
+  }
+
+  async function readFieldLink(hash) {
+    const match = /^#v=1(z?)\.([A-Za-z0-9_-]+)$/.exec(hash);
+    if (!match || match[2].length > Math.ceil(VIEW_LIMIT * 4 / 3)) throw new Error('잘못된 들판 링크');
+    const bytes = Uint8Array.from(atob(match[2].replace(/-/g, '+').replace(/_/g, '/')), char => char.charCodeAt(0));
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let json = '';
+    if (match[1]) {
+      const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+      let size = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.length;
+          if (size > VIEW_LIMIT) throw new Error('들판 링크가 너무 큼');
+          json += decoder.decode(value, { stream: true });
+        }
+        json += decoder.decode();
+      } finally { await reader.cancel().catch(() => {}); }
+    } else {
+      json = decoder.decode(bytes);
+    }
+    const payload = JSON.parse(json);
+    if (!Array.isArray(payload?.s) || payload.s.length > MAX_SHEEP || !payload.s.every(s =>
+      Array.isArray(s) && s.length === 4 && typeof s[0] === 'string' && typeof s[1] === 'string'
+    )) throw new Error('잘못된 양 정보');
+    return publicField({
+      sheep: payload.s.map(([species, name, level, wear]) => ({ species, name, level, wear })),
+      slots: payload.p, items: { '마구간': payload.b }
+    }, payload.n);
+  }
+
+  async function visitShared(hash, root) {
+    root.innerHTML = `<header class="field-header"><div><h1>친구의 들판</h1></div></header>
+      <div class="field-guest-content" aria-live="polite"><p>들판을 불러오는 중…</p></div>
+      <button type="button" class="btn field-guest-start">나도 시작하기</button>`;
+    root.querySelector('.field-guest-start').onclick = () => {
+      history.replaceState(history.state, '', location.pathname + location.search);
+      App.home();
+    };
+    const content = root.querySelector('.field-guest-content');
+    let data;
+    try { data = await readFieldLink(hash); } catch {
+      content.textContent = '들판을 열 수 없어요. 친구에게 링크를 다시 받아 봐.';
+      return;
+    }
+    if (!root.isConnected) return;
+    root.querySelector('h1').textContent = (data.nickname || '친구') + '의 들판';
+    const count = data.sheep.length;
+    content.innerHTML = `<div class="field-stage is-2d"><div class="field-map" role="img" aria-label="별이 뜬 들판">${svg(mapArt(data, true))}</div></div>
+      <p class="field-guest-count">🐑 양 ${count}마리</p>
+      ${count ? `<ul class="field-guest-flock">${data.sheep.map(s => `<li><b>${esc(s.name)}</b> <span>Lv${s.level}</span><small>${esc(spec(s.species).name)}${s.wear ? ' · ' + esc(s.wear) : ''}</small></li>`).join('')}</ul>` : ''}`;
+    if (!can3D() || !await load3D() || !root.isConnected) return;
+    const stageEl = root.querySelector('.field-stage');
+    const fallback = stageEl.firstElementChild;
+    const host = document.createElement('div');
+    host.className = 'field3d-host';
+    stageEl.classList.replace('is-2d', 'is-3d');
+    stageEl.replaceChildren(host);
+    let view;
+    try { view = await Field3D.mount(host, stateOf(data)); } catch {
+      stageEl.classList.replace('is-3d', 'is-2d');
+      stageEl.replaceChildren(fallback);
+      return;
+    }
+    if (!root.isConnected) { view.destroy(); return; }
+    const observer = new MutationObserver(() => {
+      if (root.isConnected) return;
+      observer.disconnect();
+      view.destroy();
+    });
+    observer.observe(root.parentElement, { childList: true });
+  }
+
   /* ---------- 홈 패널 ---------- */
   function panelHTML() {
     const data = ensure();
@@ -445,15 +575,15 @@
     const notice = Core.REL ? '첫 번째 이야기가 열리면, 할아버지가 선물을 들고 와요 🎁' : '11/29 주일 예배 후, 들판의 할아버지가 선물을 들고 와요 🎁';
     const thumb = open && readThumb();
     const dots = open ? [
-      data.cared !== today && '꼴 주기 전',
-      data.visitors.length && '방문객 있음',
-      data.patrolDay !== today && '순찰 전'
+      data.cared !== today && '꼴 주기',
+      data.visitors.length && '온 양 만나기',
+      data.patrolDay !== today && '밤 순찰'
     ].filter(Boolean) : [];
     return `<section class="field-panel">
       <div class="field-panel-picture">${thumb ? `<img src="${thumb}" alt="">` : svg(mapArt(data, false, !open))}</div>
       <div class="field-panel-copy"><h2>나의 들판</h2>
         ${open ? `<p>양 ${data.sheep.length}마리 · 도감 ${Object.keys(data.dex).length}/${dexList().length}</p>
-          <p class="field-panel-dots">${dots.length ? dots.map(t => `<span><span class="field-dot"></span>${t}</span>`).join('') : '<span>오늘 할 일 끝 ✓</span>'}</p>` : `<p>${esc(notice)}</p>`}
+          <div class="field-today"><strong>오늘 할 일</strong>${dots.length ? `<ul>${dots.map(t => `<li>${t}</li>`).join('')}</ul>` : '<span>모두 완료 ✓</span>'}</div>` : `<p>${esc(notice)}</p>`}
         ${open ? '<button type="button" class="btn small field-enter">들판 가기</button>' : `<small>${remaining > 0 ? 'D-' + remaining : '🔒 첫 이야기를 마치면 열려요'}</small>`}
         ${!open && Core.PREVIEW_ALL ? '<button type="button" class="btn small field-test-lamb">🧪 미리보기: 양 받기</button>' : ''}
       </div></section>`;
@@ -489,20 +619,22 @@
     lostCheck();
     visitCheck();
     Sound.music('night');
-    Sound.ambience(null);
+    Sound.ambience('나의 들판');
     Sound.stopVoice();
     const app = document.getElementById('app');
     const root = document.createElement('main');
     root.id = 'field';
     root.className = 'screen page field-page';
-    root.innerHTML = '<div class="field-top"></div><div class="field-stage"></div><div class="field-manage"></div>';
+    root.innerHTML = '<div class="field-top"></div><div class="field-stage-wrap"><div class="field-stage"></div><p class="field-hold-feedback" role="status"></p></div><div class="field-manage"></div>';
     app.replaceChildren(root);
     window.scrollTo(0, 0);
     const top = root.querySelector('.field-top');
     const stageEl = root.querySelector('.field-stage');
+    const holdFeedback = root.querySelector('.field-hold-feedback');
     const manage = root.querySelector('.field-manage');
-    let moving = null, view = null, busy = false, selected = null, alive = true, thumbTimer = 0;
+    let moving = null, view = null, busy = false, selected = null, alive = true, thumbTimer = 0, holdTimer = 0;
     let mode = can3D() ? 'loading' : '2d';
+    let tourStep = field().tourSeen ? FIELD_TOUR.length : 0;
     const api = { get view() { return view; }, teardown };
     current = api;
     const observer = new MutationObserver(() => { if (!root.isConnected) teardown(); });
@@ -513,6 +645,7 @@
       alive = false;
       observer.disconnect();
       clearTimeout(thumbTimer);
+      clearTimeout(holdTimer);
       root.querySelectorAll('dialog[open]').forEach(d => d.close());
       try { view?.destroy(); } catch { /* 이미 정리됨 */ }
       view = null;
@@ -535,12 +668,24 @@
       thumbTimer = setTimeout(() => {
         if (!alive || !view) return;
         Promise.resolve().then(() => view.snapshot(360, 400)).then(url => {
-          if (typeof url === 'string' && url.startsWith('data:image/')) { try { localStorage.setItem(THUMB, url); } catch { /* 공간 부족 */ } }
+          if (alive && typeof url === 'string' && url.startsWith('data:image/')) { try { localStorage.setItem(THUMB, url); } catch { /* 공간 부족 */ } }
         }).catch(() => {});
       }, delay);
     }
     const handlers = {
-      onTapSheep(id) { const s = field().sheep.find(x => x.id === id); if (s && !busy && !moving) sheepSheet(s); },
+      onTapSheep(id) {
+        const sheep = field().sheep.find(s => s.id === id && !s.lost);
+        if (!sheep || busy || moving) return;
+        sheepSound(sheep);
+        navigator.vibrate?.(10);
+        if (!view) react(id, 'jump');
+        sheepSheet(sheep);
+      },
+      onPetSheep(id) {
+        if (!alive || busy || moving || root.querySelector('dialog[open]')) return;
+        const sheep = field().sheep.find(s => s.id === id && !s.lost);
+        if (sheep) pet(sheep, true);
+      },
       onTapVisitor(id) { if (!busy && !moving) visitorSheet(id); },
       onTapSlot(n) { if (!busy) selectSlot(Number(n)); },
       onReady() { queueThumb(400); }
@@ -570,11 +715,18 @@
       const data = ensure();
       const today = date();
       const due = data.cared !== today;
+      const tip = !moving && FIELD_TOUR[tourStep];
       const missing = data.sheep.find(s => s.lost);
       const visitor = data.visitors[0];
       top.innerHTML = `<header class="field-header"><button class="back" type="button" aria-label="홈으로">←</button>
         <div><h1>나의 들판</h1><p>양 ${data.sheep.length}마리</p></div>
         <span class="field-oil"><span aria-hidden="true">◕</span> 기름 ${Core.data.oil || 0}</span></header>
+        ${tip ? `<aside class="field-coach" aria-labelledby="field-coach-title">
+          <div class="field-coach-head"><small>첫 들판 안내 · ${tourStep + 1}/${FIELD_TOUR.length}</small><button type="button" class="link field-coach-close" aria-label="첫 들판 안내 닫기">닫기</button></div>
+          <b id="field-coach-title">${tip.title}</b><p>${tip.text}</p>
+          ${tourStep === 0 && mode === '3d' ? '<p>양을 꾹 누르면 쓰다듬을 수 있어.</p>' : ''}
+          <div class="field-coach-actions"><button type="button" class="btn small field-coach-try" ${tourStep === 0 && !due ? 'hidden' : ''} ${tourStep === 2 && mode === 'loading' ? 'disabled' : ''}>${tip.action}</button>
+          <button type="button" class="link field-coach-next">${tourStep === FIELD_TOUR.length - 1 ? '마치기' : '다음'}</button></div></aside>` : ''}
         ${visitor && !moving ? `<button type="button" class="field-visit-banner" data-visit="${esc(visitor.id)}"><span aria-hidden="true">🐑</span> 누군가 들판 입구에 왔어!<b>보러 가기 ›</b></button>` : ''}`;
       const dex = Object.keys(data.dex).length;
       manage.innerHTML = `${missing ? `<aside class="field-lost"><span aria-hidden="true">🐑</span><div><strong>${esc(josa(missing.name, '이가'))} 안 보여!</strong><button type="button" class="link field-find">찾으러 가자 →</button></div></aside>` : ''}
@@ -586,6 +738,7 @@
             <button type="button" class="field-act field-market"><span aria-hidden="true">🏪</span>장터</button>
             <button type="button" class="field-act field-card"><span aria-hidden="true">🖼️</span>들판 카드</button>
           </div>`}
+        ${moving ? '' : '<button type="button" class="btn ghost field-share-link">내 들판 자랑하기</button>'}
         <p class="field-feedback" role="status">${esc(message)}</p>
         ${moving ? '' : testTools(data)}`;
       top.querySelector('.back').onclick = () => App.home();
@@ -599,25 +752,43 @@
       manage.querySelector('.field-dex')?.addEventListener('click', dexSheet);
       manage.querySelector('.field-market')?.addEventListener('click', shop);
       manage.querySelector('.field-card')?.addEventListener('click', () => cardSheet('들판 카드', () => Card.drawField(), 'FIELD', '양과 별이 그려진 나의 들판 카드'));
+      manage.querySelector('.field-share-link')?.addEventListener('click', shareSheet);
       manage.querySelector('.field-find')?.addEventListener('click', () => search(missing));
+      if (tip) {
+        manage.querySelector(tip.target)?.classList.add('field-tour-target');
+        top.querySelector('.field-coach-close').onclick = () => advanceTour(FIELD_TOUR.length);
+        top.querySelector('.field-coach-next').onclick = () => advanceTour(tourStep + 1);
+        top.querySelector('.field-coach-try').onclick = () => {
+          if (busy) return;
+          advanceTour(tourStep + 1, false);
+          manage.querySelector(tip.target)?.click();
+        };
+      }
       bindTestTools(data);
       if (mode === '2d') {
         stageEl.className = 'field-stage is-2d';
         stageEl.innerHTML = mapMarkup(data, moving);
         stageEl.querySelectorAll('[data-slot]').forEach(button => { button.onclick = () => selectSlot(Number(button.dataset.slot)); });
         stageEl.querySelectorAll('[data-sheep-id]').forEach(button => {
-          button.onclick = () => {
-            const sheep = data.sheep.find(s => s.id === button.dataset.sheepId);
-            if (!sheep || busy) return;
-            Sound.sfx('sheep');
-            react(sheep.id, 'jump');
-            sheepSheet(sheep);
-          };
+          button.onclick = () => handlers.onTapSheep(button.dataset.sheepId);
         });
         stageEl.querySelectorAll('[data-visitor]').forEach(button => { button.onclick = () => visitorSheet(button.dataset.visitor); });
       } else if (view) {
         try { view.update(state()); } catch { /* 다음 갱신에서 다시 */ }
         queueThumb();
+      }
+    }
+
+    function advanceTour(next, focus = true) {
+      tourStep = next;
+      if (next === FIELD_TOUR.length) {
+        field().tourSeen = true;
+        Core.save();
+      }
+      render();
+      if (focus) {
+        const button = top.querySelector('.field-coach-next') || top.querySelector('.back');
+        button.focus({ preventScroll: true });
       }
     }
 
@@ -636,25 +807,72 @@
       return modal;
     }
 
+    function shareSheet() {
+      const modal = sheet('내 들판 자랑하기', `<p class="field-sheet-meta">친구가 링크로 양과 장식을 구경할 수 있어.</p>
+        ${Core.data.nickname ? '<label class="field-share-option"><input type="checkbox"> 내 닉네임도 보여 주기</label>' : ''}
+        <label class="field-share-url">들판 링크<input type="url" readonly></label>
+        <div class="row"><button type="button" class="btn field-copy" disabled>링크 복사</button>
+        ${navigator.share ? '<button type="button" class="btn ghost field-share-native" disabled>공유</button>' : ''}</div>
+        <p class="field-sheet-meta field-share-status" role="status"></p>`, 'field-share-sheet');
+      const checkbox = modal.querySelector('input[type="checkbox"]');
+      const input = modal.querySelector('input[type="url"]');
+      const copy = modal.querySelector('.field-copy');
+      const share = modal.querySelector('.field-share-native');
+      const status = modal.querySelector('.field-share-status');
+      let generation = 0;
+      async function refresh() {
+        const request = ++generation;
+        input.value = '';
+        copy.disabled = true;
+        if (share) share.disabled = true;
+        status.textContent = '';
+        try {
+          const url = await fieldLink(field(), checkbox?.checked);
+          if (request !== generation) return;
+          input.value = url;
+          copy.disabled = false;
+          if (share) share.disabled = false;
+        } catch { if (request === generation) status.textContent = '링크를 만들 수 없어요. 다시 열어 봐.'; }
+      }
+      if (checkbox) checkbox.onchange = refresh;
+      input.onclick = () => input.select();
+      copy.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(input.value);
+          status.textContent = '링크를 복사했어!';
+        } catch {
+          input.focus();
+          input.select();
+          status.textContent = '선택된 링크를 복사해 줘.';
+        }
+      };
+      if (share) share.onclick = async () => {
+        try { await navigator.share({ title: '내 들판 구경할래?', url: input.value }); }
+        catch (error) { if (error.name !== 'AbortError') status.textContent = '링크를 복사해서 보내 줘.'; }
+      };
+      refresh();
+    }
+
     function badges() {
       const got = window.Fame ? Fame.checkNew() : [];
       if (got.length) App.notifyBadges?.(got);
     }
 
     // 레벨업 연출: 반응 + 효과음 + 토스트, Lv5·Lv10은 커지는 연출과 축하 카드
-    function celebrate(ups) {
+    function celebrate(ups, showGrowthSheet = true) {
       ups = ups.filter(Boolean);
       if (!ups.length) return;
       ups.forEach(u => react(u.sheep.id, 'levelup'));
       Sound.sfx('star');
       navigator.vibrate?.(30);
       const [first] = ups;
-      Player.toast(`${first.sheep.name} Lv${first.to}!${ups.length > 1 ? ` 외 ${ups.length - 1}마리` : ''}`);
+      if (showGrowthSheet) Player.toast(`${first.sheep.name} Lv${first.to}!${ups.length > 1 ? ` 외 ${ups.length - 1}마리` : ''}`);
       const grown = ups.filter(u => (u.from < 5 && u.to >= 5) || (u.from < 10 && u.to >= 10));
       if (!grown.length) return;
       setTimeout(() => {
         if (!alive) return;
         grown.forEach(u => react(u.sheep.id, 'grow'));
+        if (!showGrowthSheet) return;
         voice('field-7');
         const g = grown[0];
         const big = g.to >= 10;
@@ -738,15 +956,34 @@
       };
     }
 
-    function pet(sheep) {
+    function showHoldFeedback(message) {
+      clearTimeout(holdTimer);
+      holdFeedback.textContent = message;
+      holdTimer = setTimeout(() => { holdFeedback.textContent = ''; }, 2700);
+    }
+
+    function pet(sheep, fromHold = false) {
       const today = date();
       if (sheep.petDay !== today) { sheep.petDay = today; sheep.petCount = 0; }
-      if (sheep.petCount >= PET_MAX) return;
+      if (sheep.petCount >= PET_MAX) {
+        if (fromHold) showHoldFeedback('오늘은 충분히 쓰다듬었어.');
+        return;
+      }
       sheep.petCount++;
-      const up = gainExp(sheep, careExp(sheep, 3) + own(sheep, 'petExp'));
+      const exp = sheep.level >= 10 ? 0 : Math.round(careExp(sheep, 3) + own(sheep, 'petExp'));
+      const up = gainExp(sheep, exp);
       Core.save();
-      Sound.sfx('sheep');
+      sheepSound(sheep);
       navigator.vibrate?.(15);
+      if (fromHold) {
+        try { view?.update(state()); } catch { /* 다음 화면 갱신 때 다시 */ }
+        queueThumb();
+        const reward = exp ? ` · 경험치 +${exp}` : '';
+        const level = up ? ` · Lv${sheep.level}!` : '';
+        showHoldFeedback(`${josa(sheep.name, '이가')} 좋아해!${reward}${level} · 오늘 ${sheep.petCount}/${PET_MAX}`);
+        if (up) celebrate([up], false);
+        return;
+      }
       render(`${josa(sheep.name, '이가')} 좋아해 ♥`);
       react(sheep.id, 'heart');
       sheepSheet(sheep);
@@ -1016,7 +1253,11 @@
       const leader = leaderSheep(data);
       busy = true;
       root.classList.add('is-busy', 'patrolling');
+      holdFeedback.textContent = '';
       stageEl.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+      Sound.music('patrol');
+      Sound.ambience(null);
+      const lastCue = new Map();
       const params = {
         seconds: PATROL_SECONDS + bonus('patrolTime'),
         flock: data.sheep.filter(s => !s.lost).slice(0, FLOCK_SHOW).map(s => ({ id: s.id, species: s.species, level: s.level, wear: s.wear || null, name: s.name })),
@@ -1024,13 +1265,24 @@
         lampBonus: bonus('lamp'),
         speedBonus: bonus('patrolSpeed'),
         wolfRate: leader?.species === 'david' && active(leader) ? 0.7 : 1,
-        onSfx: kind => Sound.sfx({ scare: 'boop', pen: 'sheep', start: 'ignite', end: 'badge' }[kind] || kind)
+        onSfx(kind) {
+          const cue = PATROL_CUES[kind];
+          if (!alive || !Array.isArray(cue)) return;
+          const now = performance.now();
+          if (now - (lastCue.get(kind) ?? -Infinity) < 110) return;
+          lastCue.set(kind, now);
+          Sound.sfx(cue[0]);
+          navigator.vibrate?.(cue[1]);
+          if (kind === 'end') Sound.music('night');
+        }
       };
       let result = null;
       try { result = await view.patrol(params); } catch { result = null; }
       busy = false;
       root.classList.remove('is-busy', 'patrolling');
       if (!alive) return;
+      Sound.music('night');
+      Sound.ambience('나의 들판');
       if (!result) return render('순찰을 마치지 못했어. 다시 해 볼까?');
       const total = Math.max(1, Number(result.total) || 1);
       const penned = Math.max(0, Math.min(total, Number(result.penned) || 0));
@@ -1049,7 +1301,6 @@
       if (best) data.patrolBest = penned;
       Core.save();
       const record = { penned, total, scared, timeLeft: Math.max(0, Math.round(Number(result.timeLeft) || 0)), leader: leader?.name || '', leaderSpecies: leader?.species || 'cotton', best, date: today };
-      Sound.sfx(penned === total ? 'angel' : 'badge');
       render(first ? `순찰 끝! 기름 +${oil}` : '연습 순찰 끝!');
       const modal = sheet('순찰 결과', `<div class="field-patrol-result">
           <p class="field-patrol-score"><b>${penned}</b><span>/${total}</span></p><p>우리 안에 들어온 양</p>
@@ -1287,6 +1538,6 @@
 
   window.Field = {
     ensure, has, panelHTML, bindPanel, page, receiveFirstLamb, flockScene, giveItem, drawCard, lostCheck, stats,
-    bonus, portrait, snapshot, summary, spec, dexList, visitCheck, gainExp, sheepArt
+    bonus, portrait, snapshot, summary, spec, dexList, visitCheck, gainExp, sheepArt, visitShared
   };
 })();
