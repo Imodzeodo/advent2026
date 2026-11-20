@@ -618,7 +618,38 @@
       const sp = textSprite(text, { color, size: 92 }); sp.scale.setScalar(0.8); sp.position.copy(pos).add(new T.Vector3(0, 2.2, 0));
       sp.userData = { v: new T.Vector3(0, 0.9, 0), life: 1.4, text: true }; scene.add(sp); fxList.push(sp);
     }
+    function legendBeam(o) {
+      const h = 22, c = document.createElement('canvas'); c.width = 64; c.height = 256;
+      const g = c.getContext('2d'), gv = g.createLinearGradient(0, 0, 0, 256);
+      gv.addColorStop(0, 'rgba(255,230,150,0)'); gv.addColorStop(0.55, 'rgba(255,226,140,.35)'); gv.addColorStop(1, 'rgba(255,240,190,1)');
+      g.fillStyle = gv; g.fillRect(0, 0, 64, 256);
+      g.globalCompositeOperation = 'destination-in';
+      const gh = g.createLinearGradient(0, 0, 64, 0); gh.addColorStop(0, 'rgba(0,0,0,0)'); gh.addColorStop(0.5, 'rgba(0,0,0,1)'); gh.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = gh; g.fillRect(0, 0, 64, 256);
+      const tex = new T.CanvasTexture(c); tex.colorSpace = T.SRGBColorSpace;
+      const beam = new T.Mesh(new T.PlaneGeometry(1.9, h), new T.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, fog: false }));
+      beam.position.set(o.position.x, o.position.y + h / 2, o.position.z); scene.add(beam);
+      const ring = new T.Mesh(new T.RingGeometry(0.4, 0.7, 28), new T.MeshBasicMaterial({ color: '#ffd86a', transparent: true, opacity: 0.9, side: T.DoubleSide, depthWrite: false, blending: T.AdditiveBlending }));
+      ring.rotation.x = -Math.PI / 2; ring.position.set(o.position.x, o.position.y + 0.06, o.position.z); scene.add(ring);
+      beams.push({ beam, ring, o, t: 0 });
+      cam.want = o.position.clone(); selected = null;
+      setTimeout(() => { if (cam.want && cam.want.equals?.(o.position)) cam.want = null; }, 4200);
+    }
+    const beams = [];
+    function stepBeams(dt) {
+      for (let i = beams.length - 1; i >= 0; i--) {
+        const b = beams[i]; b.t += dt; const k = b.t;
+        b.beam.position.x = b.o.position.x; b.beam.position.z = b.o.position.z; b.beam.rotation.y = Math.atan2(camera.position.x - b.o.position.x, camera.position.z - b.o.position.z);
+        b.beam.material.opacity = k < 0.6 ? k / 0.6 * 0.95 : k < 2.4 ? 0.95 : Math.max(0, 0.95 - (k - 2.4) / 1.4 * 0.95);
+        b.beam.scale.x = 1 + Math.sin(k * 3) * 0.08;
+        b.ring.position.set(b.o.position.x, groundY(b.o.position.x, b.o.position.z) + 0.06, b.o.position.z);
+        b.ring.scale.setScalar(1 + k * 2.2); b.ring.material.opacity = Math.max(0, 0.9 - k / 2.2);
+        if (Math.random() < dt * 30 && k < 2.6) { const pt = b.o.position.clone(); pt.x += (Math.random() - 0.5) * 1.4; pt.z += (Math.random() - 0.5) * 1.4; pt.y += 0.3 + Math.random() * 2; burst(pt, '#ffe9a8', 1, 0.6); }
+        if (k > 3.9) { scene.remove(b.beam); scene.remove(b.ring); b.beam.geometry.dispose(); b.beam.material.map?.dispose(); b.beam.material.dispose(); b.ring.geometry.dispose(); b.ring.material.dispose(); beams.splice(i, 1); }
+      }
+    }
     function react(id, kind) {
+      if (kind === 'legend') { const t = visitorObjs.get(id) || sheepObjs.get(id); if (t) { legendBeam(t); burst(t.position.clone().add(new T.Vector3(0, 1.2, 0)), '#ffe08a', 34, 2.8); } return; }
       const o = sheepObjs.get(id); if (!o) return;
       const p = o.position.clone(); p.y += 1.2;
       o.userData.ai.mode = kind === 'eat' ? 'graze' : 'idle'; o.userData.ai.t = 1.6;
@@ -697,6 +728,7 @@
         o.userData.bang.position.y = 2.25 + Math.abs(Math.sin(t * 3)) * 0.25;
       }
       markers.forEach(m => { m.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(t * 3 + m.userData.pulse)); });
+      if (beams.length) stepBeams(dt);
       // 효과
       for (let i = fxList.length - 1; i >= 0; i--) {
         const s = fxList[i], u = s.userData; u.life -= dt;
@@ -958,12 +990,21 @@
           return o;
         });
         const saveCam = { az: cam.az, el: cam.el, dist: cam.dist };
-        cam.az = -0.08; cam.el = 0.36; cam.dist = 13.5; selected = null;
+        cam.az = -0.08; cam.el = 0.34; cam.dist = 14.5; selected = null;
+        // 눈처럼 내리는 빛가루
+        const dust = [];
+        for (let i = 0; i < 70; i++) {
+          const sp = new T.Sprite(new T.SpriteMaterial({ map: ctx.dotTex, color: i % 3 ? '#fff6dc' : '#ffe2a0', transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
+          sp.scale.setScalar(0.12 + Math.random() * 0.14);
+          sp.userData = { x: (Math.random() - 0.5) * 16, z: -4 + Math.random() * 10, y: Math.random() * 9, sp: 0.35 + Math.random() * 0.5, ph: Math.random() * 6 };
+          stage.add(sp); dust.push(sp);
+        }
         let tt = 0, doneAt = null;
         const st = {
           labels: flock.map((o, i) => [o, list[i].name || '']),
           step(dt, t) {
-            tt += dt; cam.dist = lerp(cam.dist, 9.2, dt * 0.1); cam.target.lerp(tmpV.set(0, 1.1, -0.8), 1 - Math.pow(0.05, dt));
+            dust.forEach(d => { const u = d.userData; u.y -= u.sp * dt; if (u.y < 0) u.y = 9; d.position.set(u.x + Math.sin(tt * 0.6 + u.ph) * 0.6, groundY(u.x, u.z) + u.y, u.z); d.material.opacity = Math.min(1, tt / 2) * (0.35 + 0.45 * Math.abs(Math.sin(tt * 1.5 + u.ph))); });
+            tt += dt; cam.dist = lerp(cam.dist, 12, dt * 0.1); cam.target.lerp(tmpV.set(0, 1.1, -0.8), 1 - Math.pow(0.05, dt));
             let all = true;
             flock.forEach(o => {
               const u = o.userData; if (tt < u.delay) { all = false; return; }

@@ -355,6 +355,9 @@
     patrolScare: t => { noise(t, 0.28, 0.079, 550, 2100); musicBox(69, t + 0.12, 0.065, sfxBus); },
     patrolBump: t => { thud(t, 78, 0.13, 0.14); noise(t, 0.13, 0.035, 850, 350); },
     patrolEnd: t => [69, 72, 76].forEach((m, i) => musicBox(m, t + i * 0.1, 0.08, sfxBus)),
+    legendArrival: t => {
+      [57, 69, 76, 81].forEach((m, i) => bell(m, t + i * 0.14, i ? 0.036 : 0.024));
+    },
     angel: t => { pad([72, 76, 79, 84], t, 2.2, 0.03); [84, 88, 91, 96].forEach((m, i) => bell(m, t + 0.15 * i, 0.05)); },
     baby: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(660, t + 0.25); o.frequency.linearRampToValueAtTime(480, t + 0.7); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.08); g.gain.linearRampToValueAtTime(0, t + 0.75); o.connect(g); g.connect(out(sfxBus, 1, 0.5)); o.start(t); o.stop(t + 0.8); }
   };
