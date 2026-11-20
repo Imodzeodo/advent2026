@@ -70,7 +70,7 @@
         }
         list += `<button class="${cls}" data-id="${e.id}">
           <span class="ep-date">${esc(Core.dateLabel(e.date))}<em>${esc(e.day)}</em></span>
-          <span class="ep-title">${label}${(() => { const k = started && kindTag(e.id); return k ? `<span class="ep-kind">${k[0]}${open || done ? ' ' + k[1] : ''}</span>` : ''; })()}${!open && !done && started ? `<span class="ep-open">${e.openHour ? e.openHour + '시에' : ''} 열려요</span>` : ''}</span>
+          <span class="ep-title">${label}${(() => { const k = started && kindTag(e.id); return k ? `<span class="ep-kind">${k[0]}${open || done ? ' ' + k[1] : ''}</span>` : ''; })()}${!open && !done && started ? `<span class="ep-open">${e.openHour ? Core.hourLabel(e.openHour) + '에' : ''} 열려요</span>` : ''}</span>
           <span class="ep-state">${state}</span>
         </button>`;
       }
@@ -121,7 +121,7 @@
       if (btn.classList.contains('open')) return go(e.id);
       if (btn.classList.contains('soon')) return Player.toast('아직 준비 중인 편이에요');
       if (!started) return Player.toast('먼저 시작하기를 눌러 줘');
-      Player.toast(`${Core.dateLabel(e.date)} ${e.openHour ? e.openHour + '시에' : ''} 열려요`);
+      Player.toast(`${Core.dateLabel(e.date)} ${e.openHour ? Core.hourLabel(e.openHour) + '에' : ''} 열려요`);
     });
     const s = root.querySelector('#start');
     if (s) s.onclick = async () => {

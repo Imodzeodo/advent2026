@@ -126,6 +126,11 @@
     const hasFinal = code >= 0xac00 && code <= 0xd7a3 ? (code - 0xac00) % 28 !== 0 : /^[013678l-nr]$/i.test(last);
     return word + pair[hasFinal ? 0 : 1];
   }
+  // 11 → '오전 11시', 12 → '낮 12시', 13 → '오후 1시', 없으면 '0시'
+  function hourLabel(h) {
+    if (h == null) return '0시';
+    return h < 12 ? `오전 ${h}시` : h === 12 ? '낮 12시' : `오후 ${h - 12}시`;
+  }
   // 브라우저가 저장 공간을 함부로 비우지 않게 부탁 (안드로이드 크롬 등)
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) { /* 무시 */ }
 
@@ -133,7 +138,7 @@
     params, IS_TEST, PREVIEW_ALL, TEST_DATE,
     nowKST, isOpen, dateLabel, REL, SEASON, XMAS,
     get data() { return data; },
-    save, reset, replace, addOil, spendOil, josa,
+    save, reset, replace, addOil, spendOil, josa, hourLabel,
     get canSave() { return canSave; },
     epById: id => window.EPISODES.find(e => e.id === id),
     // 인트로를 뺀 본편(별 계산용)

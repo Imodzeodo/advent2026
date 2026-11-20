@@ -28,6 +28,7 @@
         <div class="text"></div>
         <div class="actions"></div>
         <div class="next">▼</div>
+        <button class="log-btn" type="button" aria-label="지난 대사 보기">↺ 지난 대사</button>
       </div>
       <div class="titlecard" hidden></div>`;
     el = {
@@ -48,6 +49,7 @@
     };
     Fx.attach(root.querySelector('.fx-canvas'));
     bindGems(el.text);
+    root.querySelector('.log-btn').addEventListener('click', e => { e.stopPropagation(); showLog(); });
     el.dialog.addEventListener('click', e => { if (!e.target.closest('button')) onTap(); });
     el.stage.addEventListener('click', e => { if (!e.target.closest('[data-hot],.hot-mark')) onTap(); });
     root.querySelector('.exit').addEventListener('click', () => {
@@ -258,6 +260,7 @@
     setPortrait(who, expr, text);
     el.actions.innerHTML = '';
     const t = Script.fill(text, ep.id);
+    remember(who, t);
     const my = runId;
     if (mode === 'normal' && ++dialogueCount === meteorAt && !window.__fast) shootMeteor(ep.id, my);
     await typeText(t, who);
@@ -288,6 +291,24 @@
     };
     stage.appendChild(star);
     setTimeout(() => star.remove(), 2500);
+  }
+  /* ---------- 지난 대사 (연타로 놓친 말 다시 보기) ---------- */
+  let backlog = [];
+  function remember(who, t) {
+    backlog.push({ who: who ? (Art.nameOf ? Art.nameOf(who) : who) : '', text: String(t).replace(/\[\[|\]\]|\*/g, '') });
+    if (backlog.length > 60) backlog.shift();
+  }
+  function showLog() {
+    if (el.root.querySelector('.backlog')) return;
+    const box = document.createElement('div');
+    box.className = 'backlog';
+    box.innerHTML = `<div class="backlog-card"><div class="backlog-head"><b>지난 대사</b><button type="button" class="backlog-x" aria-label="닫기">✕</button></div>
+      <div class="backlog-list">${backlog.length ? backlog.map(l => `<p class="${l.who ? '' : 'narr'}">${l.who ? `<b>${esc(l.who)}</b>` : ''}${esc(l.text)}</p>`).join('') : '<p class="narr">아직 지난 대사가 없어요.</p>'}</div></div>`;
+    const close = e => { if (e) e.stopPropagation(); box.remove(); };
+    box.addEventListener('click', e => { e.stopPropagation(); if (e.target === box) close(); });
+    box.querySelector('.backlog-x').onclick = close;
+    el.root.appendChild(box);
+    const list = box.querySelector('.backlog-list'); list.scrollTop = list.scrollHeight;
   }
   const plainLen = t => Array.from(String(t).replace(/\[\[|\]\]|\*/g, '')).length;
   // 보는 날: 읽을 시간이 지나면 저절로, 누르면 바로 넘어간다
@@ -323,6 +344,7 @@
     el.actions.innerHTML = '';
     el.text.innerHTML = '<span class="chat-hint">탭해서 다음 메시지</span>';
     const t = Script.fill(text, ep.id), segs = segments(t);
+    remember(who, t);
     const total = segs.reduce((a, g) => a + Array.from(g.s).length, 0);
     const base = who && who.replace(/의 서판$/, '');
     const row = document.createElement('div');
@@ -357,7 +379,20 @@
     const ov = el.overlay;
     const fit = () => { if (ov.hidden) return; ov.classList.remove('tall'); if (ov.scrollHeight > ov.clientHeight + 4) ov.classList.add('tall'); };
     fit(); requestAnimationFrame(fit); setTimeout(fit, 300);
+    holdButtons(ov, cls);
     return el.overlay;
+  }
+  // 연타로 카드를 놓치지 않게: 카드가 뜬 뒤 잠깐 버튼을 잠근다 (중요 카드 'hold'는 더 길게, 막대가 차오름)
+  function holdButtons(ov, cls) {
+    const c = ' ' + (cls || '') + ' ';
+    if (window.__fast || / (game|input) /.test(c) || !/ center /.test(c)) return;
+    const ms = / hold /.test(c) ? 1800 : 700;
+    const card = ov.firstElementChild;
+    ov.querySelectorAll('.btn').forEach(b => {
+      if (b.disabled) return;
+      b.disabled = true; b.classList.add('hold-wait'); b.style.setProperty('--hold', ms + 'ms');
+      setTimeout(() => { if (card && card.isConnected) { b.disabled = false; b.classList.remove('hold-wait'); } }, ms);
+    });
   }
   function hideOverlay() {
     el.overlay.classList.remove('in');
@@ -369,7 +404,7 @@
       const ov = showOverlay(html, cls);
       let t, done = false;
       const go = () => { if (done) return; done = true; clearTimeout(t); ov.removeEventListener('click', go); hideOverlay(); res(); };
-      setTimeout(() => { if (!done) ov.addEventListener('click', go); }, 350);
+      setTimeout(() => { if (!done) ov.addEventListener('click', go); }, window.__fast ? 350 : 650);
       if (autoMs) t = setTimeout(go, window.__fast ? 300 : autoMs);
     });
   }
@@ -696,7 +731,7 @@
           <div class="card rules">
             <div class="rules-title">이렇게 진행돼</div>
             <ul>
-              <li><b>하루 한 편</b>, 3분이면 끝나. 한국 시간 자정에 새 편이 열려.${Core.REL ? '' : ' 주일 편은 예배 후 <b>오후 1시</b>에.'}</li>
+              <li><b>하루 한 편</b>, 3분이면 끝나. 한국 시간 자정에 새 편이 열려.${Core.REL ? '' : ' 주일 편은 <b>오전 11시</b>에.'}</li>
               <li>놓친 날은 <b>언제든 따라잡을 수</b> 있어. 앞날 이야기는 그날이 되어야 열려.</li>
               <li>인물이 묻는 말에 답하면 <b>일기장</b>에 남아. 다음 날 그 사람이 기억하고 있을 거야.</li>
               <li>매일 끝나면 <b>오늘의 미션</b>. 다음 날 정직하게 답하면 <b>등불 기름</b>을 받아.</li>
@@ -705,7 +740,7 @@
             <div class="rules-warn">🔑 <b>설정 → 기록 열쇠</b>를 가끔 카톡 나와의 채팅에 보내 둬. 폰을 바꿔도 그대로 이어서 할 수 있어.</div>
             <div class="rules-warn">⚠️ 기록은 <b>지금 이 브라우저</b>에만 저장돼. 카톡에서 열었으면 앞으로도 카톡에서, 사파리·크롬에서 열었으면 거기서 계속해 줘. 아무도(선생님도) 네 일기를 볼 수 없어.</div>
             <button class="btn">알겠어</button>
-          </div>`, 'center');
+          </div>`, 'center hold');
         ov.querySelector('button').onclick = () => { hideOverlay(); res(); };
       });
     }
@@ -965,16 +1000,16 @@
         <div class="card done">
           ${Art.bigStar(0.05, 120)}
           <div class="done-title">준비 끝!</div>
-          <div class="done-sub">${Core.REL ? '성탄 26일 전, 첫 번째 이야기가 열려.<br>그날 0시에 만나자.' : '11월 29일 주일, 첫 번째 초가 켜지는 날<br>예배 끝나고 오후 1시에 만나자.'}</div>
+          <div class="done-sub">${Core.REL ? '성탄 26일 전, 첫 번째 이야기가 열려.<br>그날 0시에 만나자.' : '📅 <b>11월 29일 주일 오전 11시</b><br>첫 번째 초가 켜지는 날, 첫 이야기가 열려.<br>예배 끝나고 반에서 같이 시작하자!'}</div>
           <button class="btn">홈으로</button>
-        </div>`, 'center full');
+        </div>`, 'center full hold');
       ov.querySelector('button').onclick = () => App.home();
       return;
     }
     // 다음 편: 열려 있으면 바로 이어서, 아니면 언제 열리는지 예고
     const list = Core.mainEpisodes(), nx = list[list.findIndex(x => x.id === ep.id) + 1];
     const nextOpen = nx && Core.isOpen(nx) && !D.done[nx.id] && window.STORY[nx.id];
-    const nextLine = !nx || nextOpen || D.done[nx.id] ? '' : `<div class="next-tease">🌙 다음 이야기 「${esc(nx.title)}」<br><small>${esc(Core.dateLabel(nx.date))} ${nx.openHour ? '오후 ' + (nx.openHour - 12) + '시' : '0시'}에 열려요</small></div>`;
+    const nextLine = !nx || nextOpen || D.done[nx.id] ? '' : `<div class="next-tease">🌙 다음 이야기 「${esc(nx.title)}」<br><small>${esc(Core.dateLabel(nx.date))} ${Core.hourLabel(nx.openHour)}에 열려요</small></div>`;
     const firstDay = first && ep.id === '1-0';
     const ov = showOverlay(`
       <div class="card done">
@@ -1016,7 +1051,7 @@
     typing = null;
     tapWait = null;
     ep = Core.epById(id);
-    dialogueCount = 0;
+    dialogueCount = 0; backlog = [];
     meteorAt = id === '0' || window.__fast ? 0 : 4 + Math.floor(Math.random() * 5);
     replay = !!Core.data.done[id];
     if (replay) setTimeout(() => toast('다시 보기 · 글자가 한 번에 나와요'), 900);
