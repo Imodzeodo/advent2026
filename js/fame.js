@@ -118,6 +118,15 @@
     const c = (window.CODES || []).find(x => x.hash === h);
     if (!c) return { ok: false };
     if (!Core.IS_TEST && today < c.from) return { ok: false, early: c };
+    return unlockCode(c);
+  }
+  // 미리보기(?preview=all) 전용: 암호 없이 n주 초를 켠다. 테스트 기록에만 저장된다.
+  function testUnlock(n) {
+    if (!Core.PREVIEW_ALL) return { ok: false };
+    const c = (window.CODES || []).find(x => x.n === n);
+    return c ? unlockCode(c) : { ok: false };
+  }
+  function unlockCode(c) {
     const d = D(); d.codes = d.codes || {};
     const isNew = !d.codes[c.n];
     const item = CODE_ITEMS[c.n - 1];
@@ -132,5 +141,5 @@
     return { ok: true, code: c, isNew, item };
   }
 
-  window.Fame = { BADGES, checkNew, streaks, missionYes, missionStatus, onTime, tryCode, codeHash, deliverCodeItems };
+  window.Fame = { BADGES, checkNew, streaks, missionYes, missionStatus, onTime, tryCode, testUnlock, codeHash, deliverCodeItems };
 })();

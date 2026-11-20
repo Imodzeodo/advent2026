@@ -189,12 +189,41 @@
       <div class="field-panel-copy"><h2>나의 들판</h2>
         <p>${open ? `${data.sheep.length}마리 · ${due ? '<span class="field-dot"></span> 오늘 꼴 주기 전' : '오늘 꼴 주기 완료'}` : esc(notice)}</p>
         ${open ? '<button type="button" class="btn small field-enter">들판 가기</button>' : `<small>${remaining > 0 ? 'D-' + remaining : '🔒 첫 이야기를 마치면 열려요'}</small>`}
+        ${!open && Core.PREVIEW_ALL ? '<button type="button" class="btn small field-test-lamb">🧪 미리보기: 양 받기</button>' : ''}
       </div></section>`;
   }
 
   function bindPanel(root) {
     const button = root.querySelector('.field-enter');
     if (button) button.onclick = page;
+    const test = root.querySelector('.field-test-lamb');
+    if (test) test.onclick = async () => {
+      const stage = document.createElement('div');
+      stage.className = 'field-test-stage';
+      stage.style.cssText = 'position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(4,5,16,.92)';
+      document.body.append(stage);
+      try { await receiveFirstLamb(stage); } finally { stage.remove(); }
+      page();
+    };
+  }
+
+  // 미리보기(?preview=all) 전용 시험 도구
+  function testTools(data, rerender) {
+    if (!Core.PREVIEW_ALL) return '';
+    setTimeout(() => {
+      const box = document.querySelector('.field-test-tools');
+      if (!box) return;
+      box.querySelector('[data-t=oil]').onclick = () => { addOil(20, 'test'); rerender('🧪 기름 +20'); };
+      box.querySelector('[data-t=day]').onclick = () => { data.cared = ''; Core.save(); rerender('🧪 하루가 지났어요 · 다시 꼴을 줄 수 있어요'); };
+      box.querySelector('[data-t=lost]').onclick = () => {
+        const left = data.sheep.filter(s => !s.lost);
+        if (!left.length) return rerender('🧪 길 잃을 양이 없어요');
+        left[Math.floor(Math.random() * left.length)].lost = true; data.lostOn = date(); Core.save(); rerender('🧪 양 한 마리가 길을 잃었어요');
+      };
+    });
+    return `<div class="field-test-tools" style="margin-top:14px;padding:10px;border:1px dashed rgba(255,210,122,.5);border-radius:12px">
+      <small style="opacity:.8">🧪 미리보기 전용 시험 도구</small>
+      <div class="row" style="margin-top:6px"><button type="button" class="btn ghost small" data-t="oil">기름 +20</button><button type="button" class="btn ghost small" data-t="day">하루 넘기기</button><button type="button" class="btn ghost small" data-t="lost">잃은 양 부르기</button></div></div>`;
   }
 
   function mapMarkup(data, moving) {
@@ -244,7 +273,8 @@
         ${moving ? `<p class="field-move-tip"><span>${esc(Core.josa(moving.item, '을를'))} 놓을 빈 칸을 골라 줘.</span><button type="button" class="link field-cancel-move">취소</button></p>` :
           `<button type="button" class="btn field-feed ${due ? 'due' : ''}" ${due ? '' : 'disabled'}>${due ? '🌾 꼴 주기' : '✓ 오늘 꼴 주기 완료'}</button>
             <div class="row"><button type="button" class="btn ghost field-market">들판 장터</button><button type="button" class="btn ghost field-card">들판 카드</button></div>`}
-        <p class="field-feedback" role="status">${esc(message)}</p></div>`;
+        <p class="field-feedback" role="status">${esc(message)}</p>
+        ${moving ? '' : testTools(data, render)}</div>`;
       root.querySelector('.back').onclick = () => App.home();
       root.querySelector('.field-cancel-move')?.addEventListener('click', () => { moving = null; render(); });
       root.querySelector('.field-feed')?.addEventListener('click', feed);
