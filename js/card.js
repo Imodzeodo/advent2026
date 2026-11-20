@@ -414,6 +414,7 @@
     if (id === 'APPOINT') return '그밤-등불지기-임명장.png';
     if (id === 'FIELD') return '그밤-나의-들판.png';
     if (id === 'PATROL') return `그밤-순찰-${Core.nowKST().date}.png`;
+    if (id.startsWith('GIFT:')) return `그밤-선물-${(window.Field?.giftCardData(id.slice(5))?.title || id.slice(5)).replace(/\s+/g, '-')}.png`;
     if (id.startsWith('SHEEP:')) return `그밤-발견-${(window.SHEEP_DEX?.byId?.[id.slice(6)]?.name || id.slice(6)).replace(/\s+/g, '')}.png`;
     if (download) return `그밤-${id}.png`;
     if (id === 'FIN') return '그밤-완주.png';
@@ -534,5 +535,32 @@
     return cv;
   }
 
-  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawPatrol, share, toBlob, fileName, STYLE, cardNo };
+  async function drawGift(id) {
+    const gift = window.Field?.giftCardData(id);
+    if (!gift) throw new Error('아직 전달하지 않은 선물');
+    const W = 1080, H = 1350, x = W / 2;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.ch4.frame, 684);
+    ctx.textAlign = 'center';
+    ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#efcd86';
+    ctx.fillText('그 밤을 향하여 · 성탄 선물', x, 130);
+    ctx.font = `700 83px ${SERIF}`; ctx.fillStyle = '#fff3d5';
+    ctx.fillText(gift.title, x, 245, 930);
+    ctx.font = `400 41px ${SANS}`; ctx.fillStyle = '#f6dfb6';
+    ctx.fillText(`${gift.to}에게`, x, 315);
+    const image = await loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(gift.art));
+    if (image) ctx.drawImage(image, 204, 315, 672, 504);
+    rr(ctx, 80, 813, 920, 334, 36); ctx.fillStyle = '#f6e5c5'; ctx.fill();
+    ctx.font = `400 43px ${SERIF}`; ctx.fillStyle = '#513a43';
+    const lines = wrap(ctx, '“' + gift.quote + '”', 810);
+    lines.forEach((line, i) => ctx.fillText(line, x, 995 + (i - (lines.length - 1) / 2) * 60));
+    ctx.font = `700 31px ${SANS}`; ctx.fillStyle = '#f9dfab';
+    ctx.fillText(`${gift.name} · ${kstDate(gift.date)}`, x, 1245, 920);
+    ctx.restore();
+    return cv;
+  }
+
+  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawPatrol, drawGift, share, toBlob, fileName, STYLE, cardNo };
 })();

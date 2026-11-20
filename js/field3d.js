@@ -108,48 +108,56 @@
   };
   const stageOf = lv => lv >= 10 ? 3 : lv >= 5 ? 2 : lv >= 2 ? 1 : 0;
 
-  function buildSheep(species, level = 1, wear = null, seed = 1) {
+  function buildSheep(species, level = 1, wear = null, seed = 1, woolLen = 1) {
     const dex = (window.SHEEP_DEX && window.SHEEP_DEX.byId[species]) || window.SHEEP_DEX?.[0];
     const L = dex.look, st = stageOf(level), rnd = seeded(seed * 97 + hashStr(species));
     const root = new T.Group(); root.userData.kind = 'sheep';
     const body = new T.Group(); root.add(body);
-    const ico = new T.IcosahedronGeometry(1, 0);
-    // 털 뭉치
-    const puffs = [], spots = [];
+    const ico = new T.IcosahedronGeometry(1, 0), oct = new T.OctahedronGeometry(1, 0);
+    const wide = L.round ? 1.14 : 1;
+    // 속몸(털을 깎아도 남는 짧은 털) — 털색을 살짝 분홍빛으로
+    const skin = new T.Color(L.wool).lerp(new T.Color('#f2c9b8'), 0.35).getStyle();
+    body.add(new T.Mesh(place(ico, 0, 0.78, -0.02, 0.4 * wide, 0.34, 0.6), mat(skin, { rough: 1 })));
+    // 바깥 털(깎이는 부분): 몸 가운데(0,0.8,0)를 기준으로 줄었다 늘었다
+    const woolG = new T.Group(); woolG.position.set(0, 0.8, 0); body.add(woolG);
+    const puffs = [], spots = [], specks = [];
     const count = Math.round(9 + L.curl * 7 + (st >= 2 ? 4 : 0));
     const pr = (0.36 - L.curl * 0.08) * (st === 0 ? 1.1 : 1);
-    puffs.push(place(ico, 0, 0.8, -0.02, 0.56, 0.46, 0.74));                   // 속 덩어리
+    const rate = L.spotRate ?? 0.3;
+    puffs.push(place(ico, 0, 0, -0.02, 0.56 * wide, 0.46, 0.74));
     for (let i = 0; i < count; i++) {
       const u = rnd() * Math.PI * 2, v = (rnd() * 0.9 + 0.05) * Math.PI * 0.62;
-      const x = Math.cos(u) * Math.sin(v) * 0.52, y = 0.8 + Math.cos(v) * 0.36, z = Math.sin(u) * Math.sin(v) * 0.7;
-      const s = pr * (0.75 + rnd() * 0.5);
-      const g = place(ico, x, y, z, s, s * 0.92, s, rnd() * 3, rnd() * 3, rnd() * 3);
-      (L.spots && rnd() < 0.3 ? spots : puffs).push(g);
+      const x = Math.cos(u) * Math.sin(v) * 0.52 * wide, y = Math.cos(v) * 0.36, z = Math.sin(u) * Math.sin(v) * 0.7;
+      const sz = pr * (0.75 + rnd() * 0.5);
+      const g = place(ico, x, y, z, sz, sz * 0.92, sz, rnd() * 3, rnd() * 3, rnd() * 3);
+      (L.spots && rnd() < rate ? spots : puffs).push(g);
+      if (L.acc === 'starry' && i % 2 === 0) specks.push(place(oct, x * 1.2, y * 1.16 + 0.03, z * 1.14, 0.075, 0.075, 0.075, rnd(), rnd(), 0));
     }
-    for (let i = 0; i < 4; i++) puffs.push(place(ico, (rnd() - 0.5) * 0.5, 0.58, (rnd() - 0.5) * 0.9, 0.28, 0.2, 0.3, rnd() * 3, rnd() * 3, 0)); // 배 아래
-    puffs.push(place(ico, 0, 0.88, -0.78, 0.16, 0.15, 0.14, 1, 0.4, 0));          // 꼬리
-    const woolMat = mat(L.wool, { rough: 1 });
-    const wool = merged(puffs, woolMat); body.add(wool);
-    if (spots.length) body.add(merged(spots, mat(L.spots, { rough: 1 })));
+    for (let i = 0; i < 4; i++) puffs.push(place(ico, (rnd() - 0.5) * 0.5, -0.22, (rnd() - 0.5) * 0.9, 0.28, 0.2, 0.3, rnd() * 3, rnd() * 3, 0));
+    puffs.push(place(ico, 0, 0.08, -0.78, 0.16, 0.15, 0.14, 1, 0.4, 0));
+    const woolMat = mat(L.wool, { rough: L.metal ? 0.5 : 1, metal: L.metal || 0 });
+    woolG.add(merged(puffs, woolMat));
+    if (spots.length) woolG.add(merged(spots, mat(L.spots, { rough: 1 })));
+    if (specks.length) woolG.add(merged(specks, mat('#ffe08a', { emissive: '#ffcf4a', ei: 1.6 })));
     // 머리
     const head = new T.Group(); head.position.set(0, 1.0, 0.72); body.add(head);
     const hs = st === 0 ? 1.18 : 1;
-    const headParts = [place(ico, 0, 0, 0.08, 0.25 * hs, 0.27 * hs, 0.34 * hs, 0.2, 0, 0), place(ico, 0, -0.06, 0.32 * hs, 0.17 * hs, 0.16 * hs, 0.16 * hs)];
-    head.add(merged(headParts, mat(L.face)));
-    const tuft = [];
-    for (let i = 0; i < 4; i++) tuft.push(place(ico, (i - 1.5) * 0.09, 0.22 * hs, -0.02 + (i % 2) * 0.06, 0.12, 0.1, 0.12, i, i * 2, 0));
-    head.add(merged(tuft, woolMat));
+    head.add(merged([place(ico, 0, 0, 0.08, 0.25 * hs, 0.27 * hs, 0.34 * hs, 0.2, 0, 0), place(ico, 0, -0.06, 0.32 * hs, 0.17 * hs, 0.16 * hs, 0.16 * hs)], mat(L.face)));
+    const tuft = [], tn = L.bigTuft ? 7 : 4, tk = L.bigTuft ? 1.45 : 1;
+    for (let i = 0; i < tn; i++) tuft.push(place(ico, (i - (tn - 1) / 2) * 0.08, 0.22 * hs + (i % 2) * 0.04 * tk, -0.02 + (i % 2) * 0.06, 0.12 * tk, 0.1 * tk, 0.12 * tk, i, i * 2, 0));
+    const tuftMesh = merged(tuft, woolMat); head.add(tuftMesh);
     for (const sx of [-1, 1]) {   // 귀
       const ear = new T.Group(); ear.position.set(sx * 0.24 * hs, 0.08, 0.02); ear.rotation.set(0.2, 0, sx * -0.9);
-      const oct = new T.OctahedronGeometry(1, 0);
       ear.add(new T.Mesh(place(oct, sx * 0.12, 0, 0, 0.16, 0.05, 0.09), mat(L.face)));
       ear.add(new T.Mesh(place(oct, sx * 0.13, 0.012, 0.01, 0.11, 0.03, 0.055), mat(L.ear)));
       head.add(ear);
     }
     const eyeW = new T.SphereGeometry(1, 6, 4);
-    for (const sx of [-1, 1]) {   // 눈
+    for (const sx of [-1, 1]) {   // 눈(까망이는 흰 눈테)
+      if (L.eyeRing) head.add(new T.Mesh(place(eyeW, sx * 0.14 * hs, 0.06 * hs, 0.232 * hs, 0.09, 0.095, 0.04), mat('#efe9df', { basic: true })));
       head.add(new T.Mesh(place(eyeW, sx * 0.14 * hs, 0.06 * hs, 0.24 * hs, 0.065, 0.07, 0.04), mat('#f5f2ea', { basic: true })));
       head.add(new T.Mesh(place(eyeW, sx * 0.152 * hs, 0.06 * hs, 0.262 * hs, 0.04, 0.046, 0.025), mat('#121014', { basic: true })));
+      if (L.blush) head.add(new T.Mesh(place(eyeW, sx * 0.17 * hs, -0.04 * hs, 0.25 * hs, 0.05, 0.03, 0.02), mat('#ff8fa8', { basic: true })));
     }
     if (L.horns) {
       const tor = new T.TorusGeometry(0.13, 0.045, 5, 9, Math.PI * 1.35);
@@ -160,11 +168,15 @@
     const legs = [];
     for (const [lx, lz] of [[-0.27, 0.42], [0.27, 0.42], [-0.27, -0.42], [0.27, -0.42]]) {
       const leg = new T.Group(); leg.position.set(lx, 0.5, lz);
-      leg.add(new T.Mesh(place(legGeo, 0, -0.25, 0), mat(L.face))); body.add(leg); legs.push(leg);
+      leg.add(new T.Mesh(place(legGeo, 0, -0.25, 0), mat(L.face)));
+      if (L.acc === 'springs') leg.add(new T.Mesh(place(new T.TorusGeometry(0.08, 0.022, 4, 8), 0, -0.42, 0, 1, 1, 1, Math.PI / 2, 0, 0), mat('#b9bec9', { metal: 0.6, rough: 0.4 })));
+      body.add(leg); legs.push(leg);
     }
-    // 장식(꾸미기가 기본 장식보다 우선)
+    // 장식(꾸미기가 기본 장식보다 우선) + 종 고유 장식
     const w = wear && WEAR[wear];
+    const anim = { flames: [], drops: [], halo: null };
     addAccessory(body, head, w ? w.kind : L.acc, w || {}, st >= 2 || !!w);
+    addSignature(body, head, L.acc, anim, woolG);
     // 빛나는 털
     const glows = [];
     if (L.glow) { const g = glowSprite(L.glow, 2.6, 0.42); g.position.set(0, 0.83, 0); body.add(g); glows.push(g); }
@@ -172,13 +184,53 @@
     // 둥근 그림자
     const sh = new T.Mesh(new T.CircleGeometry(0.85, 16), mat('#000000', { basic: true, transparent: true, opacity: 0.32 }));
     sh.rotation.x = -Math.PI / 2; sh.position.y = 0.03; root.add(sh);
-    // 손가락이 잘 맞게 보이지 않는 큰 판정 상자
     const hit = new T.Mesh(new T.BoxGeometry(1.4, 1.7, 2.0), new T.MeshBasicMaterial({ visible: false }));
     hit.position.y = 0.9; root.add(hit); root.userData.hit = hit;
     const scale = [0.62, 0.8, 1, 1.04][st] * (L.size || 1);
     root.scale.setScalar(scale);
-    Object.assign(root.userData, { body, head, legs, glows, species, level, wear, st, scale });
+    const wl = clamp(woolLen ?? 1, 0, 1);
+    Object.assign(root.userData, { body, head, legs, glows, species, level, wear, st, scale, woolG, tuftMesh, anim, wool: wl, woolShown: wl, woolColor: L.wool });
+    applyWool(root);
     return root;
+  }
+  // 털 길이 반영: 0이면 홀쭉(바깥 털이 속몸 크기만큼 줄어듦)
+  function applyWool(o) {
+    const u = o.userData, k = 0.36 + 0.64 * u.woolShown;
+    u.woolG.scale.set(k, 0.42 + 0.58 * u.woolShown, k);
+    u.tuftMesh.scale.setScalar(0.5 + 0.5 * u.woolShown);
+  }
+  // 종마다 한눈에 구분되는 장식
+  function addSignature(body, head, kind, anim, woolG) {
+    const ico = new T.IcosahedronGeometry(1, 0), oct = new T.OctahedronGeometry(1, 0), cone = new T.ConeGeometry(1, 1, 6);
+    if (kind === 'nightcap') {
+      head.add(new T.Mesh(place(cone, 0.02, 0.4, -0.06, 0.17, 0.46, 0.17, -0.55, 0, 0.35), mat('#4a5fc1')));
+      head.add(new T.Mesh(place(ico, -0.1, 0.55, -0.3, 0.07, 0.07, 0.07), mat('#ffffff')));
+      head.add(new T.Mesh(place(new T.TorusGeometry(0.17, 0.04, 4, 10), 0, 0.27, -0.02, 1, 1, 1, Math.PI / 2 - 0.2, 0, 0), mat('#f2f2f2')));
+    } else if (kind === 'grass') {
+      for (let i = 0; i < 3; i++) head.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0.06 + i * 0.05, -0.12, 0.46, 0.02, 0.22, 0.02, 0.2, 0, -0.9 + i * 0.25), mat('#7fbf5a')));
+    } else if (kind === 'bow') {
+      for (const sx of [-1, 1]) head.add(new T.Mesh(place(new T.ConeGeometry(0.1, 0.22, 4), sx * 0.12, 0.3, -0.04, 1, 1, 1, 0, 0, sx * 1.57), mat('#ff7aa8')));
+      head.add(new T.Mesh(place(ico, 0, 0.3, -0.04, 0.06, 0.06, 0.06), mat('#ff7aa8')));
+    } else if (kind === 'flame') {
+      const g = new T.Group(); g.position.set(0, 0.32, -0.02); head.add(g);
+      [['#ff6a1a', 0.14, 0.42], ['#ffb13b', 0.1, 0.32], ['#fff0a0', 0.06, 0.2]].forEach(([c, r, h]) => g.add(new T.Mesh(place(cone, 0, h / 2, 0, r, h, r), mat(c, { emissive: c, ei: 2 }))));
+      anim.flames.push(g);
+    } else if (kind === 'drops') {
+      for (let i = 0; i < 3; i++) { const d = new T.Mesh(place(ico, 0, 0, 0, 0.06, 0.09, 0.06), mat('#bfeaff', { emissive: '#5fb7e6', ei: 0.6, transparent: true, opacity: 0.85 })); d.position.set((i - 1) * 0.28, 1.55 + i * 0.06, 0.5); body.add(d); anim.drops.push(d); }
+    } else if (kind === 'backpack') {
+      body.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, 1.22, -0.3, 0.42, 0.34, 0.3, -0.15, 0, 0), mat('#5b7a3e')));
+      body.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, 1.42, -0.3, 0.46, 0.08, 0.32, -0.15, 0, 0), mat('#3f5a2a')));
+      body.add(new T.Mesh(place(new T.CylinderGeometry(0.06, 0.06, 0.5, 6), 0, 1.45, -0.48, 1, 1, 1, 0, 0, Math.PI / 2), mat('#c94a3a')));
+    } else if (kind === 'comet') {
+      const g = glowSprite('#c6b6ff', 1.4, 0.55); g.position.set(0, 1.1, -0.95); body.add(g); anim.drops.push(g);
+    } else if (kind === 'crown') {
+      const gold = mat('#ffd24a', { metal: 0.7, rough: 0.3, emissive: '#7a5a10', ei: 0.4 });
+      head.add(new T.Mesh(place(new T.CylinderGeometry(0.16, 0.18, 0.09, 8, 1, true), 0, 0.34, -0.02), gold));
+      for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; head.add(new T.Mesh(place(cone, Math.cos(a) * 0.15, 0.44, -0.02 + Math.sin(a) * 0.15, 0.045, 0.12, 0.045), gold)); }
+    } else if (kind === 'halo') {
+      const h = new T.Mesh(new T.TorusGeometry(0.22, 0.03, 6, 20), mat('#fff6d0', { emissive: '#ffe9a0', ei: 1.8 }));
+      h.rotation.x = Math.PI / 2; h.position.set(0, 0.52, -0.02); head.add(h); anim.halo = h;
+    }
   }
   function glowSprite(color, size, opacity) {
     const c = new T.Color(color);
@@ -485,7 +537,7 @@
 
     // 양 배치·동작
     function spawnSheep(s, i, appear) {
-      const obj = buildSheep(s.species, s.level, s.wear, hashStr(s.id));
+      const obj = buildSheep(s.species, s.level, s.wear, hashStr(s.id), s.wool ?? 1);
       const rnd = seeded(hashStr(s.id) + 7); rnd(); rnd();
       const [x, z] = pickSpot(rnd);
       obj.position.set(x, groundY(x, z), z); obj.rotation.y = rnd() * 6;
@@ -518,7 +570,7 @@
         const o = sheepObjs.get(s.id);
         if (!o) spawnSheep(s, i, !!update.ready);
         else if (o.userData.level !== s.level && stageOf(o.userData.level) !== stageOf(s.level) || o.userData.wear !== s.wear) rebuildSheep(s);
-        else { o.userData.level = s.level; o.userData.data = s; }
+        else { o.userData.level = s.level; o.userData.data = s; if (!(shear && shear.o === o)) { const w = s.wool ?? 1; if (w !== o.userData.wool) { o.userData.wool = w; if (w < 0.3) o.userData.shiver = o.userData.shiver ?? 0; } } }
       });
       for (const [n, obj] of itemObjs) if (st.slots[n] !== obj.userData.item) { scene.remove(obj); disposeObj(obj); itemObjs.delete(n); }
       Object.entries(st.slots || {}).forEach(([n, id]) => { if (id && !itemObjs.has(+n)) placeItem(+n, id, !!update.ready); });
@@ -548,7 +600,7 @@
     // 터치: 회전·확대·탭
     const el = renderer.domElement; el.style.touchAction = 'none';
     const pointers = new Map(); let downAt = null, pinch0 = null, moved = 0;
-    function onDown(e) { if (mode.patrol) { el.setPointerCapture?.(e.pointerId); mode.patrol.lampAt(e.clientX, e.clientY); return; } if (mode.proc) return; el.setPointerCapture?.(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pointers.size === 1) { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; moved = 0; startPress(e.clientX, e.clientY); } if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), dist: cam.dist }; } cam.drift = 0; }
+    function onDown(e) { if (mode.patrol) { el.setPointerCapture?.(e.pointerId); mode.patrol.lampAt(e.clientX, e.clientY); return; } if (mode.proc) return; el.setPointerCapture?.(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pointers.size === 1) { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; moved = 0; startPress(e.clientX, e.clientY); startShear(e.clientX, e.clientY); } if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), dist: cam.dist }; } cam.drift = 0; }
     function onMove(e) {
       if (mode.patrol) { if (e.buttons || e.pointerType === 'touch') mode.patrol.lampAt(e.clientX, e.clientY); return; }
       if (!pointers.has(e.pointerId)) return;
@@ -556,12 +608,15 @@
       p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
       if (press && moved > 10 && !press.fired) clearPress();
       if (press && press.fired) return;
+      if (shear) { shearMove(e.clientX, e.clientY, Math.abs(dx) + Math.abs(dy)); return; }
       if (pointers.size === 1) { cam.az = clamp(cam.az - dx * 0.006, -1.05, 1.05); cam.el = clamp(cam.el + dy * 0.004, 0.08, 0.7); cam.want = null; }
       else if (pointers.size === 2 && pinch0) { const [a, b] = [...pointers.values()]; cam.dist = clamp(pinch0.dist * pinch0.d / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), 12, 28); }
     }
     function onUp(e) {
       if (mode.patrol) { mode.patrol.lampOff(); return; }
       const wasPet = press && press.fired; clearPress();
+      const wasShear = shear && shear.active; shear = null;
+      if (wasShear) { pointers.delete(e.pointerId); downAt = null; return; }
       if (wasPet) { pointers.delete(e.pointerId); downAt = null; return; }
       pointers.delete(e.pointerId); if (pointers.size < 2) pinch0 = null;
       if (downAt && pointers.size === 0 && moved < 10 && performance.now() - downAt.t < 450) tap(e.clientX, e.clientY);
@@ -577,7 +632,53 @@
       ray.setFromCamera(new T.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1), camera);
       const out = new T.Vector3(); return ray.ray.intersectPlane(groundPlane, out) ? out : null;
     }
-    let press = null;
+    let press = null, shear = null;
+    const tufts = [];
+    function startShear(cx, cy) {
+      shear = null;
+      if (!handlers.onShear) return;
+      const o = sheepAt(cx, cy); if (!o) return;
+      shear = { o, dist: 0, last: 0, active: false, empty: o.userData.wool < 0.6 };
+    }
+    function shearMove(cx, cy, d) {
+      const sh = shear, o = sh.o;
+      if (!sh.active) {
+        if (moved <= 10) return;
+        if (sh.empty) { react(o.userData.id, 'shiver'); handlers.onShearEmpty?.(o.userData.id); shear = null; return; }
+        sh.active = true; clearPress(); o.userData.ai = { ...o.userData.ai, mode: 'idle', t: 3 };
+      }
+      if (sh.done) return;
+      sh.dist += d;
+      const NEED = 260;
+      o.userData.wool = Math.max(0.08, 1 - sh.dist / NEED * 0.92);
+      while (sh.dist - sh.last > 30) { sh.last += 30; spawnTuft(o); handlers.onShearTick?.(o.userData.id); }
+      if (sh.dist >= NEED && !sh.done) {
+        sh.done = true; o.userData.wool = 0; o.userData.shiver = 2.6;
+        for (let i = 0; i < 5; i++) setTimeout(() => spawnTuft(o), i * 60);
+        burst(o.position.clone().add(new T.Vector3(0, 1, 0)), '#fff4d0', 16, 1.6);
+        handlers.onShear(o.userData.id);
+      }
+    }
+    function spawnTuft(o) {
+      const sz = 0.13 + Math.random() * 0.08;
+      const m = new T.Mesh(new T.IcosahedronGeometry(sz, 0), mat(o.userData.woolColor, { rough: 1 }));
+      m.position.copy(o.position).add(new T.Vector3((Math.random() - 0.5) * 0.8, 0.9 * o.userData.scale + Math.random() * 0.4, (Math.random() - 0.5) * 0.8));
+      // 화면 아래 가운데(바구니 쪽)로 날아감
+      const goal = new T.Vector3(0, -0.92, 0.5).unproject(camera);
+      const dir = goal.sub(camera.position).normalize();
+      const end = camera.position.clone().add(dir.multiplyScalar(4));
+      m.userData = { from: m.position.clone(), to: end, t: 0, spin: new T.Vector3(Math.random() * 6, Math.random() * 6, 0), up: 1.2 + Math.random() };
+      scene.add(m); tufts.push(m);
+    }
+    function stepTufts(dt) {
+      for (let i = tufts.length - 1; i >= 0; i--) {
+        const m = tufts[i], u = m.userData; u.t += dt / 0.75;
+        const k = Math.min(1, u.t), e = k * k * (3 - 2 * k);
+        m.position.lerpVectors(u.from, u.to, e); m.position.y += Math.sin(k * Math.PI) * u.up;
+        m.rotation.x += u.spin.x * dt; m.rotation.y += u.spin.y * dt; m.scale.setScalar(1 - k * 0.5);
+        if (k >= 1) { scene.remove(m); m.geometry.dispose(); tufts.splice(i, 1); }
+      }
+    }
     function sheepAt(cx, cy) {
       const r = el.getBoundingClientRect();
       ray.setFromCamera(new T.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1), camera);
@@ -670,6 +771,7 @@
       else if (kind === 'levelup') { burst(p, '#ffd27a', 22, 2.2); floatText(p, 'Lv UP', '#ffe08a'); o.userData.hop = 1; }
       else if (kind === 'grow' || kind === 'join') { burst(p, '#fff1c0', 30, 2.6); o.userData.hop = 1; }
       else if (kind === 'sleep') { o.userData.ai.mode = 'sleep'; o.userData.ai.t = 6; }
+      else if (kind === 'shiver') { o.userData.shiver = 1.4; if (o.userData.wool >= 0.3) { const w0 = o.userData.wool; o.userData.wool = 0.29; setTimeout(() => { o.userData.wool = w0; }, 1400); } }
     }
     let feedPile = null;
     function feed() {
@@ -765,6 +867,7 @@
       }
       markers.forEach(m => { m.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(t * 3 + m.userData.pulse)); });
       if (beams.length) stepBeams(dt);
+      if (tufts.length) stepTufts(dt);
       // 효과
       for (let i = fxList.length - 1; i >= 0; i--) {
         const s = fxList[i], u = s.userData; u.life -= dt;
@@ -780,6 +883,14 @@
         if (o) { const p = o.position.clone(); p.y += 2.0 * o.userData.scale + 0.3; p.project(camera); const lab = document.createElement('span'); lab.className = 'f3d-label'; lab.textContent = o.userData.data?.name || ''; lab.style.left = ((p.x + 1) / 2 * 100) + '%'; lab.style.top = ((1 - p.y) / 2 * 100) + '%'; if (lab.textContent) labels.appendChild(lab); }
       }
       renderer.render(scene, camera);
+    }
+    function animExtras(o, dt, t) {
+      const u = o.userData, a = u.anim; if (!a) return;
+      a.flames.forEach(f => { const n = 1 + Math.sin(t * 14 + o.position.x) * 0.12 + Math.sin(t * 9) * 0.08; f.scale.set(n, n * 1.1, n); });
+      a.drops.forEach((d, i) => { d.position.y += Math.sin(t * 2 + i) * 0.002; });
+      if (a.halo) a.halo.rotation.z += dt * 0.8;
+      if (Math.abs(u.woolShown - u.wool) > 0.005) { u.woolShown = lerp(u.woolShown, u.wool, 1 - Math.pow(0.02, dt)); applyWool(o); }
+      if (u.wool < 0.3 && (u.shiver = (u.shiver ?? 2.5) - dt) > 0) u.body.rotation.z = Math.sin(t * 46) * 0.035; else if (u.body.rotation.z) u.body.rotation.z = 0;
     }
     function legSwing(o, t, amt) {
       const legs = o.userData.legs; if (!legs) return;
@@ -827,6 +938,7 @@
       if (u.hop) { u.hop = Math.max(0, u.hop - dt * 2.4); o.position.y += Math.sin((1 - u.hop) * Math.PI) * 0.55; }
       if (ai.mode === 'sleep') { u.zz = (u.zz || 0) + dt; if (u.zz > 1.6) { u.zz = 0; const p = o.position.clone(); p.y += 1.3 * u.scale; const z = textSprite('z', { color: '#c9d4ff', size: 70 }); z.scale.setScalar(0.45); z.position.copy(p); z.userData = { v: new T.Vector3(0.2, 0.5, 0), life: 1.5, text: true }; scene.add(z); fxList.push(z); } }
       u.glows.forEach(g => { g.material.opacity = (u.st === 3 ? 0.32 : 0.42) * (0.8 + 0.2 * Math.sin(t * 2 + o.position.x)); });
+      animExtras(o, dt, t);
     }
 
     /* ---------- 밤 순찰 ---------- */
@@ -1005,13 +1117,21 @@
     }
 
     /* ---------- 성탄: 마구간으로 ---------- */
-    function procession(list = []) {
+    function procession(list = [], popts = {}) {
       if (mode.patrol || mode.proc) return Promise.reject(new Error('busy'));
       return new Promise(resolve => {
         const hidden = [...sheepObjs.values(), ...visitorObjs.values(), ...itemObjs.values()]; if (stableObj) hidden.push(stableObj);
         hidden.forEach(o => { o.visible = false; });
         const stage = new T.Group(); scene.add(stage);
         const stable = buildItem('마구간', ctx); stable.position.set(0, groundY(0, -1.5), -1.5); stable.scale.setScalar(1.25); stage.add(stable);
+        if (popts.blanket) {   // 구유에 깔린 양털 이불(모은 털 색 줄무늬)
+          const cols = (popts.colors && popts.colors.length ? popts.colors : ['#f6f3ec', '#f2c23e']).slice(0, 8), quilt = new T.Group();
+          const w = 1.0 / cols.length;
+          cols.forEach((c, i) => quilt.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), -0.5 + w * (i + 0.5), 0, 0, w * 0.96, 0.07, 0.56), new T.MeshBasicMaterial({ color: new T.Color(c).multiplyScalar(0.85) }))));
+          quilt.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, 0.03, 0.22, 0.95, 0.07, 0.1), mat('#fff6dc', { rough: 1 })));
+          quilt.position.set(0, 0.6, 0.36); quilt.rotation.x = -0.25; stable.add(quilt);
+          quilt.scale.setScalar(1.05);
+        }
         const fire = buildItem('등불 기둥', ctx); fire.position.set(-2.6, groundY(-2.6, -0.4), -0.4); stage.add(fire);
         const n = Math.min(12, list.length);
         const flock = list.slice(0, n).map((f, i) => {
@@ -1020,14 +1140,14 @@
           // 구유 앞 가운데는 비워 두고 양옆으로 반원(앞줄 6, 뒷줄 6)
           const row = i < 6 ? 0 : 1, k = row ? i - 6 : i, cnt = row ? n - 6 : Math.min(6, n);
           const half = Math.ceil(cnt / 2), side = k % 2 ? 1 : -1, j = Math.floor(k / 2);
-          const a = Math.PI * (0.08 + 0.3 * (half === 1 ? 0.5 : j / Math.max(1, half - 1)));
-          const rad = 3.0 + row * 1.5;
+          const a = Math.PI * (0.04 + 0.22 * (half === 1 ? 0.5 : j / Math.max(1, half - 1)));
+          const rad = 3.1 + row * 1.6;
           o.userData.goal = { x: side * Math.cos(a) * rad, z: -1.3 + Math.sin(a) * rad * 0.62 };
           o.userData.delay = i * 0.32; o.userData.sat = false; stage.add(o);
           return o;
         });
         const saveCam = { az: cam.az, el: cam.el, dist: cam.dist };
-        cam.az = -0.08; cam.el = 0.34; cam.dist = 14.5; selected = null;
+        cam.az = -0.05; cam.el = 0.42; cam.dist = 14.5; selected = null;
         // 눈처럼 내리는 빛가루
         const dust = [];
         for (let i = 0; i < (CALM ? 24 : 70); i++) {
@@ -1041,7 +1161,7 @@
           labels: flock.map((o, i) => [o, list[i].name || '']),
           step(dt, t) {
             dust.forEach(d => { const u = d.userData; u.y -= u.sp * dt; if (u.y < 0) u.y = 9; d.position.set(u.x + Math.sin(tt * 0.6 + u.ph) * 0.6, groundY(u.x, u.z) + u.y, u.z); d.material.opacity = Math.min(1, tt / 2) * (0.35 + 0.45 * Math.abs(Math.sin(tt * 1.5 + u.ph))); });
-            tt += dt; cam.dist = lerp(cam.dist, 12, dt * 0.1); cam.target.lerp(tmpV.set(0, 1.1, -0.8), 1 - Math.pow(0.05, dt));
+            tt += dt; cam.dist = lerp(cam.dist, 11, dt * 0.1); cam.target.lerp(tmpV.set(0, 0.9, -1.0), 1 - Math.pow(0.05, dt));
             let all = true;
             flock.forEach(o => {
               const u = o.userData; if (tt < u.delay) { all = false; return; }
