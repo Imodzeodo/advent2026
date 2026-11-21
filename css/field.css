@@ -21,6 +21,10 @@
 .field-header .back { min-width: 44px; min-height: 44px; }
 .field-header h1 { font-size: 27px; letter-spacing: .02em; }
 .field-header p { margin: 2px 0 0; color: var(--dim); font-size: 13px; }
+.field-header .field-count, .tonight-step .field-tonight-flock { min-height: 26px; padding: 0; text-underline-offset: 3px; }
+.field-header .field-count { color: #ffe6ae; font-size: 13px; }
+.field-count:disabled { opacity: .55; cursor: default; }
+.tonight-step .field-tonight-flock { margin: -4px 0; color: #ffe6ae; }
 .field-oil { flex: none; margin-left: auto; padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: #24263b; color: #ffe6ae; font-size: 13px; }
 .field-oil span { color: var(--gold); margin-right: 3px; }
 .field-map {
@@ -232,12 +236,16 @@
 .field-visit-banner:not([hidden]) + .field-hold-feedback { top: 52px; }
 .field-visitor.react-legend i { background: #ffe08a; color: #32253b; box-shadow: 0 0 18px #ffd27a; }
 .field-visitor.react-legend svg { filter: drop-shadow(0 0 8px #ffd27a); }
-.field-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 2px 0 6px; }
+.field-actions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 2px 0 6px; }
 .field-act { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 11px 4px 10px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 14px; background: rgba(255, 255, 255, .06); color: var(--ink, #eee); font-size: 12.5px; line-height: 1.2; }
 .field-act span { font-size: 22px; line-height: 1; }
 .field-act small { color: var(--gold); font-size: 11px; }
 .field-act .field-dot { position: absolute; top: 7px; right: 9px; margin: 0; }
 .field-act:active { transform: scale(.97); }
+.field-act.field-flock { border-color: #ffd27a55; background: #ffd27a14; color: #ffe6ae; cursor: pointer; }
+@media (max-width: 350px) {
+  .field-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .field-panel-picture img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .field-locked { color: #c9c6d6; background: #ffffff07; cursor: pointer; }
 .field-locked small { color: #b8b4cb; font-size: 11px; }
@@ -255,6 +263,29 @@
 .field-rarity { display: inline-block; margin-left: 4px; padding: 2px 8px; border-radius: 99px; font: 700 11px/1.4 inherit; vertical-align: 2px; background: #3a3f55; color: #d6dae8; }
 .field-rarity.rare { background: rgba(127, 198, 255, .18); color: #9fd4ff; box-shadow: inset 0 0 0 1px rgba(127, 198, 255, .5); }
 .field-rarity.legend { background: rgba(255, 210, 74, .2); color: #ffd86a; box-shadow: inset 0 0 0 1px rgba(255, 210, 74, .6); }
+
+/* 내 양들 */
+.field-flock-sheet { max-height: min(94dvh, calc(100% - 28px - var(--safe-t) - var(--safe-b))); }
+.field-flock-summary { margin: 0 2px 12px; color: #e5dcf0; font-size: 13px; }
+.field-flock-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.field-flock-card {
+  display: grid; gap: 2px; align-content: start; min-width: 0; padding: 6px 8px 7px;
+  border: 1px solid #ffffff25; border-radius: 14px;
+  background: radial-gradient(ellipse at 50% 27%, #3d4470, #20243e 72%);
+  text-align: left; line-height: 1.25; cursor: pointer;
+}
+.field-flock-card:active { border-color: var(--gold); }
+.field-flock-card .field-portrait { height: 72px; object-fit: contain; transform: scale(1.15); }
+.field-flock-card strong { font-size: 15px; }
+.field-flock-status { color: #ffe4a7; text-align: center; font-size: 11px; }
+.field-flock-kind, .field-flock-meta { color: #d9d4e6; font-size: 12px; }
+.field-flock-kind .field-rarity { margin-left: 1px; padding: 2px 5px; vertical-align: 0; font-size: 10px; font-weight: 700; }
+.field-flock-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 3px 5px; flex-wrap: wrap; }
+.field-flock-meta small { color: #ebcd94; font-size: 11px; }
+.field-flock-card.is-shorn .field-flock-status { color: #cac3d7; }
+.field-flock-card.is-lost { background: #191c31; border-style: dashed; color: #d4cede; }
+.field-flock-card.is-lost .field-portrait { opacity: .43; filter: grayscale(.5); }
+.field-flock-card.is-lost .field-flock-status { color: #f2b8ae; }
 
 /* 양 카드 */
 .field-sheep-card { display: grid; grid-template-columns: 112px 1fr; gap: 12px; align-items: center; }
