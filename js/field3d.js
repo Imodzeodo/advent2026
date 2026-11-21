@@ -104,7 +104,9 @@
   /* ---------- 양 만들기 ---------- */
   const WEAR = {
     '빨간 목도리': { kind: 'scarf', color: '#c23b3b' }, '꽃 화관': { kind: 'flower' }, '보라 방울': { kind: 'bell', color: '#8a5bd6' },
-    '은 종': { kind: 'bell', color: '#d9dee6', metal: 0.6 }, '분홍 리본': { kind: 'ribbon', color: '#f39ac0' }, '금빛 별 목걸이': { kind: 'star', color: '#ffd24a' }
+    '은 종': { kind: 'bell', color: '#d9dee6', metal: 0.6 }, '분홍 리본': { kind: 'ribbon', color: '#f39ac0' }, '금빛 별 목걸이': { kind: 'star', color: '#ffd24a' },
+    '빨간 털모자': { kind: 'beanie', color: '#d23c3c' }, '초록 털모자': { kind: 'beanie', color: '#3f8a4a' }, '밀짚모자': { kind: 'strawhat' }, '목자 두건': { kind: 'headscarf' },
+    '별 머리띠': { kind: 'starband' }, '나비넥타이': { kind: 'bowtie', color: '#c23b3b' }, '동그란 안경': { kind: 'glasses' }, '망토': { kind: 'cape', color: '#8a52e0' }
   };
   const stageOf = lv => lv >= 10 ? 3 : lv >= 5 ? 2 : lv >= 2 ? 1 : 0;
 
@@ -264,6 +266,37 @@
     } else if (kind === 'lantern') {
       body.add(new T.Mesh(place(new T.TorusGeometry(0.29, 0.035, 4, 12), 0, 0.84, 0.6, 1, 1, 1, 1.25, 0, 0), mat('#6b4a2a')));
       body.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, 0.66, 0.8, 0.12, 0.15, 0.12), mat('#ffd27a', { emissive: '#ffbf4a', ei: 1.4 })));
+    } else if (kind === 'beanie') {
+      const c = opt.color || '#d23c3c';
+      head.add(new T.Mesh(place(new T.SphereGeometry(1, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), 0, 0.2, -0.02, 0.27, 0.26, 0.29), mat(c)));
+      head.add(new T.Mesh(place(new T.TorusGeometry(0.25, 0.05, 5, 12), 0, 0.21, -0.02, 1, 1, 1.08, Math.PI / 2, 0, 0), mat('#f4f0ea')));
+      head.add(new T.Mesh(place(ico, 0, 0.5, -0.04, 0.08, 0.08, 0.08), mat('#ffffff')));
+    } else if (kind === 'strawhat') {
+      const straw = mat('#e6c46a');
+      head.add(new T.Mesh(place(new T.CylinderGeometry(0.42, 0.42, 0.03, 14), 0, 0.24, -0.02), straw));
+      head.add(new T.Mesh(place(new T.CylinderGeometry(0.19, 0.22, 0.16, 10), 0, 0.33, -0.02), straw));
+      head.add(new T.Mesh(place(new T.CylinderGeometry(0.225, 0.225, 0.05, 10), 0, 0.28, -0.02), mat('#c0392b')));
+    } else if (kind === 'headscarf') {
+      head.add(new T.Mesh(place(new T.SphereGeometry(1, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.6), 0, 0.12, -0.06, 0.31, 0.3, 0.36), mat('#cdb48a')));
+      head.add(new T.Mesh(place(new T.TorusGeometry(0.29, 0.035, 4, 12), 0, 0.2, -0.04, 1, 1, 1.15, Math.PI / 2, 0, 0), mat('#7a4a2a')));
+      head.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, -0.05, -0.34, 0.4, 0.34, 0.04, 0.3, 0, 0), mat('#cdb48a')));
+    } else if (kind === 'starband') {
+      head.add(new T.Mesh(place(new T.TorusGeometry(0.25, 0.025, 4, 12, Math.PI), 0, 0.2, -0.02, 1, 1, 1, 0, Math.PI / 2, 0), mat('#c9a24a', { metal: 0.5 })));
+      head.add(new T.Mesh(place(oct, 0, 0.5, -0.02, 0.15, 0.15, 0.05, 0, 0.5, Math.PI / 4), mat('#ffd24a', { emissive: '#ffcf4a', ei: 1.4 })));
+    } else if (kind === 'bowtie') {
+      const c = opt.color || '#c23b3b';
+      for (const sx of [-1, 1]) body.add(new T.Mesh(place(new T.ConeGeometry(0.13, 0.26, 4), sx * 0.15, 0.7, 0.9, 1, 1, 1, 0, 0, sx * 1.57), mat(c, { emissive: c, ei: 0.2 })));
+      body.add(new T.Mesh(place(ico, 0, 0.7, 0.92, 0.065, 0.065, 0.065), mat(c)));
+    } else if (kind === 'glasses') {
+      const fr = mat('#f4e3a8', { metal: 0.6, rough: 0.3, emissive: '#5a4a10', ei: 0.4 });
+      for (const sx of [-1, 1]) head.add(new T.Mesh(place(new T.TorusGeometry(0.095, 0.022, 5, 16), sx * 0.15, 0.06, 0.3, 1, 1, 1, 0, sx * 0.25, 0), fr));
+      head.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, 0.08, 0.33, 0.12, 0.02, 0.02), fr));
+    } else if (kind === 'cape') {
+      const c = opt.color || '#6a3fb0';
+      for (const sx of [-1, 1]) body.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), sx * 0.48, 0.92, -0.15, 0.05, 0.55, 1.0, 0, 0, sx * -0.25), mat(c)));
+      body.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, 1.24, -0.18, 0.96, 0.05, 1.02, -0.1, 0, 0), mat(c)));
+      body.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, 0.85, -0.72, 0.9, 0.6, 0.05, 0.2, 0, 0), mat(c)));
+      body.add(new T.Mesh(place(ico, 0, 1.0, 0.52, 0.06, 0.06, 0.06), mat('#ffd24a', { metal: 0.6 })));
     } else if (kind === 'harp') {
       body.add(new T.Mesh(place(new T.TorusGeometry(0.16, 0.025, 4, 10, Math.PI), 0, 1.26, -0.15, 1, 1, 1, 0, 1.57, 0), mat('#e6c25a', { metal: 0.6, rough: 0.35 })));
     }
@@ -428,7 +461,7 @@
       for (let k = 0; k < 3; k++) colors.set([tmp.r, tmp.g, tmp.b], (f + k) * 3);
     }
     ground.setAttribute('color', new T.BufferAttribute(colors, 3)); ground.computeVertexNormals();
-    const gmesh = new T.Mesh(ground, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 }));
+    const gmesh = new T.Mesh(ground, new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1, side: T.DoubleSide }));
     scene.add(gmesh); ctx.ground = gmesh;
 
     // 풀 덤불(인스턴싱)
@@ -585,7 +618,7 @@
         const o = sheepObjs.get(s.id);
         if (!o) spawnSheep(s, i, !!update.ready);
         else if (o.userData.level !== s.level && stageOf(o.userData.level) !== stageOf(s.level) || o.userData.wear !== s.wear) rebuildSheep(s);
-        else { o.userData.level = s.level; o.userData.data = s; setMiss(o, !!s.miss); if (!(shear && shear.o === o)) { const w = s.wool ?? 1; if (w !== o.userData.wool) { o.userData.wool = w; if (w < 0.3) o.userData.shiver = o.userData.shiver ?? 0; } } }
+        else { o.userData.level = s.level; o.userData.data = s; setMiss(o, !!s.miss); if (!(shear && shear.o === o) && !o.userData.shearProg) { const w = s.wool ?? 1; if (w !== o.userData.wool) { o.userData.wool = w; if (w < 0.3) o.userData.shiver = o.userData.shiver ?? 0; } } }
       });
       for (const [n, obj] of itemObjs) if (st.slots[n] !== obj.userData.item) { scene.remove(obj); disposeObj(obj); itemObjs.delete(n); }
       Object.entries(st.slots || {}).forEach(([n, id]) => { if (id && !itemObjs.has(+n)) placeItem(+n, id, !!update.ready); });
@@ -608,6 +641,8 @@
         const ring = new T.Mesh(new T.RingGeometry(0.75, 1.0, 24), new T.MeshBasicMaterial({ color: '#ffd27a', transparent: true, opacity: 0.8, side: T.DoubleSide, depthWrite: false }));
         if (n >= 8) { ring.position.set(sl[0], sl[1], sl[2]); } else { ring.rotation.x = -Math.PI / 2; ring.position.set(sl[0], groundY(sl[0], sl[1]) + 0.06, sl[1]); }
         ring.userData = { slot: n, pulse: Math.random() * 6 }; markers.push(ring); scene.add(ring);
+        const pad = new T.Mesh(n >= 8 ? new T.SphereGeometry(1.5, 8, 6) : new T.CylinderGeometry(1.5, 1.5, 2.4, 12), new T.MeshBasicMaterial({ visible: false }));
+        pad.position.copy(ring.position); if (n < 8) pad.position.y += 0.9; pad.userData = { slot: n, pad: true }; markers.push(pad); scene.add(pad);
       });
     }
     const markers = [];
@@ -624,7 +659,7 @@
       if (press && moved > 10 && !press.fired) clearPress();
       if (press && press.fired) return;
       if (shear) { shearMove(e.clientX, e.clientY, Math.abs(dx) + Math.abs(dy)); return; }
-      if (pointers.size === 1) { cam.az = clamp(cam.az - dx * 0.006, -1.05, 1.05); cam.el = clamp(cam.el + dy * 0.004, 0.08, 0.7); cam.want = null; }
+      if (pointers.size === 1) { cam.az = clamp(cam.az - dx * 0.006, -0.8, 0.8); cam.el = clamp(cam.el + dy * 0.004, 0.12, 0.7); cam.want = null; }
       else if (pointers.size === 2 && pinch0) { const [a, b] = [...pointers.values()]; cam.dist = clamp(pinch0.dist * pinch0.d / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), 12, 28); }
     }
     function onUp(e) {
@@ -653,7 +688,8 @@
       shear = null;
       if (!handlers.onShear) return;
       const o = sheepAt(cx, cy); if (!o) return;
-      shear = { o, dist: 0, last: 0, active: false, empty: o.userData.wool < 0.6 };
+      const prog = o.userData.shearProg || 0;
+      shear = { o, dist: prog, last: prog, active: false, empty: o.userData.wool < 0.6 && !prog };
     }
     function shearMove(cx, cy, d) {
       const sh = shear, o = sh.o;
@@ -664,11 +700,12 @@
       }
       if (sh.done) return;
       sh.dist += d;
-      const NEED = 260;
+      const NEED = 220;
+      o.userData.shearProg = sh.dist;
       o.userData.wool = Math.max(0.08, 1 - sh.dist / NEED * 0.92);
       while (sh.dist - sh.last > 30) { sh.last += 30; spawnTuft(o); handlers.onShearTick?.(o.userData.id); }
       if (sh.dist >= NEED && !sh.done) {
-        sh.done = true; o.userData.wool = 0; o.userData.shiver = 2.6;
+        sh.done = true; o.userData.wool = 0; o.userData.shiver = 2.6; o.userData.shearProg = 0;
         for (let i = 0; i < 5; i++) setTimeout(() => spawnTuft(o), i * 60);
         burst(o.position.clone().add(new T.Vector3(0, 1, 0)), '#fff4d0', 16, 1.6);
         handlers.onShear(o.userData.id);
@@ -718,6 +755,10 @@
     function tap(cx, cy) {
       const r = el.getBoundingClientRect();
       ray.setFromCamera(new T.Vector2((cx - r.left) / r.width * 2 - 1, -(cy - r.top) / r.height * 2 + 1), camera);
+      if (markers.length) {   // 물건 놓는 중: 동그라미가 먼저
+        const mh = ray.intersectObjects(markers, false)[0];
+        if (mh) { handlers.onTapSlot?.(mh.object.userData.slot); return; }
+      }
       const targets = [];
       for (const o of visitorObjs.values()) targets.push(o.userData.hit);
       for (const o of sheepObjs.values()) targets.push(o.userData.hit);
@@ -827,6 +868,23 @@
         check();
       });
     }
+    // 간식 주기: 그 양 앞에 간식(사과·꼴)이 톡 떨어지고, 양이 와서 먹음 → Promise(약 2.6초)
+    function treat(id) {
+      return new Promise(res => {
+        const o = sheepObjs.get(id); if (!o) return res();
+        const yaw = o.rotation.y, tx = o.position.x + Math.sin(yaw) * 1.1, tz = o.position.z + Math.cos(yaw) * 1.1;
+        const g = new T.Group();
+        g.add(new T.Mesh(place(new T.IcosahedronGeometry(1, 0), 0, 0.12, 0, 0.13, 0.12, 0.13), mat('#d6413a', { emissive: '#5a0a08', ei: 0.3 })));
+        g.add(new T.Mesh(place(new T.BoxGeometry(1, 1, 1), 0, 0.27, 0, 0.02, 0.08, 0.02), mat('#5a3a20')));
+        g.add(new T.Mesh(place(new T.OctahedronGeometry(1, 0), 0.05, 0.3, 0, 0.06, 0.02, 0.04), mat('#5fa04a')));
+        g.position.set(tx, groundY(tx, tz) + 3, tz); g.userData.drop = { y: groundY(tx, tz), v: 0 }; scene.add(g); treats.push(g);
+        o.userData.ai = { mode: 'walk', tx: tx - Math.sin(yaw) * 0.55, tz: tz - Math.cos(yaw) * 0.55, then: 'graze', t: 4 };
+        cam.want = o.position.clone();
+        setTimeout(() => { react(id, 'eat'); }, 1100);
+        setTimeout(() => { burst(g.position.clone().add(new T.Vector3(0, 0.3, 0)), '#ffd2a0', 10, 1.2); scene.remove(g); treats.splice(treats.indexOf(g), 1); react(id, 'heart'); cam.want = null; res(); }, 2600);
+      });
+    }
+    const treats = [];
     function focus(id) {
       selected = id;
       const o = id && (sheepObjs.get(id) || visitorObjs.get(id));
@@ -849,6 +907,7 @@
       cam.target.lerp(tgt, 1 - Math.pow(0.02, dt));
       const d = cam.want ? Math.min(cam.dist, 11) : cam.dist;
       camera.position.set(cam.target.x + Math.sin(cam.az) * Math.cos(cam.el) * d, cam.target.y + Math.sin(cam.el) * d, cam.target.z + Math.cos(cam.az) * Math.cos(cam.el) * d);
+      { const gy = groundY(camera.position.x, camera.position.z) + 1.6; if (camera.position.y < gy) camera.position.y = gy; }
       camera.lookAt(cam.target);
       // 하늘
       world.twinkles.forEach(s => { s.material.opacity = 0.45 + 0.55 * Math.abs(Math.sin(t * 1.3 + s.userData.ph)); });
@@ -880,9 +939,10 @@
         o.position.y = groundY(o.position.x, o.position.z);
         o.userData.bang.position.y = 2.25 + Math.abs(Math.sin(t * 3)) * 0.25;
       }
-      markers.forEach(m => { m.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(t * 3 + m.userData.pulse)); });
+      markers.forEach(m => { if (!m.userData.pad) m.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(t * 3 + m.userData.pulse)); });
       if (beams.length) stepBeams(dt);
       if (tufts.length) stepTufts(dt);
+      treats.forEach(g => { const d = g.userData.drop; if (d) { d.v += dt * 18; g.position.y = Math.max(d.y, g.position.y - d.v * dt); if (g.position.y <= d.y) g.userData.drop = null; } });
       // 효과
       for (let i = fxList.length - 1; i >= 0; i--) {
         const s = fxList[i], u = s.userData; u.life -= dt;
@@ -1235,7 +1295,7 @@
       const o = sheepObjs.get(id); if (!o) return;
       floatText(o.position.clone().add(new T.Vector3(0, 1.1 * o.userData.scale, 0)), text, color);
     }
-    const view = { update, react, feed, focus, welcome, greet, snapshot, patrol, procession, destroy, say, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
+    const view = { update, react, feed, treat, focus, welcome, greet, snapshot, patrol, procession, destroy, say, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
     return view;
   }
 

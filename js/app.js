@@ -54,6 +54,8 @@
     const started = !!D.done['0'];
     const today = Core.nowKST().date;
     const fieldThumb = window.Field?.homeThumb();
+    const firstStory = Core.epById('1-0');
+    const introducing = !D.done['1-0'] && firstStory && storyAvailable(firstStory);
 
     let list = '';
     for (const ch of CHAPTERS) {
@@ -92,12 +94,18 @@
         <button class="snd-home" id="snd" aria-label="소리 켜기 또는 끄기">${Sound.on ? '🔊' : '🔇'}</button>
         <div class="home-star">${Art.bigStar(Math.max(0.04, b), 96)}</div>
         <h1>그 밤을 향하여</h1>
-        <p class="sub">${esc((window.SITE || {}).label || '')}</p>
+        <p class="sub home-game-line">${esc(Field.GAME_LINE)}</p>
         ${(window.CODES || []).length ? `<button class="home-wreath" data-code-page aria-label="대림 화환 · ${litWeeks().length}개 점등 · 주일 암호">${Art.advent({ lit: litWeeks() })}</button>` : ''}
         ${started ? `<p class="home-who">${esc(D.nickname)}${D.ban ? ' · ' + esc(D.ban) : ''}</p>` : ''}
       </header>
       ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록이 저장되지 않아요(사생활 보호 모드일 수 있어요). 일반 모드로 열어 주세요.</div>` : ''}
-      ${started ? tonightCard(today) : '<button class="btn big start" id="start">시작하기</button>'}
+      ${introducing ? `<section class="home-field-intro" aria-labelledby="home-field-intro-title">
+        <svg viewBox="-42 -56 84 75" aria-hidden="true">${Field.sheepArt({ species: 'cotton', level: 1 })}</svg>
+        <div><h2 id="home-field-intro-title">할아버지가 맡긴 새끼 양</h2><p>${esc(Field.GAME_LINE)}</p>
+        <p>${esc(Field.FIRST_STORY_HINT)}</p></div>
+        <button class="btn" id="${started ? 'first-story' : 'start'}">첫 이야기 보기</button>
+      </section>` : ''}
+      ${started || introducing ? tonightCard(today, introducing) : '<button class="btn big start" id="start">시작하기</button>'}
       ${window.Field?.has() ? Field.panelHTML() : ''}
       ${started ? skyPanel() : ''}
       ${started ? `<h2 class="sec home-collection-title" id="home-collection">모아 보기</h2><nav class="menu top" aria-labelledby="home-collection">
@@ -123,7 +131,7 @@
       if (btn.classList.contains('done')) return doneSheet(e);
       if (btn.classList.contains('open')) return go(e.id);
       if (btn.classList.contains('soon')) return Player.toast('아직 준비 중인 편이에요');
-      if (!started) return Player.toast('먼저 시작하기를 눌러 줘');
+      if (!started) return Player.toast(introducing ? '먼저 첫 이야기 보기를 눌러 줘.' : '먼저 시작하기를 눌러 줘.');
       Player.toast(`${Core.dateLabel(e.date)} ${e.openHour ? Core.hourLabel(e.openHour) + '에' : ''} 열려요`);
     });
     const s = root.querySelector('#start');
@@ -136,6 +144,7 @@
       if (root.isConnected) go('0');
     };
     const trailer = root.querySelector('[data-trailer]');
+    root.querySelector('#first-story')?.addEventListener('click', () => go('1-0'));
     if (trailer) trailer.onclick = () => playTrailer();
     bindTodayMission(root);
     bindSky(root);
@@ -173,7 +182,7 @@
     return episode.date < date || (episode.date === date && (episode.openHour == null || hour >= episode.openHour));
   }
 
-  function tonightCard(today) {
+  function tonightCard(today, introducing = false) {
     const D = Core.data;
     const episodes = Core.mainEpisodes().filter(e => window.STORY[e.id]);
     const unfinished = episodes.filter(e => storyAvailable(e) && !D.done[e.id]);
@@ -183,29 +192,28 @@
     const episode = firstStory || (playedTonight ? null : unfinished.at(-1));
     const later = episodes.find(e => !storyAvailable(e) && !D.done[e.id]);
     const fieldOpen = !!window.Field?.has();
-    const shearLeft = fieldOpen ? Field.shearTonight(today) : 0;
+    const care = fieldOpen ? Field.mainCare(today) : null;
     const giftReady = fieldOpen && !!Field.giftReady?.();
     const lost = fieldOpen ? Field.lostSheep?.() : null;
     const needFind = !!lost?.lostFromVisit;
-    const shorn = fieldOpen && shearLeft === 0;
-    const fieldDone = shorn && !needFind;
+    const fieldDone = care?.hearts === 3 && !needFind;
     // 오늘 이야기를 아직 안 봤으면 어제 미션 대신 '이야기를 마치면 나와'를 보여 준다.
     const mission = !episode && playedTonight && D.mission[playedTonight.id] ? playedTonight : null;
     const status = mission ? Fame.missionStatus(mission) : 'none';
-    const shearNext = !episode && fieldOpen && !shorn;
-    const giftNext = !episode && !shearNext && giftReady;
-    const missionNext = !episode && !shearNext && !giftNext && status === 'wait';
-    const findNext = !episode && needFind && !shearNext && !giftNext && !missionNext;
+    const careNext = !episode && care && !care.sheep.lost && care.hearts < 3;
+    const giftNext = !episode && !careNext && giftReady;
+    const missionNext = !episode && !careNext && !giftNext && status === 'wait';
+    const findNext = !episode && needFind && !careNext && !giftNext && !missionNext;
     const linkedEpisode = playedTonight || episodes.findLast(e => D.done[e.id]);
     const storyDone = !episode && (!!playedTonight || !later);
     const watched = D.done.end && !later ? '성탄 이야기까지 봤어' : playedTonight ? '오늘 이야기 봤어' : '다음 이야기를 기다려 줘';
     const storyLine = episode ? `${episode.date === today ? '' : esc(Core.dateLabel(episode.date)) + ' '}「${esc(episode.title)}」` :
       later ? `${storyDone ? watched + ' · ' : ''}다음 이야기 ${esc(Core.dateLabel(later.date))}${later.openHour == null ? '' : ' ' + esc(Core.hourLabel(later.openHour))}에 열려` : watched;
-    const nextButton = episode ? `<button type="button" class="btn tonight-next" data-step="story" data-id="${episode.id}">📖 오늘 이야기 보기</button>` :
+    const nextButton = introducing ? '' : episode ? `<button type="button" class="btn tonight-next" data-step="story" data-id="${episode.id}">📖 오늘 이야기 보기</button>` :
       findNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${linkedEpisode?.id || ''}">🔦 잃은 양 찾기</button>` :
-      shearNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${linkedEpisode?.id || ''}">🐑 들판에서 털 깎기 <small>(${shearLeft}마리 남음)</small></button>` :
+      careNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${linkedEpisode?.id || ''}">🐑 ${esc(care.sheep.name)} 돌보기</button>` :
       giftNext ? `<button type="button" class="btn tonight-next" data-step="field" data-gift="true" data-id="${linkedEpisode?.id || ''}">🎁 선물 만들기</button>` : '';
-    const complete = !episode && !findNext && !shearNext && !missionNext && (storyDone || fieldOpen);
+    const complete = !introducing && !episode && !findNext && !careNext && !missionNext && (storyDone || fieldOpen);
     return `<section class="tonight" aria-labelledby="tonight-title">
       <header><h2 id="tonight-title">🌙 오늘 밤 할 일</h2><span>${esc(christmasLabel(today))}</span></header>
       <ol class="tonight-steps">
@@ -213,9 +221,11 @@
           <span aria-hidden="true">📖</span><div><b>오늘 이야기</b><p>${storyLine}</p>
           ${episode?.note ? `<small class="tonight-ellipsis">“${esc(episode.note)}”</small>` : ''}</div>
           ${tonightMark(storyDone)}</li>
-        <li class="tonight-step${findNext || shearNext || giftNext ? ' is-next' : ''}" data-tonight="field"${fieldDone ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">🐑</span><div><b>오늘 밤 들판</b><p>${needFind ? `${esc(Core.josa(lost.name, '이가'))} 들판에서 길을 잃었어` : shorn ? '오늘 밤 털 깎기 끝' : fieldOpen ? `털 깎기 · ${shearLeft}마리 남음` : '🔒 첫 이야기를 마치면 할아버지가 양을 맡겨 줘'}</p>
-          ${giftReady && !giftNext ? '<small class="tonight-gift">🎁 선물을 만들 수 있어!</small>' : ''}${lost && !needFind ? `<small class="tonight-lost">🔍 ${esc(Core.josa(lost.name, '이가'))} 안 보여 · 들판에서 찾아 줘</small>` : ''}</div>
+        <li class="tonight-step${findNext || careNext || giftNext ? ' is-next' : ''}" data-tonight="field"${fieldDone ? ' data-done="true"' : ''}>
+          <span aria-hidden="true">🐑</span><div><b>${care ? esc(care.sheep.name) + ' 돌보기' : '오늘 밤 들판'}
+          ${care ? `<span class="tonight-hearts" aria-label="하트 ${care.hearts}/3">${Field.heartMarks(care.hearts)}</span>` : ''}</b>
+          ${!care ? `<p>${esc(Field.FIRST_STORY_HINT)}</p>` : ''}
+          ${giftReady && !giftNext ? '<small class="tonight-gift">🎁 선물을 만들 수 있어!</small>' : ''}${lost ? `<small class="tonight-lost">🔍 ${esc(Core.josa(lost.name, '이가'))} ${needFind ? '들판에서 길을 잃었어' : '안 보여 · 들판에서 찾아 줘'}</small>` : ''}</div>
           ${tonightMark(fieldDone)}</li>
         <li class="tonight-step${missionNext ? ' is-next' : ''}" data-tonight="mission"${status === 'yes' || status === 'no' ? ' data-done="true"' : ''}>
           <span aria-hidden="true">🎯</span><div><b>미션</b>
@@ -867,7 +877,14 @@
   });
   if (!openSharedField()) {
     home();
-    if (Core.params.get('trailer') === '1' && window.Trailer) playTrailer();
-    restoreFromLink();
+    if (Core.PREVIEW_ALL && Core.params.get('field') === '1' && Field.has()) {
+      const clean = new URL(location.href);
+      clean.searchParams.delete('field');
+      history.replaceState(null, '', clean.href);
+      Field.page();
+    } else {
+      if (Core.params.get('trailer') === '1' && window.Trailer) playTrailer();
+      restoreFromLink();
+    }
   }
 })();
