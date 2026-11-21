@@ -184,24 +184,28 @@
     const later = episodes.find(e => !storyAvailable(e) && !D.done[e.id]);
     const fieldOpen = !!window.Field?.has();
     const shearLeft = fieldOpen ? Field.shearTonight(today) : 0;
-    const shorn = fieldOpen && shearLeft === 0;
     const giftReady = fieldOpen && !!Field.giftReady?.();
     const lost = fieldOpen ? Field.lostSheep?.() : null;
+    const needFind = !!lost?.lostFromVisit;
+    const shorn = fieldOpen && shearLeft === 0;
+    const fieldDone = shorn && !needFind;
     // 오늘 이야기를 아직 안 봤으면 어제 미션 대신 '이야기를 마치면 나와'를 보여 준다.
     const mission = !episode && playedTonight && D.mission[playedTonight.id] ? playedTonight : null;
     const status = mission ? Fame.missionStatus(mission) : 'none';
     const shearNext = !episode && fieldOpen && !shorn;
     const giftNext = !episode && !shearNext && giftReady;
     const missionNext = !episode && !shearNext && !giftNext && status === 'wait';
+    const findNext = !episode && needFind && !shearNext && !giftNext && !missionNext;
     const linkedEpisode = playedTonight || episodes.findLast(e => D.done[e.id]);
     const storyDone = !episode && (!!playedTonight || !later);
     const watched = D.done.end && !later ? '성탄 이야기까지 봤어' : playedTonight ? '오늘 이야기 봤어' : '다음 이야기를 기다려 줘';
     const storyLine = episode ? `${episode.date === today ? '' : esc(Core.dateLabel(episode.date)) + ' '}「${esc(episode.title)}」` :
       later ? `${storyDone ? watched + ' · ' : ''}다음 이야기 ${esc(Core.dateLabel(later.date))}${later.openHour == null ? '' : ' ' + esc(Core.hourLabel(later.openHour))}에 열려` : watched;
     const nextButton = episode ? `<button type="button" class="btn tonight-next" data-step="story" data-id="${episode.id}">📖 오늘 이야기 보기</button>` :
+      findNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${linkedEpisode?.id || ''}">🔦 잃은 양 찾기</button>` :
       shearNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${linkedEpisode?.id || ''}">🐑 들판에서 털 깎기 <small>(${shearLeft}마리 남음)</small></button>` :
       giftNext ? `<button type="button" class="btn tonight-next" data-step="field" data-gift="true" data-id="${linkedEpisode?.id || ''}">🎁 선물 만들기</button>` : '';
-    const complete = !episode && !shearNext && !missionNext && (storyDone || fieldOpen);
+    const complete = !episode && !findNext && !shearNext && !missionNext && (storyDone || fieldOpen);
     return `<section class="tonight" aria-labelledby="tonight-title">
       <header><h2 id="tonight-title">🌙 오늘 밤 할 일</h2><span>${esc(christmasLabel(today))}</span></header>
       <ol class="tonight-steps">
@@ -209,10 +213,10 @@
           <span aria-hidden="true">📖</span><div><b>오늘 이야기</b><p>${storyLine}</p>
           ${episode?.note ? `<small class="tonight-ellipsis">“${esc(episode.note)}”</small>` : ''}</div>
           ${tonightMark(storyDone)}</li>
-        <li class="tonight-step${shearNext || giftNext ? ' is-next' : ''}" data-tonight="field"${shorn ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">🐑</span><div><b>오늘 밤 들판</b><p>${shorn ? '오늘 밤 털 깎기 끝' : fieldOpen ? `털 깎기 · ${shearLeft}마리 남음` : '🔒 첫 이야기를 마치면 할아버지가 양을 맡겨 줘'}</p>
-          ${giftReady && !giftNext ? '<small class="tonight-gift">🎁 선물을 만들 수 있어!</small>' : ''}${lost ? `<small class="tonight-lost">🔍 ${esc(Core.josa(lost.name, '이가'))} 안 보여 · 들판에서 찾아 줘</small>` : ''}</div>
-          ${tonightMark(shorn)}</li>
+        <li class="tonight-step${findNext || shearNext || giftNext ? ' is-next' : ''}" data-tonight="field"${fieldDone ? ' data-done="true"' : ''}>
+          <span aria-hidden="true">🐑</span><div><b>오늘 밤 들판</b><p>${needFind ? `${esc(Core.josa(lost.name, '이가'))} 들판에서 길을 잃었어` : shorn ? '오늘 밤 털 깎기 끝' : fieldOpen ? `털 깎기 · ${shearLeft}마리 남음` : '🔒 첫 이야기를 마치면 할아버지가 양을 맡겨 줘'}</p>
+          ${giftReady && !giftNext ? '<small class="tonight-gift">🎁 선물을 만들 수 있어!</small>' : ''}${lost && !needFind ? `<small class="tonight-lost">🔍 ${esc(Core.josa(lost.name, '이가'))} 안 보여 · 들판에서 찾아 줘</small>` : ''}</div>
+          ${tonightMark(fieldDone)}</li>
         <li class="tonight-step${missionNext ? ' is-next' : ''}" data-tonight="mission"${status === 'yes' || status === 'no' ? ' data-done="true"' : ''}>
           <span aria-hidden="true">🎯</span><div><b>미션</b>
           ${mission ? `<p${missionNext ? ' class="tonight-mission-text"' : ' class="tonight-ellipsis"'}>${esc(Bible.full(D.mission[mission.id]))}</p>` :
