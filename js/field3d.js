@@ -143,12 +143,12 @@
     ['분홍 염색', 'dye', 5, 'dye', '#f49cb8', '●'],
     ['하늘 염색', 'dye', 5, 'dye', '#75b7ef', '●'],
     ['민트 염색', 'dye', 5, 'dye', '#6ddac1', '●'],
-    ['보라 염색', 'dye', 5, 'dye', '#9c87b7', '●'],
+    ['보라 염색', 'dye', 5, 'dye', '#aa96b4', '●'],
     ['노랑 염색', 'dye', 5, 'dye', '#f8d065', '●'],
     ['주황 염색', 'dye', 5, 'dye', '#f59a58', '●'],
     ['초콜릿 염색', 'dye', 5, 'dye', '#87564a', '●'],
-    ['남색 염색', 'dye', 5, 'dye', '#575f80', '●'],
-    ['검정 염색', 'dye', 5, 'dye', '#303040', '●'],
+    ['남색 염색', 'dye', 5, 'dye', '#68728a', '●'],
+    ['검정 염색', 'dye', 5, 'dye', '#3f3c47', '●'],
     ['은빛 염색', 'dye', 7, 'dye', '#c8d9ea', '✧']
   ].map(([name, slot, price, kind, color, symbol, label]) => Object.freeze({ name, slot, price, kind, color, symbol, label: label || name }));
   Object.freeze(wardrobe);
@@ -162,6 +162,7 @@
   }
   const wearKey = wear => Object.values(normalizeWear(wear)).join('|');
   const stageOf = lv => lv >= 10 ? 3 : lv >= 5 ? 2 : lv >= 2 ? 1 : 0;
+  const CAPES = new Set(['cape', 'mantle', 'dark-cape']);
 
   function gearShape(points, thickness = .055) {
     const outline = new T.Shape();
@@ -176,7 +177,7 @@
   });
 
   // 같은 모델을 착용 모습과 상점 아이콘에 쓴다.
-  function makeGear(item) {
+  function makeGear(item, fitCloth) {
     const model = new T.Group();
     model.name = item.name;
     const facets = new T.IcosahedronGeometry(1, 0), box = new T.BoxGeometry(1, 1, 1);
@@ -202,8 +203,14 @@
       const part = cylinder(radius * .63, radius, delta.length(), 5, material, at.x, at.y, at.z);
       part.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), delta.normalize());
     };
-    const collar = (m, thick = .035) => ring(.32, thick, m, 0, -.02, -.07, 1.22, 1.1);
+    const collar = (m, thick = .035) => ring(.32, thick, m, 0, -.02, -.07, 1.36, .86);
     const charm = (points, material, y = -.19, z = .22) => put(gearShape(points), material, 0, y, z);
+    const clothMesh = (vertices, material) => {
+      const geometry = new T.BufferGeometry();
+      geometry.setAttribute('position', new T.Float32BufferAttribute(vertices, 3));
+      geometry.computeVertexNormals();
+      put(geometry, material);
+    };
     const dark = mat('#322744');
     switch (item.kind) {
       case 'pomhat':
@@ -298,10 +305,10 @@
           const lens = gearShape([[-.145, .065], [.149, .065], [.117, -.070], [.055, -.105], [-.094, -.097], [-.147, -.042]], .065);
           put(lens, frame, side * .18, .032, .032, 1, 1, 1, 0, side * .22, side * .08);
           put(lens, glass, side * .18, .029, .066, .87, .8, .5, 0, side * .22, side * .08);
-          stem([side * .31, .06, .04], [side * .39, .052, -.25], .026, frame);
+          stem([side * .30, .06, .04], [side * .265, .055, -.31], .021, frame);
           put(box, mat('#949cba'), side * .225, .08, .088, .099, .015, .012, 0, 0, side * .08);
         }
-        put(box, frame, 0, .05, .044, .13, .036, .047);
+        put(box, frame, 0, .055, .034, .15, .034, .042);
         break;
       }
       case 'hairpin': {
@@ -336,7 +343,7 @@
       case 'round':
         for (const x of [-.155, .155]) {
           ring(.128, .027, gold, x, 0, .064, 0);
-          stem([x * 1.72, .045, .06], [x * 1.95, .08, -.22], .027, gold);
+          stem([x * 1.72, .045, .06], [x * 1.6, .08, -.25], .023, gold);
         }
         put(box, gold, 0, .032, .063, .102, .027, .025);
         break;
@@ -346,7 +353,7 @@
           put(gearShape(shape, .045), cloth, x, .016, .082);
           put(gearShape(shape, .030), mat('#773c68', { rough: .35, metal: .15 }), x, .02, .116, .78, .78, .75);
           put(box, cream, x - .044, .074, .135, .067, .021, .008, 0, 0, .35);
-          stem([x * 1.78, .05, .074], [x * 1.86, .09, -.25], .026, cloth);
+          stem([x * 1.72, .05, .074], [x * 1.5, .09, -.28], .022, cloth);
         }
         put(box, cloth, 0, .038, .083, .08, .04, .05);
         break;
@@ -381,9 +388,10 @@
       case 'ribbon': {
         const ribbon = item.kind === 'ribbon';
         collar(ribbon ? mat('#f0b7ce') : dark, .046);
-        charm([[-.25, .158], [-.27, -.12], [0, -.048], [.27, -.12], [.25, .158], [0, .055]], cloth, -.165, .24);
+        const bow = gearShape([[-.25, .158], [-.27, -.12], [0, -.048], [.27, -.12], [.25, .158], [0, .055]]);
+        put(bow, cloth, 0, -.112, .237, ribbon ? .88 : .78, .82, .68, -.16);
         if (ribbon) for (const side of [-1, 1]) put(gearShape([[0, .13], [side * .15, -.23], [side * .073, -.19], [side * .024, -.245]]), cloth, 0, -.30, .223);
-        put(facets, ribbon ? cream : mat('#a8bde8'), 0, -.16, .284, .068, .075, .045);
+        put(facets, ribbon ? cream : mat('#a8bde8'), 0, -.108, .261, .056, .059, .035);
         break;
       }
       case 'jingle':
@@ -421,27 +429,32 @@
       case 'dark-cape': {
         const royal = item.kind === 'cape', velvet = item.kind === 'mantle';
         const hem = royal ? mat('#a88ad6') : velvet ? cream : mat('#657499');
-        const rows = [
-          [.32, .009, .36, .16], [.13, .038, .54, .17], [-.16, .038, .65, .205],
-          [-.41, -.045, .72, .23], [-.697, -.24, .73, .24], [-.779, -.56, .64, .06]
-        ].map(([z, y, width, dip], row) => [-1, -.63, -.30, 0, .30, .63, 1].map((side, col) => {
-          const edge = row === 5 ? (col % 2 ? -.038 : .02) : 0;
-          const point = royal && row === 5 ? (1 - Math.abs(side)) * .14 : 0;
-          return [side * width, y - side ** 2 * dip - point + edge,
-            z - (row === 5 ? (1 - Math.abs(side)) * .056 : 0)];
-        }));
+        const cut = [
+          [.40, -.12, .27, .05], [.20, .008, .49, .18], [-.10, .038, .59, .28],
+          [-.36, -.040, .65, .33], [-.62, -.20, .65, .33], [-.801, -.49, .56, .12]
+        ];
+        const columns = fitCloth ? 12 : 6;
+        const rows = Array.from({ length: fitCloth ? 11 : 6 }, (_, row) => {
+          const at = fitCloth ? row / 2 : row;
+          const a = cut[Math.floor(at)], b = cut[Math.ceil(at)];
+          const [z, y, width, dip] = a.map((v, i) => lerp(v, b[i], at % 1));
+          const hemWeight = Math.max(0, at - 4);
+          return Array.from({ length: columns + 1 }, (_, col) => {
+            const side = 2 * col / columns - 1;
+            const scallop = Math.cos(side * Math.PI * 3) * .024 * hemWeight;
+            const point = royal ? (1 - Math.abs(side)) * .14 * hemWeight : 0;
+            const node = [side * width, y - side ** 2 * dip - point + scallop,
+              z - (1 - Math.abs(side)) * .056 * hemWeight];
+            return fitCloth ? fitCloth(node) : node;
+          });
+        });
         const surfaces = [], panels = [];
         for (let row = 0; row < rows.length - 1; row++) {
           for (let column = 0; column < rows[row].length - 1; column++) {
             const a = rows[row][column], b = rows[row][column + 1], c = rows[row + 1][column], d = rows[row + 1][column + 1];
-            (column % 3 === 1 ? panels : surfaces).push(...a, ...b, ...c, ...b, ...d, ...c);
+            const panel = Math.floor(column * 6 / columns);
+            (panel % 3 === 1 ? panels : surfaces).push(...a, ...b, ...c, ...b, ...d, ...c);
           }
-        }
-        function clothMesh(vertices, material) {
-          const geometry = new T.BufferGeometry();
-          geometry.setAttribute('position', new T.Float32BufferAttribute(vertices, 3));
-          geometry.computeVertexNormals();
-          put(geometry, material);
         }
         clothMesh(surfaces, mat(item.color, { doubleSided: true }));
         const pleat = new T.Color(item.color).multiplyScalar(.78).getStyle();
@@ -452,11 +465,20 @@
         const bottom = rows.at(-1);
         for (let n = 0; n < bottom.length - 1; n++) stem(bottom[n], bottom[n + 1], velvet ? .035 : .019, hem);
         if (royal) {
-          const medal = star(.108, gold, 0, -.080, -.539);
-          medal.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), new T.Vector3(0, .795, -.607));
+          const middle = columns / 2, row = fitCloth ? 7 : 3;
+          const center = new T.Vector3(...rows[row][middle]);
+          const across = new T.Vector3(...rows[row][middle + 1]).sub(new T.Vector3(...rows[row][middle - 1]));
+          const down = new T.Vector3(...rows[row + 1][middle]).sub(new T.Vector3(...rows[row - 1][middle]));
+          const normal = across.cross(down).normalize();
+          center.addScaledVector(normal, .037);
+          const medal = star(.108, gold, ...center.toArray());
+          medal.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), normal);
           medal.rotateZ(.12);
         }
-        if (item.kind === 'dark-cape') put(box, gold, 0, .048, .165, .094, .032, .091, 0, .58);
+        if (item.kind === 'dark-cape') {
+          const [x, y, z] = rows[fitCloth ? 2 : 1][columns / 2];
+          put(box, gold, x, y + .02, z, .094, .022, .079, -.12, .58);
+        }
         break;
       }
       case 'wings':
@@ -485,17 +507,39 @@
           put(new T.CylinderGeometry(.061, .061, .03, 8), mat('#6d4144'), at, at - .11, -.36, 1, 1, 1, 0, 0, -.77);
         }
         break;
-      case 'vest':
+      case 'vest': {
         for (const side of [-1, 1]) {
-          const panel = gearShape([[-.55, .16], [-.28, .30], [.35, .24], [.55, .06], [.54, -.29], [.07, -.42], [-.40, -.35]], .057);
-          put(panel, cloth, side * .57, -.21, .05, 1, 1, 1, .14, side * Math.PI / 2, side * .19);
-          put(box, mat('#ac6344'), side * .19, -.30, .63, .25, .60, .075, .19, side * .48);
-          put(box, mat('#5d3632'), side * .61, -.39, .04, .07, .20, .31, 0, 0, side * .2);
-          for (let n = 0; n < 5; n++) put(box, mat('#efb987'), side * .649, -.385 - n * .008, -.08 + n * .058, .014, .024, .029, .32);
+          const cut = [
+            [[.16, .032, .30], [.20, .04, -.03], [.15, .02, -.35]],
+            [[.55, -.15, .40], [.57, -.15, -.03], [.50, -.19, -.55]],
+            [[.58, -.43, .36], [.59, -.49, -.04], [.54, -.43, -.49]]
+          ];
+          const steps = fitCloth ? 6 : 2;
+          const rows = Array.from({ length: steps + 1 }, (_, r) => Array.from({ length: steps + 1 }, (_, c) => {
+            const row = r * 2 / steps, col = c * 2 / steps;
+            const sample = points => points[Math.floor(col)].map((v, i) => lerp(v, points[Math.ceil(col)][i], col % 1));
+            const a = sample(cut[Math.floor(row)]), b = sample(cut[Math.ceil(row)]);
+            const [x, y, z] = a.map((v, i) => lerp(v, b[i], row % 1));
+            return fitCloth ? fitCloth([side * x, y, z]) : [side * x, y, z];
+          }));
+          const leather = mat(item.color, { doubleSided: true });
+          const seam = mat('#c38b61');
+          const vertices = [];
+          for (let r = 0; r < steps; r++) for (let c = 0; c < steps; c++) {
+            const a = rows[r][c], b = rows[r][c + 1], d = rows[r + 1][c], e = rows[r + 1][c + 1];
+            vertices.push(...a, ...b, ...d, ...b, ...e, ...d);
+          }
+          clothMesh(vertices, leather);
+          for (const c of [0, steps]) for (let r = 0; r < steps; r++) stem(rows[r][c], rows[r + 1][c], .017, seam);
+          for (let c = 0; c < steps; c++) stem(rows[steps][c], rows[steps][c + 1], .018, seam);
+          const pocket = [side * .58, -.31, -.07];
+          const pocketX = (fitCloth ? fitCloth(pocket)[0] : pocket[0]) + side * .028;
+          put(box, mat('#5d3632'), pocketX, -.31, -.07, .052, .18, .27);
+          for (let n = 0; n < 5; n++) put(box, mat('#efb987'), pocketX + side * .03, -.37, -.17 + n * .05, .014, .018, .021);
         }
-        put(box, cloth, 0, .015, -.05, .95, .075, .66, .11);
-        put(box, gold, 0, -.36, .695, .116, .10, .05);
+        put(box, cloth, 0, .015, -.02, .45, .057, .65);
         break;
+      }
       case 'pack':
         put(box, cloth, 0, 0, -.105, .54, .39, .42, -.08);
         put(box, mat('#39766a'), 0, .172, -.121, .58, .10, .44, -.07);
@@ -521,10 +565,12 @@
   const HEAD_FIT = {
     pomhat: [.80, .245], earhat: [.75, .264], straw: [.61, .249], hood: [.78, .276],
     starband: [.83, .248], petals: [.76, .258], daisies: [.77, .258], 'wedding-wreath': [.78, .255],
-    crown: [.91, .269, .72], 'silver-crown': [.87, .268, .73], hairpin: [.86, .256],
+    crown: [.84, .231, .61], 'silver-crown': [.82, .233, .60], hairpin: [.86, .244],
     feather: [.82, .251], antlers: [.56, .247, .95], paper: [.74, .250]
   };
   const EYE_FIT = { round: [.155, 0, .064], shades: [.18, .032, .032], hearts: [.163, .016, .082] };
+  const CAPE_FIT = { lift: .005, z: -.055, height: .87, depth: .96 };
+  const VEST_FIT = { lift: -.044, z: -.14, width: profile => (profile.flank + .012) / .57 };
 
   function coatProfile(woolGroup) {
     const profile = { chest: .64, top: .39, rear: .32, flank: .56 };
@@ -542,12 +588,54 @@
     return profile;
   }
 
+  function capeFitter(woolGroup, profile, wide) {
+    // 망토 재단점마다 몸통 중심에서 털의 바깥 면을 찾는다. 털을 깎을 때는 맞춘 천을 몸과 함께 줄인다.
+    woolGroup.updateWorldMatrix(true, true);
+    const ray = new T.Raycaster();
+    const center = new T.Vector3(0, .81, 0), point = new T.Vector3(), direction = new T.Vector3();
+    const { lift, z: offset, height, depth } = CAPE_FIT;
+    const top = .8 + profile.top + lift;
+    return ([x, y, z]) => {
+      point.set(x * wide, top + y * height, z * depth + offset).sub(center);
+      direction.copy(point).normalize();
+      ray.ray.origin.copy(center).addScaledVector(direction, 2);
+      ray.ray.direction.copy(direction).negate();
+      const hit = ray.intersectObjects(woolGroup.children, false)[0];
+      if (!hit || point.length() >= 2 - hit.distance + .063) return [x, y, z];
+      point.copy(hit.point).addScaledVector(direction, .063);
+      return [point.x / wide, (point.y - top) / height, (point.z - offset) / depth];
+    };
+  }
+
+  function vestFitter(woolGroup, profile) {
+    woolGroup.updateWorldMatrix(true, true);
+    const ray = new T.Raycaster();
+    const top = .8 + profile.top + VEST_FIT.lift;
+    const width = VEST_FIT.width(profile);
+    const nearby = [[0, 0], [-.036, 0], [.036, 0], [0, -.074], [0, .074]];
+    return ([x, y, z]) => {
+      const side = Math.sign(x);
+      ray.ray.direction.set(-side, 0, 0);
+      let edge = 0;
+      // 봉제선 사이의 털 뭉치까지 덮도록 재단점 주변도 확인한다.
+      for (const [dy, dz] of nearby) {
+        ray.ray.origin.set(side * 2, top + y + dy, VEST_FIT.z + z + dz);
+        const hit = ray.intersectObjects(woolGroup.children, false)[0];
+        if (hit) edge = Math.max(edge, Math.abs(hit.point.x));
+      }
+      return [edge ? side * (edge + .054) / width : x * .78, y, z];
+    };
+  }
+
   function dressModel(body, head, outfit, anim, skull, wide, woolGroup) {
     const garments = {};
+    const profile = outfit.neck || outfit.back ? coatProfile(woolGroup) : null;
     for (const slot of ['head', 'face', 'neck', 'back']) {
       const item = WEAR.get(outfit[slot]);
       if (!item) continue;
-      const model = makeGear(item);
+      const fitCloth = CAPES.has(item.kind) ? capeFitter(woolGroup, profile, wide)
+        : item.kind === 'vest' ? vestFitter(woolGroup, profile) : null;
+      const model = makeGear(item, fitCloth);
       if (slot === 'head') {
         const [width, height, vertical = width] = HEAD_FIT[item.kind];
         model.scale.set(width * skull, vertical * skull, width * skull);
@@ -559,7 +647,7 @@
           const [x, y, z] = lens;
           const sy = .75 * skull, sz = .72 * skull;
           model.scale.set(.152 * skull / x, sy, sz);
-          model.position.set(0, .060 * skull - y * sy, .295 * skull - z * sz);
+          model.position.set(0, .060 * skull - y * sy, .285 * skull - z * sz);
         } else if (item.kind === 'moustache') {
           model.scale.set(.64 * skull, .60 * skull, .68 * skull);
           model.position.set(0, -.022 * skull, .365 * skull);
@@ -574,18 +662,16 @@
       }
       if (model.userData.wings) anim.wings.push(...model.userData.wings);
     }
-    if (!garments.neck && !garments.back) return null;
-    return { ...garments, profile: coatProfile(woolGroup), wide, skull };
+    return profile ? { ...garments, profile, wide, skull } : null;
   }
 
-  function fitBodyWear(garments, wool) {
+  function fitBodyWear(garments, wool, headPitch) {
     if (!garments) return;
     const { neck, back, profile, wide, skull } = garments;
     if (neck) {
-      const width = (neck.kind === 'bowtie' ? .79 : .86) * wide;
-      const sternum = lerp(.49, profile.chest, wool);
-      neck.model.scale.set(width, .82, .82);
-      neck.model.position.set(0, .835 - (skull - 1) * .11, sternum - .14);
+      const sternum = lerp(.50, profile.chest, wool);
+      neck.model.scale.set(.78 * wide, .73, .72);
+      neck.model.position.set(0, neckHeight(skull, headPitch), sternum - .115);
     }
     if (!back) return;
     const { model, kind } = back;
@@ -595,7 +681,7 @@
     switch (kind) {
       case 'pack':
         model.scale.set(.92 * wide, .94, .91);
-        model.position.set(0, rear + .125, -.48);
+        model.position.set(0, rear + .097, -.53);
         break;
       case 'wings':
       case 'angel':
@@ -608,14 +694,18 @@
         model.rotation.x = 1.10;
         break;
       case 'vest':
-        model.scale.set(lerp(.80, (profile.flank + .012) / .57, wool), 1, lerp(.83, 1, wool));
-        model.position.set(0, top - .044, -.14);
+        model.scale.set(lerp(.80, VEST_FIT.width(profile), wool), 1, lerp(.83, 1, wool));
+        model.position.set(0, top + VEST_FIT.lift, VEST_FIT.z);
         break;
       default:
-        model.scale.set(wide * spread, .87, lerp(.83, .96, wool));
-        model.position.set(0, top + .010, -.095);
+        model.scale.set(wide * spread, CAPE_FIT.height, lerp(.83, CAPE_FIT.depth, wool));
+        model.position.set(0, top + CAPE_FIT.lift, CAPE_FIT.z);
         break;
     }
+  }
+
+  function neckHeight(skull, headPitch) {
+    return .878 - (skull - 1) * .22 - Math.max(0, headPitch) * .16;
   }
 
   function animateWings(figure, seconds) {
@@ -722,7 +812,7 @@
     const u = o.userData, k = 0.36 + 0.64 * u.woolShown;
     u.woolG.scale.set(k, 0.42 + 0.58 * u.woolShown, k);
     u.tuftMesh.scale.setScalar(0.5 + 0.5 * u.woolShown);
-    fitBodyWear(u.garments, u.woolShown);
+    fitBodyWear(u.garments, u.woolShown, u.head.rotation.x);
   }
   // 종마다 한눈에 구분되는 장식
   function addSignature(body, head, kind, anim, woolG) {
@@ -1531,6 +1621,8 @@
       const headPitch = ai.mode === 'graze' ? 0.85 + Math.sin(t * 6) * 0.08 : ai.mode === 'sleep' ? 0.5 : Math.sin(t * 0.7 + o.position.z) * 0.08;
       head.rotation.x = lerp(head.rotation.x, headPitch, dt * 4);
       head.position.y = lerp(head.position.y, ai.mode === 'graze' ? 0.86 : 1.0, dt * 4);
+      const neck = u.garments?.neck;
+      if (neck) neck.model.position.y = neckHeight(u.garments.skull, head.rotation.x);
       const sleepDrop = ai.mode === 'sleep' ? -0.34 : 0;
       body.position.y = moving ? body.position.y : lerp(body.position.y, sleepDrop, dt * 3);
       u.legs.forEach(l => { l.scale.y = lerp(l.scale.y, ai.mode === 'sleep' ? 0.3 : 1, dt * 3); });
@@ -1985,6 +2077,7 @@
     const dusk = layout.time === 'dusk', dawn = layout.time === 'dawn';
     const night = !dusk && !dawn;
     const paved = ['temple', 'sanctuary', 'roof', 'gate'].includes(kit);
+    const stable = kit === 'stable';
     const hillside = ['hillpath', 'galilee', 'elizabeth'].includes(kit);
     const dry = layout.variant === 'dry';
     const height = (x, z) => paved ? 0 : hillside ? .17 * Math.sin(x * .47) * Math.cos(z * .5) - z * .055 : .045 * Math.sin(x * .7 + z * .4);
@@ -2053,24 +2146,26 @@
       fragmentShader: 'varying vec3 vSky; uniform vec3 horizon, high; void main(){ float h = smoothstep(-0.04, 0.64, normalize(vSky).y); gl_FragColor = vec4(mix(horizon, high, h), 1.0); #include <colorspace_fragment> }'.replace('#include <colorspace_fragment>', '\n#include <colorspace_fragment>\n')
     }));
     dome.renderOrder = -3; scene.add(dome);
-    scene.add(new T.HemisphereLight(dawn ? '#ccd9ff' : '#c6caff', '#756169', night ? 1.33 : 1.7));
-    const sun = new T.DirectionalLight(dusk ? '#ffd1a4' : '#f4e9e8', 1.6);
+    scene.add(new T.HemisphereLight(stable ? '#f4ddc0' : dawn ? '#ccd9ff' : '#c6caff', stable ? '#805a3f' : '#756169', night ? 1.33 : 1.7));
+    const sun = new T.DirectionalLight(stable ? '#ffdfb5' : dusk ? '#ffd1a4' : '#f4e9e8', 1.6);
     sun.position.set(-5, 10, 5); scene.add(sun);
-    const stable = kit === 'stable';
     const groundGeo = new T.PlaneGeometry(64, 54, 48, 40).rotateX(-Math.PI / 2).translate(0, 0, -8).toNonIndexed();
     const p = groundGeo.attributes.position, colors = new Float32Array(p.count * 3);
-    const earth = new T.Color(stable ? '#896347' : paved ? '#958b95' : dry ? '#a8795d' : ['nazareth', 'workshop', 'well', 'inn'].includes(kit) ? '#876f71' : '#697454');
-    const pathColor = new T.Color(stable ? '#b38a55' : paved ? '#aa9da6' : dry ? '#c5906c' : '#aa8a79');
-    const strawLight = new T.Color('#ffc06a');
+    const earth = new T.Color(stable ? '#755039' : paved ? '#958b95' : dry ? '#a8795d' : ['nazareth', 'workshop', 'well', 'inn'].includes(kit) ? '#876f71' : '#697454');
+    const pathColor = new T.Color(stable ? '#9d733f' : paved ? '#aa9da6' : dry ? '#c5906c' : '#aa8a79');
+    const strawLight = new T.Color('#d4a15b');
     const tint = new T.Color();
     for (let n = 0; n < p.count; n += 3) {
       const x = (p.getX(n) + p.getX(n + 1) + p.getX(n + 2)) / 3, z = p.getZ(n);
-      const path = Math.abs(x - Math.sin(z * .31 + seed % 4) * (hillside ? 2 : .5)) < (paved ? 2.8 : 1.14);
-      tint.copy(path ? pathColor : earth).multiplyScalar(.87 + rand() * .22);
+      const offset = Math.abs(x - Math.sin(z * .31 + seed % 4) * (hillside ? 2 : .5));
+      const path = offset < (paved ? 2.8 : 1.14);
+      const variation = rand();
+      tint.copy(path ? pathColor : earth).multiplyScalar(.87 + variation * .22);
       if (stable) {
         const d = Math.hypot(x * 1.17, (z + 5.9) * .49);
         const strength = layout.christmas ? .69 : layout.eve ? .43 : .16;
-        tint.lerp(strawLight, strength * Math.exp(-.15 * d * d));
+        tint.copy(earth).lerp(pathColor, Math.max(0, 1 - offset / 3.6) * (.64 + variation * .36));
+        tint.lerp(strawLight, strength * Math.exp(-.19 * d * d)).multiplyScalar(.80 + variation * .35);
       }
       for (let i = n; i < n + 3; i++) {
         p.setY(i, height(p.getX(i), p.getZ(i)));
@@ -2194,15 +2289,19 @@
         cube(wood, side * 2.83, y + 1.42, z + 1.25, .19, 2.84, .21);
         cube(terra, side * 1.66, y + 2.91, z + .1, 3.66, .26, 3.43, 0, 0, side * -.38);
       }
-      cube(lit ? windowLight : door, 0, y + 1.22, z - .86, lit ? 4.28 : 3.43, 2.2, .081);
+      const interior = mat('#a27147');
+      cube(interior, 0, y + 1.22, z - .86, 4.28, 2.2, .081);
       for (const side of [-1, 1]) for (let i = 0; i < 4; i++) cube(wood, side * (1.09 + i * .46), y + 1.24, z - .78, .086, 2.4, .088);
       const crib = z + 1.37;
       const straw = mat('#c39a58'), paleStraw = mat('#e5bf76');
-      for (let i = 0; i < 64; i++) {
-        const x = (rand() - .5) * 6.8, dist = -7.5 + rand() * 5.25;
-        const layer = .013 + rand() * .019;
-        cube(i % 3 ? straw : paleStraw, x, height(x, dist) + layer, dist,
-          .046 + rand() * .036, .016, .17 + rand() * .34, 0, rand() * Math.PI);
+      for (let i = 0; i < 60; i++) {
+        const x = (rand() - .5) * 9.5, dist = -7.5 + rand() * 11;
+        for (let strand = 0; strand < 4; strand++) {
+          const sx = x + (rand() - .5) * .52, sz = dist + (rand() - .5) * .55;
+          const layer = .016 + rand() * .016;
+          cube(strand % 3 ? straw : paleStraw, sx, height(sx, sz) + layer, sz,
+            .028 + rand() * .025, .012, .19 + rand() * .31, 0, rand() * Math.PI);
+        }
       }
       for (const side of [-1, 1]) {
         const x = side * 2.57;
@@ -2211,8 +2310,8 @@
         for (const shift of [-.17, .17]) cube(wood, x + shift, y + .404, crib + .28, .044, .025, .56, 0, side * .09);
       }
       if (lit) {
-        const cribLight = new T.PointLight('#ffba69', layout.christmas ? 14 : 7, 8.2, 1.7);
-        cribLight.position.set(0, y + 1.19, crib + .36); scene.add(cribLight);
+        const cribLight = new T.PointLight('#ffb65c', layout.christmas ? 13 : 7, 7.4, 1.8);
+        cribLight.position.set(0, y + 1.62, crib + .24); scene.add(cribLight);
       }
       cube(wood, 0, y + .48, crib, 1.64, .44, .68);
       cube(edge, 0, y + .72, crib, 1.55, .12, .65);
@@ -2255,11 +2354,11 @@
       batch(rock, dark, 5.95, height(5.95, -5.35) + .34, -5.35, .89, .6, .77, 0, 1.56);
     }
 
-    for (let i = 0; i < (paved ? 18 : 135); i++) {
+    for (let i = 0; i < (stable ? 38 : paved ? 18 : 135); i++) {
       const x = (rand() - .5) * 28, z = 9 - rand() * 24;
       if (Math.abs(x) < 1.8 || paved && Math.abs(x) < 7.55) continue;
       const s = .045 + rand() * .25, y = height(x, z);
-      if (i % 3) batch(cone, dry ? stone : olive, x, y + s * .55, z, s * .26, s * 2.3, s * .27, .18, i, .25);
+      if (i % 3 && !stable) batch(cone, dry ? stone : olive, x, y + s * .55, z, s * .26, s * 2.3, s * .27, .18, i, .25);
       else batch(rock, dark, x, y + s * .3, z, s, s * .52, s * .73, i, i * .3);
     }
     // Irregular landmarks outside the path keep re-used kits recognizable on different nights.
