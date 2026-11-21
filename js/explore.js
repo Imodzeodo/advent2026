@@ -6,7 +6,7 @@
   const mapPoints = [
     [72, 131], [239, 178], [88, 164], [61, 199], [114, 219], [259, 224], [306, 184],
     [290, 100], [237, 61], [265, 49], [294, 65], [316, 40], [329, 86], [241, 104],
-    [228, 133], [265, 133], [210, 213], [232, 247], [300, 128], [286, 252], [318, 226],
+    [228, 133], [265, 133], [210, 213], [232, 247], [273, 199], [286, 252], [318, 226],
     [111, 277], [134, 308], [111, 343], [79, 319], [47, 338], [42, 295]
   ];
   const events = [
@@ -62,7 +62,12 @@
     return { ...events[key % events.length], ep: list[(Math.imul(key, 2053) >>> 0) % list.length].id, id: 'event:' + day };
   }
   function cueText(text, sheep) {
-    return String(text || '').replace(/\{(이름|양)\}/g, (_, key) => key === '양' ? sheep.name : Core.data.nickname || '친구야');
+    const particles = { 이랑: '이랑', 이: '이가', 과: '과와' };
+    return String(text || '').replace(/\{양\}(이랑|이|과)?|\{이름\}/g, (token, particle) => {
+      if (token === '{이름}') return Core.data.nickname || '친구';
+      if (particle === '이랑') return Core.josa(sheep.name, particles[particle]).replace(/이$/, '이랑');
+      return particle ? Core.josa(sheep.name, particles[particle]) : sheep.name;
+    });
   }
   function statusChanged() { Core.save(); Fame.checkNew(); }
   function mark(log, ep, marker) { log.found[foundKey(ep, marker)] ||= date(); }
@@ -145,6 +150,7 @@
       request.onupgradeneeded = () => request.result.createObjectStore('photos');
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error('앨범을 여는 중 다른 창에서 사용 중'));
     });
     return gallery;
   }
@@ -155,7 +161,7 @@
         const tx = db.transaction('photos', data ? 'readwrite' : 'readonly');
         const store = tx.objectStore('photos'), req = data ? store.put(data, key) : store.get(key);
         tx.oncomplete = () => resolve(req.result);
-        tx.onerror = () => reject(tx.error);
+        tx.onabort = tx.onerror = () => reject(tx.error);
       });
     } catch { return null; }
   }
@@ -187,8 +193,10 @@
     const log = progress(), record = Field.ensure();
     const sheep = { ...care.sheep, wool: care.sheep.shornOn === date() ? 0 : 1 };
     const day = date(), event = todayEvent(), act = area.activity, wool = Field.spec(sheep.species).wool || 'white';
-    const christmas = day >= Core.XMAS || !!Core.data.done.end;
-    const eve = day === Core.epById('4-4').date;
+    const christmas = id === 'end', eve = id === '4-4';
+    const hasBlanket = !!record.woolGifts?.blanket;
+    const npc = area.markers.find(marker => marker.id === 'person');
+    const currentLine = marker => marker.lines.findLast(([seen]) => !seen || Core.data.done[seen]);
     const sameDay = event?.ep === id;
     const list = openList();
     const index = list.findIndex(ep => ep.id === id);
@@ -203,28 +211,36 @@
       <p class="explore-task-line"><span data-score></span><strong data-timer hidden></strong></p></div>
       <div class="explore-flat" hidden></div>
       <footer class="explore-foot"><button class="link explore-activity-link" type="button" data-activity-link>⭐ 오늘의 활동</button><button class="link" type="button" data-hints>이 장소에서 할 일</button>
+      ${act.sequence ? '<button class="link" type="button" data-melody hidden>🔔 힌트 다시 듣기</button>' : ''}
+      ${act.manger ? '<button class="link" type="button" data-final-album hidden>여정 앨범 열기</button>' : ''}
+      ${act.gift ? `<button class="link" type="button" data-gift-go hidden>🎁 ${esc(act.gift[1])}${record.woolGifts[act.gift[0]] ? ' ✓' : ''}</button>` : ''}
       ${!Core.data.done[id] ? '<span>이야기를 더 보면 새 대화가 열려.</span>' : ''}</footer>
       <button class="btn" type="button" data-field-next hidden>🐑 내 양 돌보러 가기</button>`, 'explore-location');
     const stage = root.querySelector('.explore-stage'), status = root.querySelector('.explore-status');
     const fallback = root.querySelector('.explore-flat'), timer = root.querySelector('[data-timer]');
     const next = root.querySelector('[data-field-next]');
     let view, dead = false, flat = false, shown = [], task;
-    let interval = 0, curtain = null, photoBusy = false;
+    let interval = 0, hintTimers = [], curtain = null, photoBusy = false;
     const observer = new MutationObserver(() => { if (!root.isConnected) dispose(); });
     observer.observe(root.parentElement, { childList: true });
     const fieldBack = () => Field.page({ tonight: id });
     root.querySelector('.explore-back').onclick = map;
     root.querySelector('[data-field-return]').onclick = fieldBack;
     next.onclick = fieldBack;
+    const melody = root.querySelector('[data-melody]'), finalAlbum = root.querySelector('[data-final-album]');
+    if (melody) melody.onclick = playHint;
+    if (finalAlbum) finalAlbum.onclick = album;
+    const gift = root.querySelector('[data-gift-go]');
+    if (gift) gift.onclick = () => Field.page({ tonight: id, gift: act.gift[0] });
     root.querySelector('[data-hints]').onclick = showGuide;
     root.querySelector('[data-activity-link]').onclick = () => view ? view.focus('activity') : startActivity();
     function dispose() {
       if (dead) return;
-      dead = true; observer.disconnect(); clearInterval(interval);
+      dead = true; observer.disconnect(); clearInterval(interval); hintTimers.forEach(clearTimeout);
       view?.destroy(); view = null;
     }
     session = { dispose, get view() { return view; }, id };
-    function feedback(text) { status.textContent = text; }
+    function feedback(text) { status.textContent = cueText(text, sheep); }
     function withSymbols(markers) { return markers.map(marker => ({ ...marker, symbol: marker.symbol || icons[marker.type] || '✦' })); }
     function refresh() {
       const score = stars(id, log);
@@ -232,26 +248,36 @@
       next.hidden = !complete(id);
       root.querySelector('[data-activity-link]').hidden = complete(id) || !!(task && !task.done);
       const running = task && !task.done;
-      let markers = [...area.markers, ...exits];
-      if (id === '4-4' && (eve || christmas)) markers.push({ id: 'manger', title: '마구간 안', type: 'verse', pos: [0, -4.8] });
+      if (melody) melody.hidden = !running;
+      if (finalAlbum) finalAlbum.hidden = !log.photos[id];
+      if (gift) gift.hidden = !complete(id);
+      let markers = [...area.markers, ...exits].filter(marker =>
+        !(act.secretAfter && marker.type === 'secret' && !complete(id)) &&
+        !(act.manger && marker.type === 'photo' && !complete(id)));
       if (sameDay) markers.push({ id: event.id, type: 'event', pos: [-5.15, 5.35], title: event.title,
         hidden: !!event.wool || event.title === '아이들의 숨바꼭질' });
-      if (running) {
-        if (task.phase === 'return') {
-          markers = markers.map(marker => marker.id === 'activity' ? { ...marker, title: '돌려주기' } : marker);
-        } else if (task.phase === 'guard') {
-          markers.push(...guardMarkers());
+      if (running && task.phase === 'return') {
+        if (act.handoff) {
+          const [title, pos] = act.handoff;
+          markers.push({ id: 'handoff', title, pos, type: 'quest' });
         } else {
-          task.pieces.forEach((piece, n) => {
-            const light = act.kind === 'light' && n !== act.petals;
-            const found = task.hits.has(n), lit = found && light;
-            if (found && !lit || (act.kind === 'follow' || act.ordered || act.courier) && n !== task.hits.size) return;
-            const type = light ? 'light' : { clear: 'clear', follow: 'follow', meet: 'person' }[act.kind] || 'find';
-            markers.push({ ...piece, id: 'piece/' + n, type, lit,
-              hidden: !!act.hidden, title: lit ? '켜진 등잔' : piece.title });
-          });
+          markers = markers.map(marker => marker.id === 'activity' ? { ...marker, title: act.kind === 'hide' ? '새끼 양 데려가기' : '건네주기' } : marker);
         }
       }
+      if (running && task.phase === 'guard') markers.push(guardMarker());
+      if ((running && task.phase === 'find') || (eve && complete(id))) {
+        act.pieces.forEach((piece, n) => {
+          const type = piece.type || { light: 'light', clear: 'clear', follow: 'follow', meet: 'person' }[act.kind] || 'find';
+          const found = task?.hits.has(n) || !running;
+          const lit = found && type === 'light';
+          if (lit || (!found && (!(act.kind === 'follow' || act.ordered || act.courier) || n === task.hits.size))) {
+            markers.push({ ...piece, id: 'piece/' + n, type, lit, moving: act.kind === 'follow',
+              hidden: !!act.hidden || type === 'reflection',
+              title: lit ? '켜진 등잔' : piece.title });
+          }
+        });
+      }
+      view?.setCarry(task?.carrying ? act.kind === 'hide' ? '🐑' : act.symbol : '');
       shown = withSymbols(markers);
       view?.setMarkers(shown);
       if (flat) renderFlat();
@@ -263,7 +289,7 @@
       fallback.innerHTML = `<div class="explore-flat-markers">${rows.map(marker =>
         `<button type="button" data-mark="${esc(marker.id)}"><i>${marker.symbol}</i><b>${esc(marker.title)}</b></button>`).join('')}</div>
         ${hidden.length || mystery ? `<details class="explore-nooks"><summary>구석을 살펴보기</summary>
-          <div>${hidden.map((marker, i) => `<button type="button" data-mark="${esc(marker.id)}">${marker.type === 'event' ? '✦ 수상한 곳' : (act.kind === 'hide' ? '🌿 덤불 ' : '👀 사람들 사이 ') + (i + 1)}</button>`).join('')}
+          <div>${hidden.map((marker, i) => `<button type="button" data-mark="${esc(marker.id)}">${marker.type === 'event' ? '✦ 수상한 곳' : marker.type === 'reflection' || marker.type === 'bush' ? esc(marker.title) : '👀 사람들 사이 ' + (i + 1)}</button>`).join('')}
           ${mystery ? [0, 1, 2].map(n => `<button type="button" data-secret-try="${n}">${['왼쪽 구석', '돌 뒤', '오른쪽 구석'][n]}</button>`).join('') : ''}</div></details>` : ''}`;
       const nooks = fallback.querySelector('details');
       if (nooks && (task?.openedNooks || log.found[foundKey(id, 'secret')])) nooks.open = true;
@@ -288,7 +314,8 @@
         <button type="button" class="btn" data-continue>${esc(button)}</button>`, 'explore-dialog', () => { if (curtain === dialog) curtain = null; done?.(); });
       curtain = dialog;
       dialog.querySelector('[data-continue]').onclick = () => {
-        dialog.close(); dialog.remove(); curtain = null;
+        dialog.close(); dialog.remove();
+        if (curtain === dialog) curtain = null;
         action?.();
       };
       return dialog;
@@ -315,24 +342,29 @@
       const first = !log.quests[id];
       log.quests[id] = 'done';
       mark(log, id, 'activity');
-      const reward = first ? { oil: act.kind === 'guard' || act.wool ? 2 : 1, wool: act.wool || id === '1-0' ? 0 : act.kind === 'hide' ? 2 : 1 } : {};
+      const reward = first ? { oil: act.kind === 'guard' || id === '3-3' ? 2 : 1, wool: id === '1-0' ? 0 : act.kind === 'hide' ? 2 : 1 } : {};
       if (id === '1-2' || id === '4-2' || id === 'end') reward.item = act.exclusive;
       const item = grant(reward);
+      if (act.manger) {
+        sheep.wear = { ...sheep.wear, back: '금빛 천사 날개' };
+        view?.kneel();
+      }
       statusChanged();
       refresh();
       Sound.sfx(first ? 'star' : 'pop');
       feedback(first ? '오늘의 활동 완료!' : '다시 해냈어!');
-      card(act.title, act.done || (act.manger ? '구유 앞에 내 양이 조용히 무릎을 꿇었어.' : '함께 해냈어!'), {
-        who: act.who || area.markers.find(m => m.type === 'person').name,
+      card(act.title, act.done, {
+        who: act.finishWho || (act.manger ? '' : npc.name),
         word: act.manger ? '눅 2:7' : '',
-        detail: [reward.oil && `기름 +${reward.oil}`, reward.wool && `털 +${reward.wool}`, item && '옷장 · ' + item].filter(Boolean).join(' · '),
-        button: '계속 둘러보기'
+        detail: [act.manger && hasBlanket && '구유에는 네가 짠 이불이 깔려 있어.', reward.oil && `기름 +${reward.oil}`, reward.wool && `털 +${reward.wool}`, item && '옷장 · ' + item].filter(Boolean).join(' · '),
+        button: act.manger ? '📷 마지막 사진 남기기' : '계속 둘러보기',
+        action: act.manger ? photo : undefined
       });
     }
     function initialTask(duration) {
       task = { pieces: act.pieces, hits: new Set(), phase: 'find', done: false, openedNooks: !!act.hidden, duration,
         hiddenIndex: hash(day + id) % Math.max(1, act.pieces.length) };
-      if (act.courier) task.carrying = '';
+      if (act.kind === 'guard') view?.tendFire(false);
       if (duration) {
         task.until = performance.now() + duration * 1000;
         timer.hidden = false; timer.textContent = duration + '초';
@@ -348,93 +380,113 @@
         }, 120);
       }
       if (act.kind === 'follow' && id === '1-2') view?.react('activity', 'doves');
-      if (act.kind === 'order') act.pieces.forEach((_, i) => setTimeout(() => { if (!dead && task) Sound.sfx('exploreBell', i); }, i * 240));
       refresh();
-      feedback(act.kind === 'order' ? act.pieces.map(x => x.title).join(' → ') :
-        act.kind === 'follow' ? '빛이 이어지는 다음 자리까지 따라가 봐.' :
-        act.courier ? '우물에서 받아 집으로 가져가 봐.' : `근처에서 ${act.pieces.length}개를 찾아봐.`);
+      if (act.kind === 'order') playHint();
+      else feedback(act.courier ? '우물에서 물동이를 받아 보자.' : `${act.title} · 0/${act.pieces.length}`);
+    }
+    function playHint() {
+      hintTimers.forEach(clearTimeout);
+      const order = act.sequence || act.pieces.map((_, n) => n);
+      // 소리를 끈 기기와 2D에서도 순서를 확인할 수 있다.
+      feedback('힌트 · ' + order.map(n => act.pieces[n].title).join(' → '));
+      hintTimers = order.map((n, beat) => setTimeout(() => {
+        if (dead || task?.done) return;
+        Sound.sfx('exploreBell', n);
+        if (act.sequence) view?.react('piece/' + n, 'note');
+      }, beat * 420));
     }
     function startActivity() {
-      const who = act.who || area.markers.find(m => m.type === 'person').name;
       const prior = log.quests[id] === 'done';
-      if (act.manger) {
-        if (!christmas) return card(act.title, '문틈으로 따뜻한 빛이 새어 나와.');
-        view?.react('sheep', 'sleep'); return win();
+      if ((act.requiresStory || act.manger) && !Core.data.done[id]) {
+        return card(act.title, '오늘 이야기를 마친 뒤 여기서 이어갈 수 있어.', {
+          button: '오늘 이야기 보기', action: () => App.go(id)
+        });
       }
-      if (act.wool) {
-        return card(act.title, act.intro, { who, button: act.button, action: () => {
-          if (prior) return win();
-          if ((record.woolBag[wool] || 0) < act.wool) return card(act.title, '털이 모이면 다시 와 줘', { who });
-          record.woolBag[wool] -= act.wool;
+      if (act.manger) {
+        return card(act.title, act.intro, { who: npc.name, button: '구유 앞에 머물기', action: () => {
+          task = { done: false };
           win();
         } });
       }
       if (task && !task.done) {
-        if (task.phase === 'return') {
-          if (act.courier && task.hits.size < act.pieces.length) {
-            task.carrying = ''; task.phase = 'find'; refresh(); feedback('물동이를 내려놓았어. 우물로 돌아가 봐.'); return;
-          }
-          win(); return;
-        }
-        if (task.phase === 'guard') return feedback('늑대 그림자가 나타난 곳에 양을 데려가 봐.');
-        return feedback(`${task.hits.size}/${task.pieces.length} 찾았어.`);
+        if (task.phase === 'return' && !act.handoff) return handOver();
+        if (task.phase === 'guard') return feedback('늑대 그림자 곁으로 등불을 가져가 봐.');
+        if (task.phase === 'return') return feedback(task.carrying + ' · ' + act.handoff[0]);
+        return feedback(`${task.hits.size}/${task.pieces.length} · ${act.title}`);
       }
       const duration = act.time || (prior && act.replayTime);
-      const intro = act.intro || (act.kind === 'meet' ? '여기 있는 사람들 이야기를 들어 봐.' :
-        act.kind === 'clear' ? '길을 막은 돌을 톡톡 눌러 치워 봐.' : '표시가 있는 곳을 차례로 살펴봐.');
-      card(act.title, intro, { who, button: duration ? `${duration}초 찾기 시작` : '시작', action: () => initialTask(duration) });
+      const start = () => initialTask(duration);
+      if (act.meetFirst) {
+        const [, line, who] = currentLine(npc);
+        mark(log, id, npc.id); statusChanged();
+        return card(npc.title, line, { who: who || npc.name, action: () => card(act.title, act.intro, { who: npc.name, button: '깃털 찾기', action: start }) });
+      }
+      card(act.title, act.intro, { who: npc.name, button: duration ? `${duration}초 도전 시작` : '시작', action: start });
     }
-    function guardMarkers() {
-      const positions = [[-4.8, -2.1], [4.5, -.6], [-1.5, 3.5]];
-      return [{ id: 'wolf', title: '늑대 그림자', type: 'guard', pos: positions[task.wolves || 0] }];
+    function guardMarker() {
+      const index = task.wolves || 0;
+      return { id: 'wolf/' + index, title: '늑대 그림자', type: 'guard', pos: act.wolves[index] };
+    }
+    function handOver() {
+      task.carrying = '';
+      if (act.courier && task.hits.size < act.pieces.length) {
+        task.phase = 'find'; refresh(); return feedback(`물동이를 내려놓았어 · ${task.hits.size}/3. 우물로 돌아가자.`);
+      }
+      if (act.kind === 'guard') {
+        task.phase = 'guard';
+        view?.tendFire(true);
+        Sound.sfx('star');
+        refresh(); return feedback('불이 다시 타올라! 등불을 켜고 늑대 그림자 셋을 쫓아내자.');
+      }
+      win();
     }
     function pickPiece(n) {
       if (!task || task.done || task.hits.has(n) || !task.pieces[n]) return;
       if (task.until && performance.now() > task.until) return;
-      if (act.kind === 'hide' && n !== task.hiddenIndex) return feedback('이 덤불엔 없어. 다른 곳을 살펴봐.');
-      if (act.kind === 'order' && n !== task.hits.size) {
+      const piece = task.pieces[n];
+      if (act.kind === 'hide' && n !== task.hiddenIndex) {
+        view?.react('piece/' + n, 'rustle');
+        Sound.sfx('tap'); return feedback('잎사귀만 바스락거려. 다른 덤불을 살펴보자.');
+      }
+      const expected = act.sequence?.[task.hits.size] ?? task.hits.size;
+      if (act.kind === 'order' && n !== expected) {
         task.hits.clear(); refresh();
-        Sound.sfx('tap'); feedback('처음부터 다시 · ' + task.pieces.map(piece => piece.title).join(' → ')); return;
+        Sound.sfx('tap'); playHint(); return;
       }
       if (act.kind === 'clear' && !task.rocks?.has(n)) {
         task.rocks ||= new Set(); task.rocks.add(n);
+        view?.react('piece/' + n, 'rustle');
         feedback('돌이 흔들렸어. 한 번 더 톡!'); Sound.sfx('tap'); return;
       }
-      const piece = task.pieces[n];
       task.hits.add(n);
-      Sound.sfx(act.kind === 'order' ? 'exploreBell' : 'pop', n);
+      Sound.sfx(act.kind === 'hide' ? 'sheep' : act.kind === 'order' ? 'exploreBell' : 'pop', n);
       navigator.vibrate?.(12);
-      view?.react('piece/' + n);
-      feedback((piece.text || (act.kind === 'light' && n !== act.petals ? '등불을 밝혔어.' : '찾았다!')) + ` · ${task.hits.size}/${task.pieces.length}`);
+      view?.react('piece/' + n, act.kind === 'hide' ? 'lamb' : undefined);
+      const last = task.hits.size === task.pieces.length;
+      const progress = ` · ${task.hits.size}/${task.pieces.length}`;
+      const prompts = { light: '등불을 밝혔어.', clear: '돌을 길 밖으로 굴렸어.', bell: '음이 이어졌어.', door: '마구간 문에 닿았어.' };
+      feedback((prompts[piece.type || act.kind] || (act.ordered ? '길 표지를 지났어.' : '찾았다!')) + progress);
       if (act.kind === 'meet' && piece.text) {
-        const last = task.hits.size === task.pieces.length;
-        if (last) task.phase = 'return';
+        if (last) task.phase = 'heard';
         refresh();
-        return card(piece.title, piece.text, { who: id === '4-1' ? '여관 주인' : piece.title,
-          button: '계속', action: last ? win : undefined });
+        return card(piece.title, piece.text, { who: piece.type === 'door' ? '' : piece.title,
+          button: '계속', done: last ? win : undefined });
       }
-      if (act.courier) { task.carrying = '물동이'; task.phase = 'return'; }
-      if (act.kind === 'hide' || task.hits.size === task.pieces.length) {
-        clearInterval(interval); timer.hidden = true;
-        if (act.kind === 'deliver' || act.kind === 'hide') {
-          task.carrying = act.kind === 'hide' ? '새끼 양' : act.courier ? '물동이' : '물건을 들고 있어';
-          task.phase = 'return';
-          refresh(); return feedback('활동 자리로 돌아가자.');
-        }
-        if (act.kind === 'guard') {
-          task.phase = 'guard';
-          refresh(); return feedback('모닥불이 살아났어. 등불로 늑대 그림자 셋을 쫓아내자.');
-        }
-        return win();
+      if (act.courier || act.kind === 'hide' || (last && (act.kind === 'deliver' || act.kind === 'guard'))) {
+        task.carrying = act.kind === 'hide' ? '새끼 양' : act.cargo;
+        task.phase = 'return';
+        refresh(); return feedback(task.carrying + ' · ' + (act.handoff?.[0] || '활동을 시작한 자리로 돌아가자.'));
       }
+      if (last) return win();
       refresh();
     }
     function showGuide() {
-      const n = stars(id).n;
+      const { n, max } = stars(id);
       const rows = area.markers.filter(m => m.type !== 'secret' && !m.extra);
+      const secret = area.markers.find(m => m.type === 'secret');
       card('이 장소에서 할 일', flat ? '목록에서 골라 볼 수 있어.' : '바닥을 톡 눌러 걸어가. 화면을 밀면 방향을 둘러볼 수 있어.', {
-        detail: `찾은 것 ${n}/${rows.length}`,
-        extra: `<ul class="explore-checklist">${rows.map(m => `<li>${log.found[foundKey(id, m.id)] ? '✓' : icons[m.type]} ${esc(m.title)}</li>`).join('')}${area.markers.some(m => m.type === 'secret') ? '<li>⚿ 조용한 구석에도 들러 봐.</li>' : ''}</ul>`
+        detail: `찾은 것 ${n}/${max}`,
+        extra: `<ul class="explore-checklist">${rows.map(m => `<li>${log.found[foundKey(id, m.id)] ? '✓' : icons[m.type]} ${esc(m.title)}</li>`).join('')}${secret ? `<li>${log.found[foundKey(id, secret.id)] ? '✓ ' + esc(secret.title) : '⚿ 조용한 구석에도 들러 봐.'}</li>` : ''}</ul>`
       });
     }
     function photo() {
@@ -444,7 +496,10 @@
           if (photoBusy) return;
           photoBusy = true;
           let shot;
-          try { shot = view?.photo?.(); } catch { /* 기기가 장면을 저장할 수 없으면 양의 초상으로 남김 */ }
+          try {
+            if (act.manger) view?.kneel(false);
+            shot = view?.photo();
+          } catch { /* 기기가 장면을 저장할 수 없으면 양의 초상으로 남김 */ }
           if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
             !document.documentElement.classList.contains('no-motion')) {
             stage.animate([{ filter: 'brightness(2.45)' }, { filter: 'brightness(1)' }], { duration: 235 });
@@ -454,11 +509,14 @@
           let url;
           try {
             url = shot || await Field.portrait(sheep.species, sheep);
-            if (dead) return;
+            if (shot) await photoFile(id, data.token, shot);
+            if (dead) {
+              if (shot) void deletePhoto(id, data.token);
+              return;
+            }
             const old = log.photos[id];
             log.photos[id] = data;
             mark(log, id, 'photo'); statusChanged(); refresh();
-            if (shot) void photoFile(id, data.token, shot);
             if (old?.token) void deletePhoto(id, old.token);
             Sound.sfx('exploreBell', 3);
             card('찰칵!', '여정 앨범에 사진을 담았어.', { extra: `<img class="explore-photo-preview" alt="${esc(sheep.name)}의 기념사진" src="${esc(url)}">` });
@@ -494,35 +552,34 @@
       if (!marker) return;
       if (marker.type === 'exit') return enter(marker.place);
       if (marker.id.startsWith('piece/')) return pickPiece(Number(marker.id.split('/')[1]));
-      if (marker.id === 'wolf') {
+      if (marker.type === 'guard') {
         view?.react(marker.id, 'scare');
         Sound.sfx('patrolScare'); task.wolves = (task.wolves || 0) + 1;
-        if (task.wolves >= 3) return win();
-        feedback(`그림자가 물러갔어 · ${task.wolves}/3`); return refresh();
+        if (task.wolves >= act.wolves.length) return win();
+        feedback(`그림자가 물러갔어 · ${task.wolves}/${act.wolves.length}`); return refresh();
       }
+      if (marker.id === 'handoff' && task?.phase === 'return') return handOver();
       if (marker.type === 'quest') return startActivity();
       if (marker.type === 'person') {
         mark(log, id, marker.id); statusChanged(); refresh();
-        const line = marker.lines.findLast(([seen]) => !seen || Core.data.done[seen]);
+        const line = currentLine(marker);
         return say(marker, line?.[1], line?.[2] || marker.name);
       }
       if (marker.type === 'secret') {
         mark(log, id, marker.id);
         const assigned = !['1-2', '4-2', 'end'].includes(id);
-        if (id === '3-3') view?.react(marker.id, 'star');
         const item = assigned && act.exclusive ? grant({ item: act.exclusive }) : '';
-        statusChanged(); refresh(); view?.react(marker.id);
-        return card(marker.title, marker.text || (id === '3-3' ? '오늘따라 저 별이 밝다' : '걸음을 늦추니 숨어 있던 자리가 보였어.'), { detail: item ? '옷장 · ' + item : '비밀 장소를 찾았어!' });
+        statusChanged(); refresh(); view?.react(marker.id, marker.effect);
+        return card(marker.title, marker.text, { detail: item ? '옷장 · ' + item : '비밀 장소를 찾았어!' });
       }
       if (marker.type === 'photo') return photo();
       if (marker.type === 'event') return smallEvent(marker);
-      if (marker.id === 'manger') return christmas ? card('마구간', '별빛 아래에 구유가 있어.', { word: '눅 2:7' }) :
-        card('마구간', eve ? '문틈으로 따뜻한 빛이 새어 나와.' : '소와 나귀가 자고 있다');
       if (marker.type === 'verse') {
         mark(log, id, marker.id); statusChanged(); refresh();
         return card('말씀 비석', '', { word: marker.ref, detail: '말씀 모음에 담았어.' });
       }
     }
+    if (act.manger && complete(id)) sheep.wear = { ...sheep.wear, back: '금빛 천사 날개' };
     refresh();
     if (!Field3D.supported()) return no3D();
     try {

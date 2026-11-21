@@ -2433,7 +2433,7 @@
     render();
     if (openWardrobe) dress();
     else if (flock) flockSheet();
-    else if (gift && giftReady()) giftSheet();
+    else if (typeof gift === 'string' || gift && giftReady()) giftSheet(gift);
     if (mode === 'loading') start3D();
     else { greetFlock(); celebrateMainGrowth(); }
     if (!Core.TEST_DATE) {
