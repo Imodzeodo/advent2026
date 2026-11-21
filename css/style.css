@@ -641,6 +641,8 @@ html.no-motion .who.speaking { animation: none; }
 .tonight-step b { font-size: 14px; }
 .tonight-step p, .tonight-step small { display: block; color: var(--dim); margin: 1px 0 0; font-size: 12px; line-height: 1.4; }
 .tonight-step.is-next p { color: #fff0c8; }
+.tonight-step small.tonight-gift { color: #ffd98a; font-weight: 700; }
+.tonight-step small.tonight-lost { color: #ffb4a8; }
 .tonight-ellipsis { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tonight-mark { color: #b6bbd6; font-weight: 700; text-align: right; }
 .tonight-step[data-done] .tonight-mark { color: #b4e6bf; }
