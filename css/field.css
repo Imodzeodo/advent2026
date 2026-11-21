@@ -56,6 +56,25 @@
 .field-slot svg, .field-sheep svg, .field-stable svg { width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .field-sheep { z-index: 3; transform: translate(-50%, -83%); width: 58px; }
 .field-sheep svg { animation: field-graze 14s var(--delay) ease-in-out infinite; transform-origin: 50% 88%; }
+.field-miss, .field-sheep.react-heart::after { position: absolute; top: -4px; pointer-events: none; }
+.field-miss { left: 74%; font-size: 16px; line-height: 1; }
+.field-sheep.react-heart::after { content: '♥' / ''; left: 40%; color: #ff9cbd; font-size: 18px; animation: field-greet-heart 1.35s ease-out both; }
+.field-sheep.react-heart svg { animation: field-greet-hop .9s ease-out both; }
+@keyframes field-greet-heart {
+  0% { opacity: 0; transform: translateY(8px) scale(.6); }
+  25% { opacity: 1; transform: translateY(-4px); }
+  72% { opacity: 1; }
+  to { opacity: 0; transform: translateY(-23px); }
+}
+@keyframes field-greet-hop {
+  28% { transform: translateY(-10px); }
+  49% { transform: translateY(0); }
+  68% { transform: translateY(-5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-sheep.react-heart svg, .field-sheep.react-heart::after { animation: none; }
+}
+.no-motion .field-sheep.react-heart::after { animation: none; }
 .field-sheep:focus-visible, .field-slot:focus-visible { outline: 2px solid var(--gold); border-radius: 12px; z-index: 4; }
 .field-stable { width: 92px; height: 79px; transform: translate(-50%, -86%); }
 .field-glow { filter: blur(5px); animation: field-light 3s ease-in-out infinite; }
@@ -99,19 +118,9 @@
 .field-info-actions .btn.small { padding: 7px 14px; }
 .field-info-card .field-verse { margin: 0; padding: 0; border: 0; background: none; font-size: 13px; }
 .field-info-card.field-tonight p { color: #f8e2ac; }
-.field-lost {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 13px;
-  margin-bottom: 8px;
-  border: 1px solid #dbab7277;
-  border-radius: 13px;
-  background: #322b41;
-}
-.field-lost > span { font-size: 23px; }
-.field-lost strong { display: block; font-size: 14px; }
-.field-lost .link { display: block; padding: 6px 0; color: #ffe2a1; font-size: 14px; }
+.field-info-card.field-lost { background: #322b41; border-color: #dbab7277; }
+.field-info-card.field-streak { background: #32303f; }
+.field-streak .field-streak-wool { color: #ffe4a7; }
 
 .field-sheet {
   box-sizing: border-box;

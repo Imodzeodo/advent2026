@@ -7,6 +7,7 @@
   const VISIT_GAP = 3 * 3600e3;          // 방문 판정 간격
   const NEED = [20, 30, 40, 50, 60, 70, 80, 90, 100];   // Lv1→2 … Lv9→10
   const PET_MAX = 3;
+  const VISIT_MILESTONES = [3, 7, 14];
   const PATROL_SECONDS = 40;
   const PATROL_CUES = {
     start: ['patrolStart', 25], pen: ['patrolPen', 14], scare: ['patrolScare', [18, 30, 24]],
@@ -435,29 +436,58 @@
     return { ok: true, sheep, sp, price };
   }
 
-  function lostCheck() {
+  function lostCheck(afterAbsence = false) {
     if (!has()) return null;
     const data = ensure();
     const missing = data.sheep.find(s => s.lost);
     const today = date();
+    if (missing?.lostFromVisit) return missing;
     if (missing && data.lostOn && daysBetween(data.lostOn, today) >= 2) {
       // 못 찾고 이틀이 지나면 혼자 돌아온다. 선물 재료가 막히지 않게.
       missing.lost = false;
       data.selfReturn = { name: missing.name, day: today };
-      Core.save();
-      return null;
+      if (!afterAbsence) { Core.save(); return null; }
+    } else if (missing) {
+      return missing;
     }
-    if (missing) return missing;
     if (data.lostOn === today) return null;
-    const forced = Core.IS_TEST && Core.params.get('lost') === '1';
-    const hash = [...today].reduce((sum, char) => Math.imul(sum ^ char.charCodeAt(0), 16777619), 2166136261) >>> 0;
-    if (!forced && (data.sheep.length < 2 || data.cared !== today ||
-        (data.lostOn && daysBetween(data.lostOn, today) < 4) || hash % 100 >= 30)) return null;
-    const lost = data.sheep[(hash >>> 8) % data.sheep.length];
+    let lost;
+    if (afterAbsence) {
+      lost = data.sheep.reduce((oldest, sheep) => (sheep.shornOn || '') < (oldest.shornOn || '') ? sheep : oldest);
+      lost.lostFromVisit = true;
+      if (lost === missing) delete data.selfReturn;
+    } else {
+      const forced = Core.IS_TEST && Core.params.get('lost') === '1';
+      const hash = [...today].reduce((sum, char) => Math.imul(sum ^ char.charCodeAt(0), 16777619), 2166136261) >>> 0;
+      if (!forced && (data.sheep.length < 2 || data.cared !== today ||
+          (data.lostOn && daysBetween(data.lostOn, today) < 4) || hash % 100 >= 30)) return null;
+      lost = data.sheep[(hash >>> 8) % data.sheep.length];
+    }
     lost.lost = true;
     data.lostOn = today;
     Core.save();
     return lost;
+  }
+
+  function recordVisit(data, today) {
+    const gap = daysBetween(data.lastVisit, today);
+    lostCheck(gap >= 3);
+    if (gap <= 0) return null;
+    const previous = data.visitStreak;
+    const streak = gap === 1 ? (Number.isSafeInteger(previous) && previous > 0 ? previous : 1) + 1 : 1;
+    data.lastVisit = today;
+    data.visitStreak = streak;
+    if (today < Core.XMAS && VISIT_MILESTONES.includes(streak) && !data.visitRewards?.[streak]) {
+      let wool = streak === 3 ? { white: 2 } : { gold: 1 };
+      if (streak === 7) {
+        const colors = [...new Set(data.sheep.map(woolOf))].slice(0, 2);
+        wool = Object.fromEntries(colors.map(id => [id, colors.length === 1 ? 2 : 1]));
+      }
+      Object.entries(wool).forEach(([id, count]) => addWool(data.woolBag, id, count));
+      (data.visitRewards ||= {})[streak] = { wool };
+    }
+    Core.save();
+    return { gap };
   }
 
   /* ---------- 2D 그림 (3D가 안 될 때 · 초상 대체 · 카드) ---------- */
@@ -707,7 +737,7 @@
     const moving = extra.moving || null;
     return {
       sheep: data.sheep.map(s => ({ id: s.id, species: s.species, name: s.name, level: s.level, wear: s.wear || null, lost: !!s.lost,
-        wool: woolLength(s), highlight: s.id === extra.selected })),
+        wool: woolLength(s), highlight: s.id === extra.selected, miss: extra.miss?.has(s.id) || false })),
       slots: Object.fromEntries(Object.entries(data.slots).filter(([, v]) => v)),
       visitors: activeVisitors(data).map(v => ({ id: v.id, species: v.species })),
       stable: !!data.items['마구간'],
@@ -860,7 +890,7 @@
     const button = root.querySelector('.field-enter');
     if (button) button.onclick = page;
     const shearLine = root.querySelector('[data-tonight="field"]:not([data-done]) p');
-    if (button && shearLine && !shearLine.querySelector('.field-tonight-flock')) {
+    if (button && shearLine && !lostSheep()?.lostFromVisit && !shearLine.querySelector('.field-tonight-flock')) {
       const left = shearTonight();
       if (left) {
         const flock = document.createElement('button');
@@ -920,7 +950,11 @@
       if (app.firstChild !== from) return;
     }
     current?.teardown();
-    lostCheck();
+    const data = ensure();
+    const visit = recordVisit(data, date());
+    const gap = visit?.gap;
+    const greetIds = visit ? data.sheep.filter(s => !s.lost).slice(0, gap === 1 ? 1 : gap === 2 ? 2 : 4).map(s => s.id) : [];
+    const miss = new Set(gap === 1 || gap === 2 ? greetIds : []);
     visitCheck();
     Sound.music('night');
     Sound.ambience('나의 들판');
@@ -955,8 +989,9 @@
     let episode = tonight && Core.epById(tonight);
     let word = '';
     let unlock;
+    let dismissedLost = null;
     let servedTonight = field().selfReturn?.day === date() ? `${josa(field().selfReturn.name, '이가')} 밤사이 돌아왔어.` : '';
-    let visitTimer = 0, woolDayTimer = 0, woolBumpTimer = 0, woolGainTimer = 0, lastShearTick = -Infinity;
+    let visitTimer = 0, greetTimer = 0, woolDayTimer = 0, woolBumpTimer = 0, woolGainTimer = 0, lastShearTick = -Infinity;
     let woolTouched = false;
     const greetedLegends = new Set();
     const api = { get view() { return view; }, teardown };
@@ -993,6 +1028,7 @@
       clearTimeout(thumbTimer);
       clearTimeout(holdTimer);
       clearTimeout(visitTimer);
+      clearTimeout(greetTimer);
       clearTimeout(woolDayTimer);
       clearTimeout(woolBumpTimer);
       clearTimeout(woolGainTimer);
@@ -1001,7 +1037,7 @@
       view = null;
       if (current === api) current = null;
     }
-    const state = () => stateOf(ensure(), { moving, selected });
+    const state = () => stateOf(ensure(), { moving, selected, miss });
     const react = (id, kind) => {
       if (view) { try { view.react(id, kind); } catch { /* 연출 실패는 무시 */ } return; }
       const escaped = CSS.escape(id);
@@ -1073,10 +1109,51 @@
       stageEl.classList.remove('loading');
       render();
       if (selected) focus(selected);
+      greetFlock();
+    }
+
+    async function greetFlock() {
+      if (!alive || !greetIds.length) return;
+      const dialog = root.querySelector('dialog[open]');
+      if (dialog) {
+        dialog.addEventListener('close', greetFlock, { once: true });
+        return;
+      }
+      const calm = document.documentElement.classList.contains('no-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const quick = gap === 1;
+      Sound.sfx('fieldGreet');
+      try {
+        if (view?.greet && !calm) {
+          if (quick) greetTimer = setTimeout(() => {
+            if (alive && !selected && !busy && !moving && !root.querySelector('dialog[open]')) focus(null);
+          }, 1250);
+          await view.greet(greetIds);
+        } else {
+          greetIds.forEach(id => react(id, 'heart'));
+          await wait(quick ? 950 : 1400);
+        }
+      } catch { /* 반겨 주기 연출에 실패해도 들판은 계속 쓸 수 있다. */ }
+      if (!alive) return;
+      const missed = miss.size > 0;
+      miss.clear();
+      if (view) {
+        try { view.update(state()); } catch { /* 다음 화면 갱신에서 다시 */ }
+        if (selected) focus(selected);
+        queueThumb();
+      } else {
+        stageEl.querySelectorAll('.field-miss').forEach(bubble => bubble.remove());
+      }
+      if (missed && !busy && !moving) showHoldFeedback('보고 싶었대!');
     }
 
     function infoCard(data) {
       if (moving) return '';
+      const missing = lostSheep();
+      if (missing && missing.id !== dismissedLost) return `<aside class="field-info-card field-lost" aria-labelledby="field-lost-title">
+        <div class="field-info-head"><h2 id="field-lost-title">${esc(josa(missing.name, '이가'))} ${missing.lostFromVisit ? '기다리다 길을 잃었어.' : '안 보여!'}</h2>
+          <button type="button" class="link field-info-close">나중에</button></div>
+        <div class="field-info-actions"><button type="button" class="btn small field-find">🔦 찾으러 가자</button></div>
+      </aside>`;
       const tipIndex = tourStep === 3 ? 2 : tourStep < 2 ? tourStep : -1;
       const tip = FIELD_TOUR[tipIndex];
       if (tip) return `<aside class="field-info-card field-coach" aria-labelledby="field-coach-title">
@@ -1104,6 +1181,13 @@
           <div class="field-info-actions"><button type="button" class="btn small field-unlock-try" ${unlock === 'patrol' && mode === 'loading' ? 'disabled' : ''}>해 보기</button></div>
         </aside>`;
       }
+      const streak = VISIT_MILESTONES.find(day => data.visitRewards?.[day] && !data.visitRewards[day].seen);
+      if (streak) return `<aside class="field-info-card field-streak" data-streak="${streak}" aria-labelledby="field-streak-title">
+        <div class="field-info-head"><h2 id="field-streak-title">${streak}일 연속! 양들이 너를 기다렸어</h2>
+          <button type="button" class="link field-info-close">확인</button></div>
+        <p class="field-streak-wool">보너스 털 ${Object.entries(data.visitRewards[streak].wool)
+          .map(([id, count]) => `${esc(woolType(id).name)} +${count}`).join(' · ')}</p>
+      </aside>`;
       if (episode) {
         if (data.wordDay !== date()) {
           data.wordDay = date();
@@ -1128,10 +1212,18 @@
       const markup = infoCard(data);
       info.innerHTML = markup;
       root.classList.toggle('has-field-info', Boolean(markup));
+      const lostCard = info.querySelector('.field-lost');
+      const streakCard = info.querySelector('.field-streak');
+      lostCard?.querySelector('.field-find').addEventListener('click', () => search(lostSheep()));
       info.querySelector('.field-coach-next')?.addEventListener('click', () => advanceTour(tourStep + 1));
       info.querySelector('.field-info-close')?.addEventListener('click', () => {
         if (info.querySelector('.field-coach')) return advanceTour(tourStep === 3 ? 4 : 2);
-        if (unlock) unlock = undefined;
+        if (lostCard) dismissedLost = lostSheep()?.id;
+        else if (unlock) unlock = undefined;
+        else if (streakCard) {
+          data.visitRewards[streakCard.dataset.streak].seen = true;
+          Core.save();
+        }
         else if (episode) episode = null;
         else word = '';
         renderInfo(data);
@@ -1147,7 +1239,7 @@
     }
 
     function focusNext() {
-      const button = info.querySelector('.field-coach-next') || info.querySelector('.field-info-close') ||
+      const button = info.querySelector('.field-find, .field-coach-next') || info.querySelector('.field-info-close') ||
         care.querySelector('.field-shear') || back;
       button.focus({ preventScroll: true });
     }
@@ -1176,8 +1268,8 @@
       const shearable = data.sheep.filter(sheep => shearReady(sheep, today))
         .sort((a, b) => woolPriority(woolOf(b)) - woolPriority(woolOf(a)));
       const tonightLeft = shearTonight(today);
+      const hasSheepInField = data.sheep.some(sheep => !sheep.lost);
       const marketOpen = featureOpen('market', data);
-      const missing = data.sheep.find(s => s.lost);
       const visitor = visitors[0];
       count.textContent = `양 ${data.sheep.length}마리`;
       count.setAttribute('aria-label', count.textContent + ' · 내 양들 보기');
@@ -1195,11 +1287,10 @@
         ${moving ? '' : `${mode === '2d' && shearable.length ?
           `<button type="button" class="btn field-shear${tonightLeft ? '' : ' ghost'}">${tonightLeft ? '✂️ 털 깎기' : '✂️ 더 깎기'}
             <small>· ${esc(shearable[0].name)} · ${woolType(woolOf(shearable[0])).name}</small></button>` :
-          `<p class="field-shear-hint">${!shearable.length ? '✓ 오늘 밤엔 다 깎았어' : tonightLeft ? '✂️ 양을 쓱쓱 문질러 봐 · ' + tonightLeft + '마리 남음' : '✓ 오늘 밤 몫은 다 했어 · 더 깎아도 돼'}</p>`}
+          hasSheepInField ? `<p class="field-shear-hint">${!shearable.length ? '✓ 오늘 밤엔 다 깎았어' : tonightLeft ? '✂️ 양을 쓱쓱 문질러 봐 · ' + tonightLeft + '마리 남음' : '✓ 오늘 밤 몫은 다 했어 · 더 깎아도 돼'}</p>` : ''}
           <p class="field-feedback" role="status">${esc(message)}</p>`}`;
       const dex = Object.keys(data.dex).length;
-      manage.innerHTML = `${missing ? `<aside class="field-lost"><span aria-hidden="true">🐑</span><div><strong>${esc(josa(missing.name, '이가'))} 안 보여!</strong><button type="button" class="link field-find">찾으러 가자 →</button></div></aside>` : ''}
-        ${moving ? `<p class="field-move-tip"><span>${esc(josa(moving.item, '을를'))} 놓을 빈 칸을 골라 줘.</span><button type="button" class="link field-cancel-move">취소</button></p>` :
+      manage.innerHTML = `${moving ? `<p class="field-move-tip"><span>${esc(josa(moving.item, '을를'))} 놓을 빈 칸을 골라 줘.</span><button type="button" class="link field-cancel-move">취소</button></p>` :
           `${giftBox(data)}<div class="field-actions">
             <button type="button" class="field-act field-flock" aria-haspopup="dialog"><span aria-hidden="true">🐑</span>내 양들</button>
             ${featureTile('patrol', `<button type="button" class="field-act field-patrol"><span aria-hidden="true">🔦</span>밤 순찰${data.patrolDay !== today ? '<i class="field-dot" aria-label="오늘 보상 남음"></i>' : ''}</button>`)}
@@ -1219,7 +1310,6 @@
       manage.querySelector('.field-market')?.addEventListener('click', shop);
       manage.querySelector('.field-card')?.addEventListener('click', () => cardSheet('들판 카드', () => Card.drawField(), 'FIELD', '양과 별이 그려진 나의 들판 카드'));
       manage.querySelector('.field-share-link')?.addEventListener('click', shareSheet);
-      manage.querySelector('.field-find')?.addEventListener('click', () => search(missing));
       manage.querySelectorAll('[data-locked]').forEach(button => {
         button.onclick = () => {
           const feature = FIELD_FEATURES[button.dataset.locked];
@@ -1229,7 +1319,7 @@
       bindTestTools(data);
       if (mode === '2d') {
         stageEl.className = 'field-stage is-2d';
-        stageEl.innerHTML = mapMarkup(data, moving, marketOpen);
+        stageEl.innerHTML = mapMarkup(data, moving, marketOpen, miss);
         stageEl.querySelectorAll('[data-slot]').forEach(button => { button.onclick = () => selectSlot(Number(button.dataset.slot)); });
         stageEl.querySelectorAll('[data-sheep-id]').forEach(button => {
           button.onclick = () => handlers.onTapSheep(button.dataset.sheepId);
@@ -1830,11 +1920,14 @@
     }
 
     function search(sheep) {
+      if (!sheep?.lost || busy || moving) return;
       const modal = sheet('잃은 양 찾기', '<div class="gamebox"></div>');
       Games.어둠찾기(modal.querySelector('.gamebox'), {
         done() {
           if (!modal.open || !sheep.lost) return;
+          const reunion = sheep.lostFromVisit;
           sheep.lost = false;
+          delete sheep.lostFromVisit;
           field().found = (field().found || 0) + 1;
           field().foundTotal = field().found;
           const oil = 2 + bonus('lostOil');
@@ -1846,9 +1939,9 @@
           render(`${josa(sheep.name, '이가')} 돌아왔어! 기름 +${oil}`);
           react(sheep.id, 'join');
           const text = (window.BIBLE || {})['눅 15:4'] || verse;
-          sheet(`찾았어! · 기름 +${oil}`, `<p class="field-found-line">${foundLine}</p>
+          sheet(reunion ? '다시 만났어!' : `찾았어! · 기름 +${oil}`, `<p class="field-found-line">${reunion ? `등불 기름 +${oil}` : foundLine}</p>
             <blockquote class="field-verse">${esc(Array.isArray(text) ? text[0] : text)}<cite>누가복음 15:4</cite></blockquote>`);
-          if (up) setTimeout(() => celebrate([up]), 600);
+          if (up) setTimeout(() => celebrate([up], !reunion), 600);
           badges();
         }
       }, '양');
@@ -1996,6 +2089,7 @@
       if (!Core.PREVIEW_ALL) return '';
       const tools = [['features-all', '기능 모두 열기'], ['features-first', '처음 단계로'],
         ['oil', '기름 +20'], ['day', '하루 넘기기'], ['wool-grow', '털 다시 자라기'], ['wool-add', '털 바구니 +10씩'], ['gifts-all', '선물 모두 열기'],
+        ['visit-2', '방문 기록 2일 전으로'], ['visit-4', '방문 기록 4일 전으로'],
         ['lost', '잃은 양 부르기'], ['visit', '방문객 부르기'], ['rare', '희귀 부르기'],
         ['legend', '전설 조건 모두 채우기'], ['exp', '모든 양 +100 경험치'], ['patrol', '순찰 보상 초기화']];
       return `<div class="field-test-tools"><small>🧪 미리보기 전용 시험 도구${mode === '2d' ? ' · 2D 화면' : mode === '3d' ? ' · 3D 화면' : ''}</small>
@@ -2028,6 +2122,11 @@
         render('🧪 모든 털 +10뭉치');
       });
       on('gifts-all', () => { allGiftsOpen = true; render('🧪 선물을 모두 열었어.'); });
+      [2, 4].forEach(days => on('visit-' + days, () => {
+        data.lastVisit = new Date(Date.parse(date()) - days * DAY_MS).toISOString().slice(0, 10);
+        Core.save();
+        render(`🧪 방문 기록을 ${days}일 전으로 돌렸어. 홈에 갔다가 들판으로 와 봐.`);
+      }));
       on('lost', () => {
         const left = data.sheep.filter(s => !s.lost);
         if (!left.length) return render('🧪 길 잃을 양이 없어요');
@@ -2052,9 +2151,10 @@
     }
 
     render();
-    if (mode === 'loading') start3D();
     if (flock) flockSheet();
     else if (gift && giftReady()) giftSheet();
+    if (mode === 'loading') start3D();
+    else greetFlock();
     if (!Core.TEST_DATE) {
       const watchWoolDay = () => {
         const untilMidnight = DAY_MS - (Date.now() + 9 * 3600000) % DAY_MS;
@@ -2068,7 +2168,7 @@
     }
   }
 
-  function mapMarkup(data, moving, marketOpen) {
+  function mapMarkup(data, moving, marketOpen, miss) {
     const slotsHTML = slots.map(([x, y], i) => {
       const id = data.slots[i];
       if (!marketOpen && !id) return '';
@@ -2081,7 +2181,7 @@
       const [x, y] = pasture[i];
       if (sheep.lost) return '';
       return `<button type="button" class="field-sheep" style="${position(x, y)};--delay:${-i * 1.47}s;--drift:${i % 2 ? -12 : 12}px;z-index:${3 + Math.round(y / 40)}" data-sheep-id="${esc(sheep.id)}" data-stage="${stage(sheep)}"
-        aria-label="${esc(sheep.name)} · ${woolType(woolOf(sheep)).name}" ${moving ? 'disabled' : ''}>${sprite(sheepArt(sheep, { shorn: !woolLength(sheep) }), '-40 -50 80 58')}</button>`;
+        aria-label="${esc(sheep.name)} · ${woolType(woolOf(sheep)).name}" ${moving ? 'disabled' : ''}>${sprite(sheepArt(sheep, { shorn: !woolLength(sheep) }), '-40 -50 80 58')}${miss?.has(sheep.id) ? '<span class="field-miss" aria-hidden="true">💭</span>' : ''}</button>`;
     }).join('');
     const visitorsHTML = activeVisitors(data).map((v, i) => {
       const [x, y] = gate[i];

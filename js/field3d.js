@@ -542,10 +542,25 @@
       const [x, z] = pickSpot(rnd);
       obj.position.set(x, groundY(x, z), z); obj.rotation.y = rnd() * 6;
       obj.userData.id = s.id; obj.userData.ai = { mode: 'idle', t: rnd() * 3, tx: x, tz: z, sleepy: s.species === 'sleepy' };
-      obj.userData.data = s;
+      obj.userData.data = s; setMiss(obj, !!s.miss);
       if (appear) { obj.userData.appear = 1; obj.position.y += 6; }
       scene.add(obj); sheepObjs.set(s.id, obj);
       return obj;
+    }
+    function setMiss(o, on) {
+      if (on && !o.userData.missSp) { const sp = textSprite('💭', { size: 96 }); sp.scale.setScalar(0.75); sp.position.set(0.35, 2.05, 0.3); o.add(sp); o.userData.missSp = sp; }
+      else if (!on && o.userData.missSp) { o.remove(o.userData.missSp); o.userData.missSp.material.map?.dispose(); o.userData.missSp = null; }
+    }
+    // 반겨 주기: 양들이 화면 앞쪽으로 달려와 폴짝·하트 → Promise
+    function greet(ids) {
+      const list = (ids && ids.length ? ids : [...sheepObjs.keys()]).map(id => sheepObjs.get(id)).filter(Boolean);
+      list.forEach((o, i) => {
+        const x = (i - (list.length - 1) / 2) * 1.1, z = 6.2 - Math.abs(x) * 0.15;
+        o.userData.ai = { mode: 'walk', tx: clamp(x, -3, 3), tz: z, then: 'idle', t: 8, fast: 2.2 };
+        setTimeout(() => { if (alive) { react(o.userData.id, 'heart'); o.userData.hop = 1; } }, 2200 + i * 180);
+      });
+      cam.want = new T.Vector3(0, 0, 5.5);
+      return new Promise(r => setTimeout(() => { cam.want = null; r(); }, 3400));
     }
     function rebuildSheep(s) {
       const old = sheepObjs.get(s.id); const pos = old.position.clone(), rot = old.rotation.y, ai = old.userData.ai;
@@ -570,7 +585,7 @@
         const o = sheepObjs.get(s.id);
         if (!o) spawnSheep(s, i, !!update.ready);
         else if (o.userData.level !== s.level && stageOf(o.userData.level) !== stageOf(s.level) || o.userData.wear !== s.wear) rebuildSheep(s);
-        else { o.userData.level = s.level; o.userData.data = s; if (!(shear && shear.o === o)) { const w = s.wool ?? 1; if (w !== o.userData.wool) { o.userData.wool = w; if (w < 0.3) o.userData.shiver = o.userData.shiver ?? 0; } } }
+        else { o.userData.level = s.level; o.userData.data = s; setMiss(o, !!s.miss); if (!(shear && shear.o === o)) { const w = s.wool ?? 1; if (w !== o.userData.wool) { o.userData.wool = w; if (w < 0.3) o.userData.shiver = o.userData.shiver ?? 0; } } }
       });
       for (const [n, obj] of itemObjs) if (st.slots[n] !== obj.userData.item) { scene.remove(obj); disposeObj(obj); itemObjs.delete(n); }
       Object.entries(st.slots || {}).forEach(([n, id]) => { if (id && !itemObjs.has(+n)) placeItem(+n, id, !!update.ready); });
@@ -936,6 +951,7 @@
       u.legs.forEach(l => { l.scale.y = lerp(l.scale.y, ai.mode === 'sleep' ? 0.3 : 1, dt * 3); });
       const breath = 1 + Math.sin(t * 2 + o.position.x * 3) * 0.018; body.scale.set(breath, 1 + (breath - 1) * 0.6, breath);
       if (u.hop) { u.hop = Math.max(0, u.hop - dt * 2.4); o.position.y += Math.sin((1 - u.hop) * Math.PI) * 0.55; }
+      if (u.missSp) u.missSp.position.y = 2.05 + Math.sin(t * 2 + o.position.x) * 0.08;
       if (ai.mode === 'sleep') { u.zz = (u.zz || 0) + dt; if (u.zz > 1.6) { u.zz = 0; const p = o.position.clone(); p.y += 1.3 * u.scale; const z = textSprite('z', { color: '#c9d4ff', size: 70 }); z.scale.setScalar(0.45); z.position.copy(p); z.userData = { v: new T.Vector3(0.2, 0.5, 0), life: 1.5, text: true }; scene.add(z); fxList.push(z); } }
       u.glows.forEach(g => { g.material.opacity = (u.st === 3 ? 0.32 : 0.42) * (0.8 + 0.2 * Math.sin(t * 2 + o.position.x)); });
       animExtras(o, dt, t);
@@ -1219,7 +1235,7 @@
       const o = sheepObjs.get(id); if (!o) return;
       floatText(o.position.clone().add(new T.Vector3(0, 1.1 * o.userData.scale, 0)), text, color);
     }
-    const view = { update, react, feed, focus, welcome, snapshot, patrol, procession, destroy, say, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
+    const view = { update, react, feed, focus, welcome, greet, snapshot, patrol, procession, destroy, say, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
     return view;
   }
 
