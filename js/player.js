@@ -1015,7 +1015,7 @@
     const fieldOpen = !!window.Field?.has();
     const firstSheep = firstDay && Core.data.field?.sheep?.[0];
     const fieldLabel = firstSheep ? `${Core.josa(firstSheep.name, '이가')} 기다려` :
-      fieldOpen && !Field.shearRemaining() ? '들판 들르기' : '오늘 밤 들판으로';
+      fieldOpen && !Field.shearTonight() ? '들판 들르기' : '오늘 밤 들판으로';
     const ov = showOverlay(`
       <div class="card done">
         ${firstDay ? '<div class="first-day-banner">대림절이 시작됐어요 · 첫째 초</div>' : ''}
@@ -1046,9 +1046,12 @@
     ov.querySelectorAll('[data-badge]').forEach(button => { button.onclick = () => App.card('B:' + button.dataset.badge); });
     if (ep.id === 'end') {
       const fin = document.createElement('button');
-      fin.className = 'btn ghost finale-go'; fin.textContent = '🌟 27일의 기록 보기';
+      // 성탄절에는 27일의 기록이 주인공. 들판은 그 아래 보조 버튼으로.
+      fin.className = 'btn finale-go'; fin.textContent = '🌟 27일의 기록 보기';
       fin.onclick = () => App.finale();
-      (ov.querySelector('[data-v=field]') || ov.querySelector('.done-sub')).after(fin);
+      const fieldBtn = ov.querySelector('[data-v=field]');
+      fieldBtn?.classList.add('ghost');
+      (fieldBtn ? fieldBtn.before.bind(fieldBtn) : ov.querySelector('.done-sub').after.bind(ov.querySelector('.done-sub')))(fin);
     }
     ov.querySelector('[data-v=home]').onclick = () => App.home({ top: true });
     const nb = ov.querySelector('[data-v=next]'); if (nb) nb.onclick = () => App.go(nx.id);

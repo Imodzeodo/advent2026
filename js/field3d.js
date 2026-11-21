@@ -1214,7 +1214,12 @@
     if (few && few <= 2) cam.dist = 13.5; else if (few <= 4) cam.dist = 15;
     frame();
     setTimeout(() => handlers.onReady?.(), 0);
-    const view = { update, react, feed, focus, welcome, snapshot, patrol, procession, destroy, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
+    // 양 머리 위에 짧은 글자(털 +1 등)를 띄운다.
+    function say(id, text, color = '#fff4d0') {
+      const o = sheepObjs.get(id); if (!o) return;
+      floatText(o.position.clone().add(new T.Vector3(0, 1.1 * o.userData.scale, 0)), text, color);
+    }
+    const view = { update, react, feed, focus, welcome, snapshot, patrol, procession, destroy, say, _debug: { scene, camera, renderer, sheepObjs, cam, mode, groundAt } };
     return view;
   }
 

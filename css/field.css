@@ -440,3 +440,8 @@
 @media (prefers-reduced-motion: reduce) {
   .field-knit i, .field-wool-tuft { animation: none; }
 }
+.field-helper-line { margin: 10px 0 0; padding: 9px 11px; border-radius: 12px; background: rgba(255, 220, 150, .12); color: #ffe7b8; font-size: 13.5px; line-height: 1.5; text-align: left; }
+.field-wool-unit.bump { animation: wool-bump .55s cubic-bezier(.3, 1.6, .5, 1); }
+.field-wool-unit.bump i { box-shadow: 0 0 0 3px #fff6, 0 0 12px var(--wool); }
+@keyframes wool-bump { 0% { transform: scale(1); } 40% { transform: scale(1.45); } 100% { transform: scale(1); } }
+html.no-motion .field-wool-unit.bump { animation: none; }
