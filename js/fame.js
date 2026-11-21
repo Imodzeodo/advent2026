@@ -67,11 +67,11 @@
     { id: 'medi10', icon: '📖', name: '말씀 묵상가', desc: '말씀 묵상을 10번 적었어요', ok: () => Object.values(D().medi || {}).filter(m => m.a.some(Boolean)).length >= 10 },
     { id: 'codes4', icon: '🕯️', name: '네 개의 초', desc: '주일 암호 4개를 모두 찾았어요', ok: () => Object.keys(D().codes || {}).length >= 4 },
     { id: 'oil10', icon: '🫙', name: '기름 가득', desc: '등불 기름 10방울', ok: () => D().oilEarned >= 10 },
-    { id: 'shepherd', icon: '🐑', name: '좋은 목자', desc: '양 5마리 돌보기', ok: () => (window.Field?.stats().sheep || 0) >= 5 },
-    { id: 'field7', icon: '🌾', name: '한 주 내내', desc: '7일 꼴 주기', ok: () => (window.Field?.stats().careDays || 0) >= 7 },
+    { id: 'shepherd', icon: '🐑', name: '좋은 목자', desc: '친구 양 5번 맞이하기', ok: () => (window.Field?.stats().friends || 0) >= 5 },
+    { id: 'field7', icon: '🌾', name: '한 주 내내', desc: '내 양 7일 돌보기', ok: () => (window.Field?.stats().careDays || 0) >= 7 },
     { id: 'found', icon: '🔦', name: '찾았다!', desc: '잃은 양 찾기', ok: () => (window.Field?.stats().found || 0) >= 1 },
-    { id: 'dex10', icon: '📖', name: '양 박사', desc: '양 도감 10종 모으기', ok: () => (window.Field?.summary?.().dex || 0) >= 10 },
-    { id: 'legend', icon: '🌟', name: '전설을 만나다', desc: '전설의 양 1마리 데려오기', ok: () => (window.Field?.ensure?.().sheep || []).some(s => window.SHEEP_DEX?.byId?.[s.species]?.rarity === 'legend') }
+    { id: 'dex10', icon: '📖', name: '양 박사', desc: '친구 양 10종 만나기', ok: () => (window.Field?.stats().friendKinds || 0) >= 10 },
+    { id: 'legend', icon: '🌟', name: '전설을 만나다', desc: '전설 양 만나기', ok: () => (window.Field?.stats().legends || 0) >= 1 }
   ].filter(b => b.id !== 'codes4' || (window.CODES || []).length);
 
   // 새로 딴 배지 목록을 돌려주고 저장

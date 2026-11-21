@@ -1030,7 +1030,7 @@
     const starSize = 104;
     const firstSheep = firstDay && Core.data.field?.sheep?.[0];
     const fieldLabel = firstSheep ? `${Core.josa(firstSheep.name, '이가')} 기다려` :
-      fieldOpen && !Field.shearTonight() ? '들판 들르기' : '오늘 밤 들판으로';
+      fieldOpen && Field.mainCare()?.hearts === 3 ? '들판 들르기' : '오늘 밤 들판으로';
     const ov = showOverlay(`
       <div class="card done">
         ${firstDay ? '<div class="first-day-banner">대림절이 시작됐어 · 첫째 초</div>' : ''}
@@ -1039,7 +1039,7 @@
         ${first || gemLine ? `<div class="done-sub">${first ? `<div>카드 No.${Card.cardNo(ep.id)} 획득</div>` : ''}${gemLine ? `<span class="gem-line">${esc(gemLine)}</span>` : ''}</div>` : ''}
         ${lastDay ? '<button class="btn finale-go">🌟 27일의 기록 보기</button>' : ''}
         ${fieldOpen ? `<button class="btn${lastDay ? ' ghost' : ''}" data-v="field">🐑 ${esc(fieldLabel)}</button>` : ''}
-        ${chapterGuest ? '<p class="done-field-guest">🐑 들판에 손님이 찾아왔어</p>' : ''}
+        ${chapterGuest ? '<p class="done-field-guest">🐑 들판에 친구 양이 놀러 왔어</p>' : ''}
         ${skyLine()}
         ${newBadges.length ? `<div class="new-badges">${newBadges.map(b =>
           `<button type="button" class="nb" data-badge="${b.id}" aria-label="새 배지 ${esc(b.name)} 카드 보기"><span aria-hidden="true">${b.icon}</span>${esc(b.name)}</button>`

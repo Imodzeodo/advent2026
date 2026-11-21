@@ -351,6 +351,7 @@
     match: t => { noise(t, 0.16, 0.14, 3000, 1600); noise(t + 0.18, 0.27, 0.075, 1800, 1050); },
     sheep: bleat,
     fieldGreet: t => { musicBox(69, t, 0.045, sfxBus); musicBox(76, t + 0.11, 0.032, sfxBus); },
+    fieldHarp: t => [60, 67, 72, 76].forEach((note, i) => musicBox(note, t + i * .09, .045, sfxBus)),
     shearTick: t => noise(t, 0.05, 0.042, 2450, 1050),
     shearDone: t => { musicBox(72, t, 0.06, sfxBus); musicBox(79, t + 0.08, 0.048, sfxBus); },
     knit: t => [0, 0.2, 0.43, 0.72, 1.0].forEach(d => noise(t + d, 0.09, 0.018, 1150, 560)),
