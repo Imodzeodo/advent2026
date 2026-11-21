@@ -21,10 +21,19 @@
 .field-header .back { min-width: 44px; min-height: 44px; }
 .field-header h1 { font-size: 27px; letter-spacing: .02em; }
 .field-header p { margin: 2px 0 0; color: var(--dim); font-size: 13px; }
-.field-header .field-count, .tonight-step .field-tonight-flock { min-height: 26px; padding: 0; text-underline-offset: 3px; }
-.field-header .field-count { color: #ffe6ae; font-size: 13px; }
+.field-header .field-count { min-height: 26px; padding: 0; text-underline-offset: 3px; color: #ffe6ae; font-size: 13px; }
 .field-count:disabled { opacity: .55; cursor: default; }
-.tonight-step .field-tonight-flock { margin: -4px 0; color: #ffe6ae; }
+.home-head .home-game-line { max-width: 310px; margin-inline: auto; line-height: 1.5; }
+.home-field-intro {
+  display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px 10px; align-items: center;
+  margin: 0 0 10px; padding: 12px; border: 1px solid #ffd27a62; border-radius: 16px;
+  background: linear-gradient(142deg, #313254, #202644);
+}
+.home-field-intro svg { width: 74px; height: 74px; border-radius: 14px; background: #b5afd91e; }
+.home-field-intro h2 { margin: 0 0 3px; color: #ffe6ae; font: 700 17px/1.25 var(--serif); }
+.home-field-intro p { margin: 3px 0; font-size: 13px; line-height: 1.45; color: #e3ddf0; }
+.home-field-intro .btn { grid-column: 1 / -1; margin: 2px 0 0; padding: 10px; }
+.tonight-hearts { margin-left: 4px; color: #ff9dbb; letter-spacing: .07em; white-space: nowrap; }
 .field-oil { flex: none; margin-left: auto; padding: 7px 12px; border: 1px solid var(--line); border-radius: 99px; background: #24263b; color: #ffe6ae; font-size: 13px; }
 .field-oil span { color: var(--gold); margin-right: 3px; }
 .field-map {
@@ -89,6 +98,7 @@
 .field-feedback:empty { margin: 0; }
 .field-care .field-shear { margin: 8px 0 0; }
 .field-shear small { font-weight: 400; }
+.field-page .field-shear:disabled { opacity: .75; cursor: default; }
 .field-shear-hint { margin: 6px 0 0; text-align: center; color: #dad3e8; font-size: 13px; }
 .field-wool-bag {
   position: relative; display: grid; justify-items: center; gap: 5px; margin: 8px auto 0; padding: 7px 4px 8px;
@@ -121,6 +131,45 @@
 .field-info-card.field-lost { background: #322b41; border-color: #dbab7277; }
 .field-info-card.field-streak { background: #32303f; }
 .field-streak .field-streak-wool { color: #ffe4a7; }
+
+.field-main-card {
+  margin-bottom: 10px; padding: 10px 12px; border: 1px solid #ffd27a62; border-radius: 15px;
+  background: linear-gradient(145deg, #392f47, #252846); line-height: 1.3;
+}
+.field-main-card header, .field-main-progress, .field-main-actions { display: flex; align-items: center; gap: 7px; }
+.field-main-card header, .field-main-progress { justify-content: space-between; }
+.field-main-card header small, .field-main-progress small { font-size: 12px; color: #ead7ee; }
+.field-main-tag { display: inline-block; padding: 2px 6px; border-radius: 99px; background: #f8c27f29; color: #ffdfa2; font-size: 11px; white-space: nowrap; }
+.field-main-name { padding: 0 3px; font-size: 18px; font-weight: 700; text-underline-offset: 3px; }
+.field-main-hearts { color: #ffadc9; font: 700 20px/1 system-ui, sans-serif; letter-spacing: .12em; white-space: nowrap; }
+.field-main-progress { margin: 5px 0 7px; }
+.field-main-progress progress { width: min(53%, 180px); height: 7px; accent-color: #ffd27a; border: 0; border-radius: 20px; overflow: hidden; }
+.field-main-progress progress::-webkit-progress-bar { background: #1b2039; }
+.field-main-progress progress::-webkit-progress-value { background: #ffd27a; }
+.field-main-actions { justify-content: space-between; flex-wrap: wrap; color: #e0d8e9; font-size: 11px; }
+.field-main-actions .btn.small { min-height: 32px; padding: 4px 9px; font-size: 12px; }
+.field-main-actions .btn:disabled { opacity: 1; background: #fff3d615; color: #e0d8e9; }
+.field-main-actions > span { white-space: nowrap; }
+.field-main-happy, .field-main-short-wool { margin: 6px 0 0; color: #ffe4a9; font-size: 12px; }
+.field-main-short-wool { color: #ddc8df; }
+.field-page[data-tutorial="2"] .field-main-treat,
+.field-page[data-tutorial="1"] .field-main-pet,
+.field-page[data-tutorial="3"] .field-main-shear,
+.field-page[data-tutorial="4"] .field-wool-bag,
+.field-guide-target { outline: 2px solid #ffd27a; outline-offset: 2px; }
+.field-page[data-tutorial="4"] .field-wool-bag::after { content: '털은 여기 모여. 선물을 만들 수 있어'; font-size: 12px; color: #ffe4a9; }
+.field-page:is([data-tutorial="1"], [data-tutorial="3"]) :is(.f3d-label, .field-sheep[data-main])::after {
+  content: '👆'; position: absolute; left: 50%; top: calc(100% + 6px); pointer-events: none;
+  font-size: 25px; line-height: 1; text-shadow: 0 1px 5px #161521; animation: field-guide-tap .9s ease-in-out infinite;
+}
+.field-page:is([data-tutorial="1"], [data-tutorial="3"]) .field-sheep[data-main]::after { top: -17px; }
+.field-page[data-tutorial="3"] :is(.f3d-label, .field-sheep[data-main])::after { animation-name: field-guide-rub; }
+@keyframes field-guide-tap { 50% { opacity: .6; transform: translateY(5px); } }
+@keyframes field-guide-rub { 0%, 100% { transform: translateX(-13px); } 50% { transform: translateX(13px); } }
+.no-motion .field-page :is(.f3d-label, .field-sheep[data-main])::after { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .field-page :is(.f3d-label, .field-sheep[data-main])::after { animation: none; }
+}
 
 .field-sheet {
   box-sizing: border-box;
@@ -245,16 +294,13 @@
 .field-visit-banner:not([hidden]) + .field-hold-feedback { top: 52px; }
 .field-visitor.react-legend i { background: #ffe08a; color: #32253b; box-shadow: 0 0 18px #ffd27a; }
 .field-visitor.react-legend svg { filter: drop-shadow(0 0 8px #ffd27a); }
-.field-actions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 2px 0 6px; }
+.field-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 2px 0 6px; }
 .field-act { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 11px 4px 10px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 14px; background: rgba(255, 255, 255, .06); color: var(--ink, #eee); font-size: 12.5px; line-height: 1.2; }
 .field-act span { font-size: 22px; line-height: 1; }
 .field-act small { color: var(--gold); font-size: 11px; }
 .field-act .field-dot { position: absolute; top: 7px; right: 9px; margin: 0; }
 .field-act:active { transform: scale(.97); }
 .field-act.field-flock { border-color: #ffd27a55; background: #ffd27a14; color: #ffe6ae; cursor: pointer; }
-@media (max-width: 350px) {
-  .field-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 .field-panel-picture img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .field-locked { color: #c9c6d6; background: #ffffff07; cursor: pointer; }
 .field-locked small { color: #b8b4cb; font-size: 11px; }
@@ -355,6 +401,7 @@
 
 /* 장터 */
 .field-shop-list { display: flex; flex-direction: column; gap: 7px; }
+.field-shop-notice { margin: 5px 2px 12px; color: var(--gold); font-size: 13px; text-align: center; }
 .field-shop-row { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 13px; background: rgba(255, 255, 255, .05); }
 .field-shop-row > svg, .field-shop-row > span:first-child, .field-shop-row > img { width: 40px; height: 40px; }
 .field-shop-row b { display: block; font-size: 14px; }

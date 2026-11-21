@@ -562,5 +562,29 @@
     return cv;
   }
 
-  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawPatrol, drawGift, share, toBlob, fileName, STYLE, cardNo };
+  async function drawGrowth(sheep, stage, days) {
+    const W = 1080, H = 1350, x = W / 2;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.ch4.frame, 215);
+    const halo = ctx.createRadialGradient(x, 570, 70, x, 570, 420);
+    halo.addColorStop(0, '#ffe8a572'); halo.addColorStop(1, '#ffe8a500');
+    ctx.fillStyle = halo; ctx.fillRect(30, 150, W - 60, 850);
+    ctx.textAlign = 'center';
+    ctx.font = `700 40px ${SANS}`; ctx.fillStyle = '#ffe0a0';
+    ctx.fillText('그 밤을 향하여 · 내 양 성장 카드', x, 156, 920);
+    const image = await portraitImg(sheep.species, { level: sheep.level, wear: sheep.wear });
+    if (image) ctx.drawImage(image, x - 360, 195, 720, 720);
+    ctx.font = `700 86px ${SERIF}`; ctx.fillStyle = '#fff3d5';
+    ctx.fillText(sheep.name, x, 945, 915);
+    ctx.font = `700 48px ${SANS}`; ctx.fillStyle = '#eec9ee';
+    ctx.fillText(stage, x, 1030, 900);
+    ctx.font = `400 35px ${SANS}`; ctx.fillStyle = '#f9dfab';
+    ctx.fillText(`함께 돌본 날 ${days}일`, x, 1120);
+    ctx.restore();
+    return cv;
+  }
+
+  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawPatrol, drawGift, drawGrowth, share, toBlob, fileName, STYLE, cardNo };
 })();

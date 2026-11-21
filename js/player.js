@@ -738,7 +738,7 @@
         const ov = showOverlay(`
           <div class="card rules">
             <div class="rules-title">이렇게 진행돼</div>
-            <p class="rules-flow">매일 밤 3분 — <b>이야기 한 편 → 양털 모으기</b>.<br>성탄 밤에 드릴 구유 이불을 만들자.</p>
+            <p class="rules-flow">${esc(Field.GAME_LINE)}<br><b>매일 밤: 이야기 한 편 → 내 양 돌보기</b>.</p>
             <ul>
               <li>새 편은 한국 시간 자정에 열려.${Core.REL ? '' : ' 주일은 오전 11시.'} 놓쳐도 나중에 볼 수 있어.</li>
               <li>한 편을 끝내면 별이 켜져. 네 답은 묵상 노트에 남아.</li>
@@ -1012,12 +1012,12 @@
         <div class="card done">
           ${Art.bigStar(0.05, 120)}
           <div class="done-title">준비 끝!</div>
-          <div class="done-sub">${ready ? '첫 이야기가 열렸어. 홈에서 시작해 봐.' :
+          <div class="done-sub">${ready ? esc(Field.FIRST_STORY_HINT) :
             Core.REL ? '성탄 26일 전, 첫 번째 이야기가 열려.<br>그날 0시에 만나자.' :
               '📅 <b>11월 29일 주일 오전 11시</b><br>첫 이야기가 열려. 예배 끝나고 같이 시작하자!'}</div>
-          <button class="btn">홈으로</button>
+          <button class="btn">${ready ? '첫 이야기 보기' : '홈으로'}</button>
         </div>`, 'center full hold');
-      ov.querySelector('button').onclick = () => App.home({ top: true });
+      ov.querySelector('button').onclick = () => ready ? App.go('1-0') : App.home({ top: true });
       return;
     }
     // 다음 편: 열려 있으면 바로 이어서, 아니면 언제 열리는지 예고
