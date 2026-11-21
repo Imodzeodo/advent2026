@@ -30,13 +30,8 @@
   ];
   const WOOL_IDS = ['white', 'black', 'brown', 'pink', 'blue', 'gold', 'green', 'purple'];
   const COLORED_WOOL = WOOL_IDS.slice(1);
-  const FIELD_FEATURES = {
-    market: { chapter: 1, episode: '1-6', label: '장터', title: '🏪 장터가 열렸어', line: '들판을 가꿔 보련? 놓아 둔 것에 따라 놀러 오는 친구가 다르단다.', hint: '모닥불을 놓으면 불멍 양이 놀러 올지도.' },
-    patrol: { chapter: 2, episode: '2-6', label: '밤 순찰', title: '🔦 밤 순찰이 열렸어', line: '밤이 깊었다. 오늘부터 너도 순찰을 돌아 보거라.', hint: '하루 한 판, 등불로 양을 우리까지 데려가 봐.' },
-    share: { chapter: 3, episode: '3-6', label: '들판 자랑하기', title: '📤 들판 자랑하기가 열렸어', line: '네 들판, 친구들에게도 보여 주렴.', hint: '링크를 친구에게 보내 봐.' }
-  };
   const BASIC_GUIDES = {
-    wear: { title: '👒 꾸미기', hint: '여기를 눌러 내 양에게 모자를 골라 줘.', selector: '.field-wear-shop' },
+    wear: { title: '👗 옷장', hint: '여기를 눌러 내 양에게 옷을 골라 줘.', selector: '.field-wear-shop' },
     gift: { title: '🎁 선물 상자', hint: '여기를 눌러 양털로 만들 선물을 봐.', selector: '.field-gift-box' },
     flock: { title: '🐑 내 양', hint: '여기를 눌러 내 양과 놀러 온 친구들을 봐.', selector: '.field-flock' }
   };
@@ -87,14 +82,15 @@
     ['나무 울타리', 'ground', 2], ['올리브나무', 'ground', 3], ['돌 양 우리', 'ground', 4],
     ['모닥불', 'ground', 4], ['목자 천막', 'ground', 5], ['우물', 'ground', 5],
     ['등불 기둥', 'ground', 3], ['들꽃 밭', 'ground', 2], ['하프', 'ground', 7],
-    ['하늘 등', 'sky', 2], ['별똥별 비', 'sky', 8],
-    ['빨간 목도리', 'wear', 3], ['꽃 화관', 'wear', 3],
-    ['빨간 털모자', 'wear', 3], ['초록 털모자', 'wear', 3], ['밀짚모자', 'wear', 4],
-    ['목자 두건', 'wear', 4], ['별 머리띠', 'wear', 5], ['나비넥타이', 'wear', 3],
-    ['동그란 안경', 'wear', 4], ['망토', 'wear', 6]
+    ['하늘 등', 'sky', 2], ['별똥별 비', 'sky', 8]
   ];
-  const specials = ['보라 방울', '은 종', '분홍 리본', '금빛 별 목걸이'];
-  const catalog = Object.fromEntries([...market, ...specials.map(id => [id, 'wear'])].map(([id, kind]) => [id, kind]));
+  const WEAR_LABELS = { head: '머리', face: '얼굴', neck: '목', back: '등', dye: '염색' };
+  const wardrobe = window.Field3D?.wardrobe || [];
+  const wearByName = new Map(wardrobe.map(item => [item.name, item]));
+  const normalizeWear = wear => window.Field3D?.normalizeWear(wear) ||
+    Object.fromEntries(Object.keys(WEAR_LABELS).map(slot => [slot, null]));
+  const wornNames = wear => Object.values(normalizeWear(wear)).filter(Boolean);
+  const catalog = Object.fromEntries([...market, ...wardrobe.map(item => [item.name, 'wear'])].map(([id, kind]) => [id, kind]));
   const slots = [[39, 231], [118, 224], [241, 224], [321, 233], [40, 321], [117, 354], [243, 354], [319, 321], [53, 111], [308, 99]];
   const pasture = [[180, 306], [114, 283], [244, 277], [57, 277], [302, 276], [83, 371], [281, 369], [183, 383],
     [135, 251], [219, 327], [151, 337], [203, 251], [160, 284], [264, 314], [98, 318], [225, 368],
@@ -197,21 +193,6 @@
   let artId = 0;
   const receiving = new WeakMap();
   let current = null;   // 열려 있는 들판 화면 { view, teardown }
-  let previewFeatures = null;
-
-  function usedFeature(key, data) {
-    if (key === 'patrol') return !!(data.patrolDay || data.patrolBest);
-    if (key === 'market') {
-      const placed = Object.values(data.slots);
-      return market.some(([item, kind]) => kind !== 'wear' && (data.items[item] || placed.includes(item)));
-    }
-    return false;
-  }
-  function featureOpen(key, data) {
-    if (Core.PREVIEW_ALL && previewFeatures) return previewFeatures === 'all';
-    return !!Core.data.done[FIELD_FEATURES[key].episode] || usedFeature(key, data);
-  }
-
   /* ---------- 저장 · 이전 기록 호환 ---------- */
   function normalizeSheep(s) {
     if (!s.species || !(window.SHEEP_DEX?.byId || {})[s.species]) s.species = s.species && !window.SHEEP_DEX ? s.species : 'cotton';
@@ -222,7 +203,7 @@
     if (s.level >= 10) s.exp = 0;
     if (typeof s.petDay !== 'string') s.petDay = '';
     if (!Number.isInteger(s.petCount)) s.petCount = 0;
-    if (s.wear === undefined) s.wear = null;
+    s.wear = normalizeWear(s.wear);
     s.lost = !!s.lost;
   }
 
@@ -247,6 +228,13 @@
     if (f.careDays == null) f.careDays = 0;
     if (f.found == null) f.found = 0;
     f.sheep.forEach(normalizeSheep);
+    const worn = {};
+    for (const sheep of f.sheep) for (const name of Object.values(sheep.wear)) {
+      if (name) worn[name] = (worn[name] || 0) + 1;
+    }
+    for (const [name, count] of Object.entries(worn)) {
+      if (!(f.items[name] >= count)) f.items[name] = count;
+    }
     if (!f.dex || typeof f.dex !== 'object') f.dex = {};
     f.sheep.forEach(s => { if (!f.dex[s.species]) f.dex[s.species] = s.born || f.since || date(); });
     const today = date();
@@ -308,7 +296,7 @@
   function available(id) {
     const data = field();
     const used = Object.values(data.slots).filter(item => item === id).length +
-      data.sheep.filter(sheep => sheep.wear === id).length;
+      data.sheep.filter(sheep => wornNames(sheep.wear).includes(id)).length;
     return Math.max(0, (data.items[id] || 0) - used);
   }
 
@@ -317,7 +305,7 @@
     return 'sheep-' + (n + 1);
   }
   const newSheep = (data, name, species = 'cotton') => ({
-    id: nextId(data), name, born: date(), care: 0, wear: null, lost: false,
+    id: nextId(data), name, born: date(), care: 0, wear: normalizeWear(), lost: false,
     species, level: 1, exp: 0, petDay: '', petCount: 0, shornOn: ''
   });
 
@@ -367,7 +355,6 @@
     const legend = list.find(s => s.rarity === 'legend' && !data.friendMet[s.id] && legendReady(s, data));
     if (legend && kind !== 'rare') return legend.id;
     const commons = list.filter(s => s.rarity === 'common');
-    if (kind !== 'rare' && !featureOpen('market', data)) return pick(commons)?.id || null;
     const placed = new Set(Object.values(data.slots));
     const rares = list.filter(s => s.rarity === 'rare' && placed.has(s.attract));
     if (kind === 'rare') return pick(rares.length ? rares : list.filter(s => s.rarity === 'rare'))?.id || null;
@@ -603,7 +590,8 @@
     const st = stage(sheep);
     const k = [0.72, 0.87, 1, 1.04][st] * Math.max(0.75, Math.min(1.2, L.size || 1));
     const sil = !!opt.silhouette;
-    const wool = sil ? '#1b2340' : L.wool;
+    const outfit = normalizeWear(sheep.wear);
+    const wool = sil ? '#1b2340' : wearByName.get(outfit.dye)?.color || L.wool;
     const face = sil ? '#10162c' : L.face;
     const ear = sil ? '#10162c' : L.ear;
     const curl = L.curl || 0;
@@ -616,7 +604,12 @@
     const glowColor = sil ? null : L.glow || (st === 3 ? '#fff1c0' : null);
     const glow = glowColor ? `<ellipse class="field-glow" cx="-2" cy="-18" rx="${st === 3 ? 42 : 35}" ry="${st === 3 ? 31 : 25}" fill="${glowColor}" opacity="${st === 3 ? .3 : .2}"/>` : '';
     const horns = L.horns ? `<path d="M15-27q-8-8 0-12q7-1 5 6" fill="none" stroke="${sil ? face : '#dcc9a2'}" stroke-width="3.2" stroke-linecap="round"/><path d="M30-26q8-6 2-11q-6-1-5 5" fill="none" stroke="${sil ? face : '#cdb98f'}" stroke-width="3" stroke-linecap="round"/>` : '';
-    const acc = sil || opt.noAcc ? '' : (wearArt[sheep.wear] || accArt[L.acc] || '');
+    const positions = { head: [22, -36, 15], face: [23, -17, 12], neck: [24, -1, 11], back: [-16, -25, 20] };
+    const clothes = Object.entries(positions).map(([slot, [x, y, size]]) => {
+      const item = wearByName.get(outfit[slot]);
+      return item ? (wearArt[item.name] || `<text x="${x}" y="${y}" font-size="${size}" text-anchor="middle">${esc(item.symbol)}</text>`) : '';
+    }).join('');
+    const acc = sil || opt.noAcc ? '' : clothes || accArt[L.acc] || '';
     const sparkle = st === 3 && !sil ? '<path class="field-twinkle" d="M-30-44l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z" fill="#fff6d0"/><path class="field-twinkle" d="M33-46l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill="#fff6d0"/>' : '';
     return `<g transform="scale(${k.toFixed(3)})">
       <ellipse cy="1" rx="30" ry="5" fill="#081321" opacity=".48"/>${glow}
@@ -822,12 +815,12 @@
     return svgURL(portraitSVG(species, opts));
   }
   function portraitHTML(species, opts = {}, cls = '') {
-    return `<img class="field-portrait ${cls}" alt="" src="${svgURL(portraitSVG(species, opts))}" ${opts.silhouette ? '' : `data-portrait="${esc(species)}" data-level="${opts.level || 5}" data-wear="${esc(opts.wear || '')}"`}>`;
+    return `<img class="field-portrait ${cls}" alt="" src="${svgURL(portraitSVG(species, opts))}" ${opts.silhouette ? '' : `data-portrait="${esc(species)}" data-level="${opts.level || 5}" data-outfit="${esc(JSON.stringify(normalizeWear(opts.wear)))}"`}>`;
   }
   function upgradePortraits(box) {
     if (!box || !can3D()) return;
     box.querySelectorAll('img[data-portrait]').forEach(img => {
-      portrait(img.dataset.portrait, { level: Number(img.dataset.level) || 5, wear: img.dataset.wear || null })
+      portrait(img.dataset.portrait, { level: Number(img.dataset.level) || 5, wear: JSON.parse(img.dataset.outfit) })
         .then(url => { if (img.isConnected) img.src = url; }).catch(() => {});
     });
   }
@@ -859,14 +852,13 @@
 
   /* ---------- 친구 들판 링크 ---------- */
   function publicField(data, nickname) {
-    const wearItems = new Set([...market.filter(([, kind]) => kind === 'wear').map(([item]) => item), ...specials]);
     const sheep = data.sheep.slice(0, MAX_SHEEP).map((entry, index) => {
       if (!entry || typeof entry !== 'object' || (entry.id === data.mainId && entry.lost)) return null;
       const species = DEX().find(s => s.id === entry.species)?.id || FALLBACK.id;
       return {
         id: 'guest-' + index, species, name: nameSheep(entry.name, spec(species).name),
         level: Number.isInteger(entry.level) ? Math.min(10, Math.max(1, entry.level)) : 1,
-        wear: wearItems.has(entry.wear) ? entry.wear : null
+        wear: normalizeWear(entry.wear)
       };
     }).filter(Boolean);
     const placement = slots.flatMap((_, index) => {
@@ -949,7 +941,7 @@
     const count = data.sheep.length;
     content.innerHTML = `<div class="field-stage is-2d"><div class="field-map" role="img" aria-label="별이 뜬 들판">${svg(mapArt(data, true))}</div></div>
       <p class="field-guest-count">🐑 양 ${count}마리</p>
-      ${count ? `<ul class="field-guest-flock">${data.sheep.map(s => `<li><b>${esc(s.name)}</b> <span>Lv${s.level}</span><small>${esc(spec(s.species).name)}${s.wear ? ' · ' + esc(s.wear) : ''}</small></li>`).join('')}</ul>` : ''}`;
+      ${count ? `<ul class="field-guest-flock">${data.sheep.map(s => `<li><b>${esc(s.name)}</b> <span>Lv${s.level}</span><small>${esc([spec(s.species).name, ...wornNames(s.wear).map(name => wearByName.get(name).label)].join(' · '))}</small></li>`).join('')}</ul>` : ''}`;
     if (!window.SHEEP_DEX || !can3D() || !await load3D() || !root.isConnected) return;
     const stageEl = root.querySelector('.field-stage');
     const fallback = stageEl.firstElementChild;
@@ -1088,7 +1080,7 @@
 
 
   /* ---------- 들판 화면 ---------- */
-  async function page({ tonight, gift = false, flock = false } = {}) {
+  async function page({ tonight, gift = false, flock = false, wardrobe: openWardrobe = false } = {}) {
     if (!has()) return App.home();
     const app = document.getElementById('app');
     if (!window.SHEEP_DEX) {
@@ -1307,14 +1299,12 @@
           <div class="field-info-head"><small>첫 들판 안내 · ${step + 1}/5</small>
             <button type="button" class="link field-info-close field-coach-close">건너뛰기</button></div>
           <h2 id="field-coach-title">${esc(titles[step])}</h2>
-          ${step === 0 ? `<p>${GAME_LINE}</p>` : step === 4 ? `<p>매일 밤 하트 3개를 채우면 ${esc(josa(name, '이가'))} 자라. 성탄 밤엔 빛나는 양이 되어 함께 구유로 가자!</p>` : ''}
+          ${step === 0 ? `<p>${GAME_LINE}</p>` : step === 4 ? `<p>매일 밤 하트 3개를 채우면 ${esc(josa(name, '이가'))} 자라. 성탄 밤엔 빛나는 양이 되어 함께 구유로 가자!</p><p>장터·순찰·탐험·옷장도 언제든 즐겨 봐.</p>` : ''}
           ${step === 0 || step === 4 ? `<div class="field-info-actions"><button type="button" class="btn small field-coach-next">${step === 0 ? '다음' : '알겠어'}</button></div>` : ''}
         </aside>`;
       }
       if (!unlock) {
-        unlock = Object.keys(FIELD_FEATURES).find(key => Core.data.done[FIELD_FEATURES[key].episode] &&
-          featureOpen(key, data) && !data.featureIntro?.[key] && !usedFeature(key, data));
-        unlock ||= Object.keys(BASIC_GUIDES).find(key => !data.featureIntro?.[key] &&
+        unlock = Object.keys(BASIC_GUIDES).find(key => !data.featureIntro?.[key] &&
           (key !== 'wear' || !Object.keys(data.items).some(id => catalog[id] === 'wear')) &&
           (key !== 'gift' || !Object.keys(data.woolGifts).length));
         if (unlock) {
@@ -1323,13 +1313,12 @@
         }
       }
       if (unlock) {
-        const feature = FIELD_FEATURES[unlock] || BASIC_GUIDES[unlock];
-        return `<aside class="field-info-card field-unlock" data-feature="${unlock}" aria-labelledby="field-unlock-title">
-          <div class="field-info-head"><h2 id="field-unlock-title">${esc(feature.title)}</h2>
+        const feature = BASIC_GUIDES[unlock];
+        return `<aside class="field-info-card field-guide" data-feature="${unlock}" aria-labelledby="field-guide-title">
+          <div class="field-info-head"><h2 id="field-guide-title">${esc(feature.title)}</h2>
             <button type="button" class="link field-info-close">확인</button></div>
-          ${feature.line ? `<p class="field-unlock-line"><b>할아버지</b> ${esc(feature.line)}</p>` : ''}
           <p>${esc(feature.hint)}</p>
-          <div class="field-info-actions"><button type="button" class="btn small field-unlock-try" ${unlock === 'patrol' && mode === 'loading' ? 'disabled' : ''}>👆 눌러 봐</button></div>
+          <div class="field-info-actions"><button type="button" class="btn small field-guide-try">👆 눌러 봐</button></div>
         </aside>`;
       }
       const streak = VISIT_MILESTONES.find(day => data.visitRewards?.[day] && !data.visitRewards[day].seen);
@@ -1381,8 +1370,8 @@
         guideTargets(data);
         focusNext();
       });
-      info.querySelector('.field-unlock-try')?.addEventListener('click', () => {
-        const open = { market: shop, patrol: patrolSheet, share: shareSheet, wear: () => shop(true), gift: () => giftSheet(), flock: flockSheet }[unlock];
+      info.querySelector('.field-guide-try')?.addEventListener('click', () => {
+        const open = { wear: () => dress(), gift: () => giftSheet(), flock: flockSheet }[unlock];
         unlock = undefined;
         renderInfo(data);
         guideTargets(data);
@@ -1409,16 +1398,9 @@
         guidedStep = step;
       }
       manage.querySelectorAll('.field-guide-target').forEach(el => el.classList.remove('field-guide-target'));
-      const key = info.querySelector('.field-unlock')?.dataset.feature;
-      const selector = BASIC_GUIDES[key]?.selector || { market: '.field-market', patrol: '.field-patrol', share: '.field-share-link' }[key];
+      const key = info.querySelector('.field-guide')?.dataset.feature;
+      const selector = BASIC_GUIDES[key]?.selector;
       if (selector) manage.querySelector(selector)?.classList.add('field-guide-target');
-    }
-
-    function featureTile(key, unlockedMarkup) {
-      if (featureOpen(key, field())) return unlockedMarkup;
-      const feature = FIELD_FEATURES[key];
-      return `<button type="button" class="field-act field-locked${key === 'share' ? ' field-locked-wide' : ''}" data-locked="${key}">
-        <span aria-hidden="true">🔒</span>${esc(feature.label)} <small>${feature.chapter}장을 마치면</small></button>`;
     }
 
     function renderMain(data, today) {
@@ -1495,7 +1477,6 @@
       const tonightLeft = shearTonight(today);
       const hasSheepInField = !mine.lost;
       const mainShearGuide = mode === '2d' && tutorialStep(data) === 3 && shearable[0]?.id === data.mainId;
-      const marketOpen = featureOpen('market', data);
       const visitor = visitors[0];
       count.textContent = '내 양과 친구들';
       count.setAttribute('aria-label', '내 양과 친구들 보기');
@@ -1520,35 +1501,31 @@
       manage.innerHTML = `${moving ? `<p class="field-move-tip"><span>${esc(josa(moving.item, '을를'))} 놓을 빈 칸을 골라 줘.</span><button type="button" class="link field-cancel-move">취소</button></p>` :
           `${giftBox(data)}<div class="field-actions">
             <button type="button" class="field-act field-flock" aria-haspopup="dialog"><span aria-hidden="true">🐑</span>내 양</button>
-            <button type="button" class="field-act field-wear-shop" aria-haspopup="dialog"><span aria-hidden="true">👒</span>꾸미기</button>
-            ${featureTile('market', '<button type="button" class="field-act field-market"><span aria-hidden="true">🏪</span>장터</button>')}
-            ${featureTile('patrol', `<button type="button" class="field-act field-patrol"><span aria-hidden="true">🔦</span>밤 순찰${data.patrolDay !== today ? '<i class="field-dot" aria-label="오늘 보상 남음"></i>' : ''}</button>`)}
+            <button type="button" class="field-act field-explore"><span aria-hidden="true">🧭</span>탐험</button>
+            <button type="button" class="field-act field-wear-shop" aria-haspopup="dialog"><span aria-hidden="true">👗</span>옷장</button>
+            <button type="button" class="field-act field-market"><span aria-hidden="true">🏪</span>장터</button>
+            <button type="button" class="field-act field-patrol"><span aria-hidden="true">🔦</span>밤 순찰${data.patrolDay !== today ? '<i class="field-dot" aria-label="오늘 보상 남음"></i>' : ''}</button>
             <button type="button" class="field-act field-dex"><span aria-hidden="true">📖</span>친구 양</button>
             <button type="button" class="field-act field-card"><span aria-hidden="true">🖼️</span>들판 카드</button>
           </div>`}
-        ${moving ? '' : featureTile('share', '<button type="button" class="btn ghost field-share-link">내 들판 자랑하기</button>')}
+        ${moving ? '' : '<button type="button" class="btn ghost field-share-link">내 들판 자랑하기</button>'}
         ${moving ? `<p class="field-feedback" role="status">${esc(message)}</p>` : ''}
         ${moving ? '' : testTools(data)}`;
       manage.querySelector('.field-cancel-move')?.addEventListener('click', () => { moving = null; render(); });
       care.querySelector('.field-shear:not(:disabled)')?.addEventListener('click', () => shear(shearable[0].id));
       manage.querySelector('.field-gift-box')?.addEventListener('click', () => giftSheet());
       manage.querySelector('.field-flock')?.addEventListener('click', flockSheet);
+      manage.querySelector('.field-explore')?.addEventListener('click', () => Explore.map());
       manage.querySelector('.field-patrol')?.addEventListener('click', patrolSheet);
       manage.querySelector('.field-dex')?.addEventListener('click', dexSheet);
       manage.querySelector('.field-market')?.addEventListener('click', () => shop());
-      manage.querySelector('.field-wear-shop')?.addEventListener('click', () => shop(true));
+      manage.querySelector('.field-wear-shop')?.addEventListener('click', () => dress());
       manage.querySelector('.field-card')?.addEventListener('click', () => cardSheet('들판 카드', () => Card.drawField(), 'FIELD', '양과 별이 그려진 나의 들판 카드'));
       manage.querySelector('.field-share-link')?.addEventListener('click', shareSheet);
-      manage.querySelectorAll('[data-locked]').forEach(button => {
-        button.onclick = () => {
-          const feature = FIELD_FEATURES[button.dataset.locked];
-          Player.toast(`${feature.chapter}장을 마치면 ${josa(feature.label, '이가')} 열려.`);
-        };
-      });
       bindTestTools(data);
       if (mode === '2d') {
         stageEl.className = 'field-stage is-2d';
-        stageEl.innerHTML = mapMarkup(data, moving, marketOpen, miss, trial);
+        stageEl.innerHTML = mapMarkup(data, moving, miss, trial);
         stageEl.querySelectorAll('[data-slot]').forEach(button => { button.onclick = () => selectSlot(Number(button.dataset.slot)); });
         stageEl.querySelectorAll('[data-sheep-id]').forEach(button => {
           button.onclick = () => handlers.onTapSheep(button.dataset.sheepId);
@@ -1580,7 +1557,6 @@
     const sheet = (title, body, className, onClose) => fieldSheet(root, title, body, className, onClose);
 
     function shareSheet() {
-      if (!featureOpen('share', field())) return;
       const modal = sheet('내 들판 자랑하기', `<p class="field-sheet-meta">링크를 보내면 친구가 양과 장식을 볼 수 있어.</p>
         ${Core.data.nickname ? '<label class="field-share-option"><input type="checkbox"> 내 닉네임도 보여 주기</label>' : ''}
         <label class="field-share-url">들판 링크<input type="url" readonly></label>
@@ -1858,8 +1834,7 @@
       const sp = spec(sheep.species);
       const today = date();
       const pets = sheep.petDay === today ? sheep.petCount : 0;
-      const patrolOpen = featureOpen('patrol', data);
-      const isLeader = patrolOpen && data.leader === sheep.id;
+      const isLeader = data.leader === sheep.id;
       const wool = woolType(woolOf(sheep));
       const modal = sheet(sheep.name, `<div class="field-sheep-card">
           <div class="field-sheep-portrait ${sp.rarity}">${portraitHTML(sheep.species, { level: sheep.level, wear: sheep.wear })}</div>
@@ -1876,7 +1851,7 @@
             '<button type="button" class="btn ghost field-shear" disabled>내일 밤 다시 복슬해져</button>') : ''}
           <button type="button" class="btn field-pet" ${pets >= PET_MAX ? 'disabled' : ''}>🤲 쓰다듬기 <small>(오늘 ${pets}/${PET_MAX})</small></button>
           <div class="row"><button type="button" class="btn ghost field-wear">꾸미기</button>
-          ${patrolOpen ? `<button type="button" class="btn ghost field-leader" ${isLeader ? 'disabled' : ''}>${isLeader ? '⭐ 순찰 대장' : '대장으로'}</button>` : ''}</div>
+          <button type="button" class="btn ghost field-leader" ${isLeader ? 'disabled' : ''}>${isLeader ? '⭐ 순찰 대장' : '대장으로'}</button></div>
         <button type="button" class="btn ghost field-main-share-card">자랑 카드 저장·공유</button></div>`}`, 'field-sheep-sheet', () => {
         if (selected !== sheep.id) return;
         selected = null;
@@ -2013,40 +1988,52 @@
       modal.querySelector('.field-dex-back').onclick = dexSheet;
     }
 
-    function shop(wearOnly = false, notice = '') {
-      const data = ensure();
-      if (!wearOnly && !featureOpen('market', data)) return;
+    function shop(section = 'objects') {
       const oil = Core.data.oil || 0;
+      const clothes = section === 'wear' || section in WEAR_LABELS;
+      const slot = section in WEAR_LABELS ? section : 'head';
       const hint = id => {
         const want = lureOf(id);
-        return want.length ? `<small class="field-lure">이걸 놓으면 ${esc(want.map(s => s.name).join('·'))}${Core.josa(want[want.length - 1].name, '이가').slice(-1)} 놀러 올지도 몰라.</small>` : '';
+        return want.length ? `<small class="field-lure">이걸 놓으면 ${esc(want.map(s => s.name).join('·'))}${Core.josa(want.at(-1).name, '이가').slice(-1)} 놀러 올지도 몰라.</small>` : '';
       };
-      const places = market.filter(([, kind]) => kind !== 'wear');
-      const wears = market.filter(([, kind]) => kind === 'wear');
-      const modal = sheet(wearOnly ? '꾸미기' : '들판 장터', `<p class="field-sheet-meta">기름 <strong>${oil}방울</strong>${wearOnly ? ' · 양 한 마리에 하나씩 달 수 있어.' : ' · 물건을 놓으면 친구 양이 놀러 올 수 있어.'}</p>
-        ${notice ? `<p class="field-shop-notice" role="status">${esc(notice)}</p>` : ''}
-        ${wearOnly ? '' : `<div class="field-shop-list">${places.map(([id, kind, cost]) => `<div class="field-shop-row">
-          ${icon(id, kind)}<div><b>${esc(id)}</b>${kind === 'sky' ? '<small>하늘 칸</small>' : ''}${hint(id)}
-          ${available(id) ? `<button type="button" class="link" data-place="${esc(id)}">${available(id)}개 보유 · 놓기 ›</button>` : ''}</div>
-          <button type="button" class="btn small" data-buy="${esc(id)}" ${oil < cost ? 'disabled' : ''}>${cost}방울</button></div>`).join('')}</div>
-        <h3 class="field-sub">꾸미기</h3>`}
-        <div class="field-shop-grid">${wears.map(([id, kind, cost]) =>
-          `<button type="button" data-buy="${esc(id)}" ${oil < cost ? 'disabled' : ''}>${icon(id, kind)}<span>${esc(id)}</span><b>${cost}방울</b></button>`).join('')}</div>`, 'field-shop-sheet');
+      const objectsList = `<div class="field-shop-list">${market.map(([id, kind, cost]) => `<div class="field-shop-row">
+        ${icon(id)}<div><b>${esc(id)}</b>${kind === 'sky' ? '<small>하늘 칸</small>' : ''}${hint(id)}
+        ${available(id) ? `<button type="button" class="link" data-place="${esc(id)}">${available(id)}개 보유 · 놓기 ›</button>` : ''}</div>
+        <button type="button" class="btn small" data-buy="${esc(id)}" ${oil < cost ? 'disabled' : ''}>${cost}방울</button></div>`).join('')}</div>`;
+      const clothesList = () => `${wearTabs(slot)}<div class="field-shop-grid field-gear-grid">${wardrobe
+        .filter(item => item.slot === slot && item.price != null).map(item => wearButton(item, {
+          attr: 'data-buy', detail: item.price + '방울', disabled: oil < item.price
+        })).join('')}</div>`;
+      const modal = sheet('들판 장터', `<p class="field-sheet-meta">기름 <strong>${oil}방울</strong></p>
+        <div class="field-shop-tabs"><button type="button" data-section="objects" aria-pressed="${!clothes}">들판 물건</button>
+        <button type="button" data-section="wear" aria-pressed="${clothes}">꾸미기</button></div>
+        ${clothes ? clothesList() : objectsList}`, 'field-shop-sheet');
+      modal.querySelectorAll('[data-section], [data-wear-slot]').forEach(button => {
+        button.onclick = () => shop(button.dataset.section || button.dataset.wearSlot);
+      });
       modal.querySelectorAll('[data-buy]').forEach(button => {
         button.onclick = () => {
           const id = button.dataset.buy;
-          const [, kind, cost] = market.find(item => item[0] === id);
-          if (!spendOil(cost)) return;
+          const item = wearByName.get(id);
+          const cost = item ? item.price : market.find(entry => entry[0] === id)?.[2];
+          if (cost == null || !spendOil(cost)) return;
           giveItem(id);
           Sound.sfx('pop');
+          if (item) {
+            render();
+            shop(slot);
+            const next = root.querySelector('.field-shop-sheet .field-sheet-meta');
+            next.insertAdjacentHTML('afterend', `<p class="field-shop-notice" role="status">${esc(josa(item.label, '을를'))} 샀어. 옷장에서 입혀 봐!</p>`);
+            return;
+          }
           modal.close();
-          if (kind === 'wear') { render(); return shop(wearOnly, `${josa(id, '을를')} 샀어. 양을 눌러 달아 줘.`); }
           startPlacing(id, `${josa(id, '을를')} 샀어.`);
         };
       });
       modal.querySelectorAll('[data-place]').forEach(button => {
         button.onclick = () => { modal.close(); startPlacing(button.dataset.place); };
       });
+      upgradeWearIcons(modal);
     }
 
     function startPlacing(item, prefix = '') {
@@ -2058,7 +2045,6 @@
 
     function selectSlot(index) {
       const data = field();
-      if (!featureOpen('market', data)) return;
       if (!Number.isInteger(index) || index < 0 || index >= slots.length) return;
       if (moving) {
         if (!allowedSlots(data, moving).includes(index)) return;
@@ -2110,23 +2096,108 @@
       });
     }
 
-    function dress(sheep) {
-      const items = Object.keys(catalog).filter(id => catalog[id] === 'wear' && (available(id) || sheep.wear === id));
-      const modal = sheet(sheep.name + ' 꾸미기', `<div class="field-pet-art">${portraitHTML(sheep.species, { level: sheep.level, wear: sheep.wear })}</div>
-        ${items.length ? `<div class="field-shop-grid">${items.map(id => `<button type="button" data-wear="${esc(id)}" aria-pressed="${sheep.wear === id}">${icon(id, 'wear')}<span>${esc(id)}</span><b>${sheep.wear === id ? '착용 중' : '달아 주기'}</b></button>`).join('')}</div>` : '<button type="button" class="btn ghost field-open-wear-shop">꾸미기 아이템 보러 가기</button>'}
-        ${sheep.wear ? '<button type="button" class="btn ghost field-unwear">벗기기</button>' : ''}`);
-      const wear = id => {
-        if (id && sheep.wear !== id && !available(id)) return;
-        sheep.wear = id;
+    function dress(sheep = mainSheep()) {
+      if (!sheep) return;
+      let saved = normalizeWear(sheep.wear);
+      const draft = { ...saved };
+      let slot = 'head', studio = null;
+      const modal = sheet('👗 옷장', `<div class="field-wardrobe-studio"><div class="field-wardrobe-name">
+        <strong>${esc(sheep.name)}</strong><small>${esc(spec(sheep.species).name)}</small></div>
+        <div class="field-wardrobe-preview" aria-label="${esc(sheep.name)} 착용 미리보기"></div>
+        <span class="field-wardrobe-hint" hidden>← 밀어서 돌려 보기 →</span></div>
+        <div class="field-wardrobe-options"></div>
+        <div class="field-wardrobe-items field-shop-grid field-gear-grid"></div>
+        <p class="field-wardrobe-status" role="status"></p>
+        <div class="field-wardrobe-actions">
+          <button class="btn ghost" type="button" data-outfit-action="remove">벗기</button>
+          <button class="btn ghost" type="button" data-outfit-action="buy">사기</button>
+          <button class="btn" type="button" data-outfit-action="save">저장</button>
+        </div>
+        <button class="btn ghost field-wardrobe-card" type="button">꾸민 모습 카드 저장·공유</button>`,
+        'field-wardrobe-sheet', () => studio?.destroy());
+      const host = modal.querySelector('.field-wardrobe-preview');
+      const tabs = modal.querySelector('.field-wardrobe-options');
+      const grid = modal.querySelector('.field-wardrobe-items');
+      const buy = modal.querySelector('[data-outfit-action="buy"]');
+      const remove = modal.querySelector('[data-outfit-action="remove"]');
+      const save = modal.querySelector('[data-outfit-action="save"]');
+      const share = modal.querySelector('.field-wardrobe-card');
+      const status = modal.querySelector('.field-wardrobe-status');
+      const canWear = name => !name || saved[wearByName.get(name).slot] === name || available(name) > 0;
+      const outfit = () => ({ ...sheep, wear: draft });
+      const dirty = () => Object.keys(draft).some(key => draft[key] !== saved[key]);
+      function updateFigure() {
+        if (studio) studio.update(outfit());
+        else host.innerHTML = `<img alt="" class="field-wardrobe-fallback" src="${svgURL(portraitSVG(sheep.species, outfit()))}">`;
+      }
+      function refresh(message = '') {
+        const item = wearByName.get(draft[slot]);
+        const oil = Core.data.oil || 0;
+        const missing = Object.values(draft).filter(name => !canWear(name));
+        const scroll = grid.scrollTop;
+        tabs.innerHTML = wearTabs(slot);
+        grid.innerHTML = wardrobe.filter(entry => entry.slot === slot).map(entry => wearButton(entry, {
+          attr: 'data-wear', pressed: item === entry,
+          detail: canWear(entry.name) ? '보유' : entry.price == null ? '탐험에서 얻기' : entry.price + '방울'
+        })).join('');
+        grid.scrollTop = scroll;
+        buy.hidden = !item || canWear(item.name) || item.price == null;
+        buy.disabled = buy.hidden || oil < item.price;
+        buy.textContent = buy.hidden ? '사기' : `사기 · ${item.price}방울`;
+        remove.disabled = !item;
+        save.disabled = !dirty() || missing.length > 0;
+        share.disabled = dirty();
+        status.textContent = message || (missing.length ? '미리 입어 보는 중 · 가진 옷만 저장할 수 있어.' : `기름 ${oil}방울`);
+        upgradeWearIcons(modal);
+      }
+      tabs.onclick = event => {
+        const button = event.target.closest('[data-wear-slot]');
+        if (!button) return;
+        slot = button.dataset.wearSlot;
+        grid.scrollTop = 0;
+        refresh();
+        tabs.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+      };
+      grid.onclick = event => {
+        const button = event.target.closest('[data-wear]');
+        if (!button) return;
+        draft[slot] = button.dataset.wear;
+        updateFigure();
+        refresh();
+        grid.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+      };
+      buy.onclick = () => {
+        const item = wearByName.get(draft[slot]);
+        if (!item || canWear(item.name) || item.price == null || !spendOil(item.price)) return;
+        giveItem(item.name);
+        Sound.sfx('pop');
+        render();
+        refresh(`${josa(item.label, '을를')} 샀어. 저장하면 들판에도 보여!`);
+      };
+      remove.onclick = () => { draft[slot] = null; updateFigure(); refresh(); };
+      save.onclick = () => {
+        if (Object.values(draft).some(name => !canWear(name))) return;
+        saved = normalizeWear(draft);
+        sheep.wear = saved;
         Core.save();
         Sound.sfx('pop');
-        modal.close();
-        render(id ? `${josa(id, '을를')} 달았어.` : '장식을 벗겼어.');
-        dress(sheep);
+        render('옷을 갈아입었어!');
+        badges();
+        refresh('들판에도 이 모습으로 나와!');
       };
-      modal.querySelectorAll('[data-wear]').forEach(button => { button.onclick = () => wear(button.dataset.wear); });
-      modal.querySelector('.field-open-wear-shop')?.addEventListener('click', () => shop(true));
-      modal.querySelector('.field-unwear')?.addEventListener('click', () => wear(null));
+      share.onclick = () => cardSheet('꾸민 모습 카드', () => Card.drawWardrobe(sheep, wornNames(saved)
+        .map(name => wearByName.get(name).label)), 'WARDROBE', `${sheep.name}의 꾸민 모습`);
+      updateFigure();
+      refresh();
+      if (can3D() && typeof Field3D.turntable === 'function') {
+        Field3D.turntable(host, outfit()).then(result => {
+          if (!modal.open || !modal.isConnected) { result.destroy(); return; }
+          studio = result;
+          host.querySelector('.field-wardrobe-fallback')?.remove();
+          modal.querySelector('.field-wardrobe-hint').hidden = false;
+          updateFigure();
+        }).catch(() => {});
+      }
     }
 
     function search(sheep) {
@@ -2158,7 +2229,6 @@
     /* 밤 순찰 */
     function patrolSheet() {
       const data = ensure();
-      if (!featureOpen('patrol', data)) return;
       const leader = leaderSheep(data);
       if (!leader) return;
       const sp = spec(leader.species);
@@ -2181,7 +2251,6 @@
     async function runPatrol() {
       if (!view || busy) return;
       const data = ensure();
-      if (!featureOpen('patrol', data)) return;
       const leader = leaderSheep(data);
       busy = true;
       root.classList.add('is-busy', 'patrolling');
@@ -2233,10 +2302,11 @@
       }
       const best = penned > data.patrolBest;
       if (best) data.patrolBest = penned;
+      if (stars === 3) data.patrolPerfect = (data.patrolPerfect || 0) + 1;
       Core.save();
       const record = { penned, total, scared, timeLeft, stars, leader: leader?.name || '', leaderSpecies: leader?.species || 'cotton', best, date: today };
       const rating = '★'.repeat(stars);
-      const caption = `오늘 밤 순찰 ${rating ? rating + ' ' : ''}${penned}/${total}! 너도 해 봐`;
+      const caption = `오늘 밤 순찰 ${rating ? rating + ' ' : ''}${penned}/${total}! 이길 수 있어?`;
       render(first ? (stars ? `순찰 끝! 털 +${stars * 2}뭉치` : '순찰 끝! 별을 얻으면 털을 받아.') : '연습 순찰 끝!');
       const modal = sheet('순찰 결과', `<div class="field-patrol-result">
           <div class="field-patrol-rating" role="img" aria-label="별 ${stars}/3"><span>${rating}</span><span class="empty-stars">${'☆'.repeat(3 - stars)}</span></div>
@@ -2244,9 +2314,9 @@
           <ul>${timeLeft ? `<li>⏱ ${timeLeft}초 남음</li>` : ''}<li>🐺 쫓은 늑대 ${scared}</li>
           <li>${first ? (stars ? Object.entries(reward).map(([id, count]) => woolUnit(id, count)).join(' ') : '별을 얻으면 털을 받아.') : '오늘 보상은 이미 받았어 · 연습 순찰'}</li>
           ${best ? '<li class="best">🏆 최고 기록 갱신!</li>' : `<li>최고 기록 ${data.patrolBest}마리</li>`}</ul></div>
-        <button type="button" class="btn field-patrol-card">순찰 기록 카드 공유</button>
+        <button type="button" class="btn field-patrol-card">순찰 도전장 저장·공유</button>
         <button type="button" class="btn ghost field-patrol-again">한 번 더</button>`, 'field-patrol-sheet');
-      modal.querySelector('.field-patrol-card').onclick = () => cardSheet('순찰 기록 카드', () => Card.drawPatrol(record), 'PATROL', '밤 순찰 기록 카드', caption);
+      modal.querySelector('.field-patrol-card').onclick = () => cardSheet('순찰 도전장', () => Card.drawPatrol(record), 'PATROL', '밤 순찰 기록 카드', caption);
       modal.querySelector('.field-patrol-again').onclick = () => { modal.close(); patrolSheet(); };
       badges();
     }
@@ -2256,8 +2326,7 @@
     // 미리보기(?preview=all) 전용 시험 도구
     function testTools() {
       if (!Core.PREVIEW_ALL) return '';
-      const tools = [['features-all', '기능 모두 열기'], ['features-first', '처음 단계로'],
-        ['oil', '기름 +20'], ['day', '하루 넘기기'], ['wool-add', '털 바구니 +10씩'], ['gifts-all', '선물 모두 열기'],
+      const tools = [['oil', '기름 +20'], ['day', '하루 넘기기'], ['wool-add', '털 바구니 +10씩'], ['gifts-all', '선물 모두 열기'],
         ['visit-2', '방문 기록 2일 전으로'], ['visit-4', '방문 기록 4일 전으로'],
         ['lost', '잃은 양 부르기'], ['visit', '방문객 부르기'], ['rare', '희귀 부르기'],
         ['legend', '전설 조건 모두 채우기'], ['patrol', '순찰 보상 초기화'],
@@ -2269,8 +2338,6 @@
       const box = manage.querySelector('.field-test-tools');
       if (!box) return;
       const on = (key, fn) => { const b = box.querySelector(`[data-t=${key}]`); if (b) b.onclick = fn; };
-      on('features-all', () => { previewFeatures = 'all'; render('🧪 기능을 모두 열었어.'); });
-      on('features-first', () => { previewFeatures = 'first'; render('🧪 처음 단계로 돌아갔어.'); });
       on('oil', () => { addOil(20, 'test'); Core.save(); render('🧪 기름 +20'); });
       on('day', () => {
         const next = new URL(location.href);
@@ -2364,7 +2431,8 @@
     }
 
     render();
-    if (flock) flockSheet();
+    if (openWardrobe) dress();
+    else if (flock) flockSheet();
     else if (gift && giftReady()) giftSheet();
     if (mode === 'loading') start3D();
     else { greetFlock(); celebrateMainGrowth(); }
@@ -2381,11 +2449,10 @@
     }
   }
 
-  function mapMarkup(data, moving, marketOpen, miss, trial) {
+  function mapMarkup(data, moving, miss, trial) {
     const slotsHTML = slots.map(([x, y], i) => {
       const id = data.slots[i];
-      if (!marketOpen && !id) return '';
-      const allowed = marketOpen && (!moving || (!id && catalog[moving.item] === (i < 8 ? 'ground' : 'sky')));
+      const allowed = (!moving || (!id && catalog[moving.item] === (i < 8 ? 'ground' : 'sky')));
       return `<button type="button" class="field-slot ${id ? 'occupied' : ''} ${moving && allowed ? 'destination' : ''}" style="${position(x, y)}"
         aria-label="${id ? esc(id) : (i < 8 ? '들판 칸 ' + (i + 1) : '하늘 칸 ' + (i - 7))} 선택" data-slot="${i}" ${allowed ? '' : 'disabled'}>
         ${id ? sprite(objects[id] || '') : '<span aria-hidden="true">+</span>'}</button>`;
@@ -2407,8 +2474,38 @@
       ${slotsHTML}${flockHTML}${visitorsHTML}</div>`;
   }
 
-  function icon(id, kind) {
-    return sprite(kind === 'wear' ? sheepArt({ species: 'cotton', level: 3, wear: id }, { noAcc: false }) : objects[id]);
+  function icon(id) {
+    return sprite(objects[id]);
+  }
+
+  function wearTabs(slot) {
+    return `<div class="field-wear-tabs" role="group" aria-label="꾸미기 종류">${Object.entries(WEAR_LABELS).map(([key, label]) =>
+      `<button type="button" data-wear-slot="${key}" aria-pressed="${key === slot}">${label}</button>`).join('')}</div>`;
+  }
+
+  function wearButton(item, { attr, detail, pressed, disabled }) {
+    return `<button type="button" ${attr}="${esc(item.name)}" ${pressed == null ? '' : `aria-pressed="${pressed}"`} ${disabled ? 'disabled' : ''}>
+      <span class="field-gear-icon" style="--gear-color:${esc(item.color)}" aria-hidden="true">
+        <span>${esc(item.symbol)}</span><img alt="" data-gear-icon="${esc(item.name)}" hidden>
+      </span><span>${esc(item.label)}</span><b>${esc(detail)}</b></button>`;
+  }
+
+  function upgradeWearIcons(root) {
+    if (!can3D() || !window.Field3D?.wearIcon) return;
+    const queue = Array.from(root.querySelectorAll('[data-gear-icon]'));
+    async function next() {
+      if (!root.isConnected || !root.open) return;
+      const img = queue.shift();
+      if (!img) return;
+      if (img.isConnected) {
+        try {
+          img.src = await Field3D.wearIcon(img.dataset.gearIcon);
+          if (img.src) { img.hidden = false; img.previousElementSibling.hidden = true; }
+        } catch { /* 이모지 아이콘을 유지 */ }
+      }
+      if (queue.length) requestAnimationFrame(next);
+    }
+    requestAnimationFrame(next);
   }
 
   function nameForm(label, fallback) {
@@ -2670,6 +2767,7 @@
 
   window.Field = {
     ensure, has, panelHTML, bindPanel, page, receiveFirstLamb, flockScene, giveItem, drawCard, lostCheck, stats,
+    showSheet: fieldSheet, showCard: fieldCard, wordMarkup: verseHTML,
     bonus, portrait, snapshot, summary, spec, dexList, visitCheck, awardChapterGuest, sheepArt, visitShared, prepareDex, prewarm, homeThumb,
     shearRemaining, shearTonight, giftCardData, giftReady, lostSheep, mainCare, heartMarks, rollFirstSheep, GAME_LINE, FIRST_STORY_HINT
   };

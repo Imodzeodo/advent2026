@@ -1,0 +1,78 @@
+.explore { padding: max(12px, var(--safe-t)) 14px calc(14px + var(--safe-b)); }
+.explore-head { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 9px; margin: 0 0 11px; }
+.explore-head h1 { margin: 0; font: 700 clamp(20px, 5.55vw, 28px)/1.2 var(--serif); color: #fff1ce; }
+.explore-head p { margin: 3px 0 0; font-size: 12px; color: #d1c3db; }
+.explore-back, .explore-sub {
+  cursor: pointer; min-height: 40px; border: 1px solid #f4ce822e; background: #f6dfa416; border-radius: 10px; color: #f9e1ac;
+}
+.explore-back { font-size: 24px; }
+.explore-sub { font-size: 12px; padding: 0 9px; white-space: nowrap; }
+.explore-parchment { position: relative; isolation: isolate; margin: 0 auto; border: 1px solid #9d745b; border-radius: 17px; }
+.explore-parchment svg { display: block; width: 100%; }
+.explore-map-pin {
+  display: grid; place-items: center; position: absolute; left: var(--x); top: var(--y); transform: translate(-50%, -50%);
+  width: 35px; height: 35px; border: 0; padding: 0; background: transparent; color: #ffe5ad; cursor: pointer;
+}
+.explore-map-pin b {
+  display: grid; place-items: center; min-width: 23px; height: 23px; padding: 0 3px; background: #583b42; border: 1px solid #ffe1a2;
+  box-shadow: 0 3px 3px #503a4873; border-radius: 50%; font-size: 12px;
+}
+.explore-map-pin small {
+  position: absolute; z-index: 2; top: 27px; left: 50%; transform: translateX(-50%);
+  padding: 0 2px; color: #442838; background: #f8d790; border-radius: 4px; font-size: 9px; font-weight: 700; white-space: nowrap;
+}
+.explore-map-pin.today { z-index: 2; }
+.explore-map-pin.today b { color: #462639; background: #ffe29e; box-shadow: 0 0 0 3px #a94b69, 0 0 0 6px #f7b87d92; animation: explore-beacon 2.8s ease-in-out infinite; }
+@keyframes explore-beacon { 50% { box-shadow: 0 0 0 3px #a94b69, 0 0 0 8px #f7b87d38; } }
+@media (prefers-reduced-motion) { .explore-map-pin.today b { animation: none; } }
+.no-motion .explore-map-pin.today b { animation: none; }
+.explore-map-stats { display: flex; justify-content: space-between; gap: 5px; padding: 8px 3px 2px; color: #e7cfaa; font-size: 13px; }
+.explore-map-event { margin: 7px 0; color: #dac9e3; font-size: 13px; }
+.explore-map .btn { padding-block: 11px; }
+.explore-places { display: grid; gap: 6px; margin-block: 8px 12px; }
+.explore-places h2 { margin: 6px 2px 0; color: #f4d491; font: 700 18px var(--serif); }
+.explore-places button, .explore-flat-markers button, .explore-nooks button {
+  min-height: 42px; text-align: left; padding: 6px 9px; color: #f3e6e4; background: #ffffff0c;
+  border: 1px solid #edd1a833; border-radius: 9px; cursor: pointer;
+}
+.explore-stage {
+  position: relative; height: clamp(290px, 63dvh, 570px); overflow: hidden; isolation: isolate;
+  background: radial-gradient(ellipse at 50% 85%, #6b4e6d, #242444 69%, #14152d);
+  border: 1px solid #e4be864a; border-radius: 14px;
+}
+.explore-loading { padding: 20px; text-align: center; color: #f2d6af; }
+.f3d-explore, .f3d-explore canvas, .f3d-explore-labels { position: absolute; inset: 0; width: 100%; height: 100%; }
+.f3d-explore canvas { display: block; touch-action: none; }
+.f3d-explore-labels { pointer-events: none; }
+.f3d-explore-label, .f3d-explore-speech {
+  position: absolute; top: 0; left: 0; z-index: 1; padding: 3px 6px; border-radius: 7px;
+  background: #181728e8; border: 1px solid var(--marker, #f5d28a); color: #fff2de;
+  font-size: 11px; line-height: 1.16; white-space: nowrap;
+}
+.f3d-explore-label { pointer-events: auto; min-height: 26px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.f3d-explore-label i, .explore-flat-markers i { color: var(--marker, #ffda87); font-style: normal; font-size: 14px; line-height: 1; }
+.f3d-explore-speech { z-index: 2; max-width: min(68vw, 270px); white-space: normal; padding: 5px 7px; }
+.explore-status, .explore-task-line, .explore-foot { margin: 0; padding: 5px 3px; color: #dfd0e9; font-size: 13px; }
+.explore-status { min-height: 31px; padding-top: 8px; color: #f4dba8; }
+.explore-task-line { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+.explore-task-line strong { padding: 2px 6px; border: 1px solid #e7b59178; border-radius: 5px; color: #fff2b9; font-variant-numeric: tabular-nums; }
+.explore-foot { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: space-between; font-size: 12px; }
+.explore-flat-markers, .explore-nooks > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.explore-flat-markers i { display: inline-block; min-width: 17px; margin-right: 3px; }
+.explore-nooks { margin-top: 7px; font-size: 13px; color: #e2d0eb; }
+.explore-nooks summary { min-height: 36px; cursor: pointer; padding: 7px 2px; }
+.explore-nooks button { min-height: 40px; }
+.explore-talk p { font-size: 16px; line-height: 1.55; margin: 12px 3px; }
+.explore-talk > small { display: block; margin: 8px 3px; color: #e6cc94; }
+.explore-portrait { display: flex; align-items: center; gap: 9px; padding: 4px 1px; color: #f2d6aa; }
+.explore-portrait svg { width: 54px; height: 54px; border-radius: 50%; }
+.explore-portrait b { font: 700 18px var(--serif); }
+.explore-checklist { padding-left: 17px; color: #e1d4e9; line-height: 1.65; }
+.explore-photo-preview { display: block; width: min(100%, 245px); aspect-ratio: 11 / 12; margin: 0 auto 8px; object-fit: cover; border-radius: 9px; background: #32284a; }
+.explore-album-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.explore-album-grid figure { margin: 0; min-width: 0; padding: 6px; border-radius: 11px; border: 1px solid #dec49144; background: #ddba8615; }
+.explore-album-grid img { display: block; width: 100%; aspect-ratio: 11 / 12; object-fit: cover; border-radius: 6px; background: #30274b; }
+.explore-album-grid figcaption { padding: 5px 2px 0; font-size: 13px; color: #eddbbf; }
+.explore-album-grid small { color: #d4c2da; display: block; padding-top: 1px; }
+.explore-activity-link { color: #ffe0a3; font-weight: 700; }
+.f3d-explore-label span { max-width: 130px; overflow: hidden; text-overflow: ellipsis; }

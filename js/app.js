@@ -162,8 +162,12 @@
     const fi = root.querySelector('#finale'); if (fi) fi.onclick = finale;
     const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => sendKey().then(() => { if (Core.data.lastBackup && Date.now() - Core.data.lastBackup < 6e4) nu.remove(); });
     const next = root.querySelector('.tonight-next');
-    if (next) next.onclick = () => next.dataset.step === 'story' ? go(next.dataset.id) :
-      Field.page({ tonight: next.dataset.id, gift: next.dataset.gift === 'true' });
+    if (next) next.onclick = () => {
+      if (next.dataset.step === 'story') return go(next.dataset.id);
+      if (next.dataset.step === 'explore') return Explore.enter(next.dataset.id);
+      return Field.page({ tonight: next.dataset.id });
+    };
+    root.querySelector('.tonight-activity')?.addEventListener('click', () => Explore.map());
     const dismiss = root.querySelector('[data-dismiss-install]');
     if (dismiss) dismiss.onclick = () => { D.a2hsSeen = true; Core.save(); dismiss.closest('.install-note').remove(); };
     root.querySelector('#snd').onclick = e => { e.currentTarget.textContent = Sound.toggle() ? '🔊' : '🔇'; };
@@ -178,8 +182,7 @@
   // 날짜를 지정한 전체 미리보기에서도 오늘 밤 안내는 그날 열린 이야기만 추천한다.
   function storyAvailable(episode) {
     if (!Core.PREVIEW_ALL || !Core.TEST_DATE || !episode.date) return Core.isOpen(episode);
-    const { date, hour } = Core.nowKST();
-    return episode.date < date || (episode.date === date && (episode.openHour == null || hour >= episode.openHour));
+    return Explore.isOpen(episode);
   }
 
   function tonightCard(today, introducing = false) {
@@ -187,55 +190,54 @@
     const episodes = Core.mainEpisodes().filter(e => window.STORY[e.id]);
     const unfinished = episodes.filter(e => storyAvailable(e) && !D.done[e.id]);
     const playedTonight = episodes.findLast(e => D.done[e.id] && D.doneOn?.[e.id] === today);
-    const firstStory = unfinished.find(e => e.id === '1-0');
-    // 첫 양을 받는 편부터 시작하고, 오늘 한 편을 끝냈다면 들판으로 이어진다.
-    const episode = firstStory || (playedTonight ? null : unfinished.at(-1));
+    const episode = unfinished.find(e => e.id === '1-0') || (playedTonight ? null : unfinished.at(-1));
     const later = episodes.find(e => !storyAvailable(e) && !D.done[e.id]);
     const fieldOpen = !!window.Field?.has();
     const care = fieldOpen ? Field.mainCare(today) : null;
-    const giftReady = fieldOpen && !!Field.giftReady?.();
     const lost = fieldOpen ? Field.lostSheep?.() : null;
-    const needFind = !!lost?.lostFromVisit;
-    const fieldDone = care?.hearts === 3 && !needFind;
-    // 오늘 이야기를 아직 안 봤으면 어제 미션 대신 '이야기를 마치면 나와'를 보여 준다.
-    const mission = !episode && playedTonight && D.mission[playedTonight.id] ? playedTonight : null;
-    const status = mission ? Fame.missionStatus(mission) : 'none';
-    const careNext = !episode && care && !care.sheep.lost && care.hearts < 3;
-    const giftNext = !episode && !careNext && giftReady;
-    const missionNext = !episode && !careNext && !giftNext && status === 'wait';
-    const findNext = !episode && needFind && !careNext && !giftNext && !missionNext;
+    const fieldDone = care?.hearts === 3 && !lost?.lostFromVisit;
     const linkedEpisode = playedTonight || episodes.findLast(e => D.done[e.id]);
+    const scheduled = episodes.find(e => e.date === today);
+    const place = episode || (scheduled && Explore.isOpen(scheduled) ? scheduled : linkedEpisode);
+    const title = Explore.title(place?.id);
+    const explored = !!place && Explore.complete(place.id);
+    const exploreNext = !episode && fieldOpen && !!title && !explored && Explore.isOpen(place);
+    const fieldNext = !episode && !exploreNext && fieldOpen && !fieldDone;
+    const pending = episodes.findLast(e => D.done[e.id] && D.doneOn?.[e.id] !== today && Fame.missionStatus(e) === 'wait');
+    const mission = pending || linkedEpisode;
+    const missionState = mission ? Fame.missionStatus(mission) : 'none';
+    const event = fieldOpen && !introducing ? Explore.todayEvent() : null;
     const storyDone = !episode && (!!playedTonight || !later);
     const watched = D.done.end && !later ? '성탄 이야기까지 봤어' : playedTonight ? '오늘 이야기 봤어' : '다음 이야기를 기다려 줘';
+    const openHour = later?.openHour ?? (Core.TEST_DATE && window.EXPLORE[later?.id]?.openHour);
     const storyLine = episode ? `${episode.date === today ? '' : esc(Core.dateLabel(episode.date)) + ' '}「${esc(episode.title)}」` :
-      later ? `${storyDone ? watched + ' · ' : ''}다음 이야기 ${esc(Core.dateLabel(later.date))}${later.openHour == null ? '' : ' ' + esc(Core.hourLabel(later.openHour))}에 열려` : watched;
+      later ? `${storyDone ? watched + ' · ' : ''}다음 이야기 ${esc(Core.dateLabel(later.date))}${openHour == null ? '' : ' ' + esc(Core.hourLabel(openHour))}에 열려` : watched;
     const nextButton = introducing ? '' : episode ? `<button type="button" class="btn tonight-next" data-step="story" data-id="${episode.id}">📖 오늘 이야기 보기</button>` :
-      findNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${linkedEpisode?.id || ''}">🔦 잃은 양 찾기</button>` :
-      careNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${linkedEpisode?.id || ''}">🐑 ${esc(care.sheep.name)} 돌보기</button>` :
-      giftNext ? `<button type="button" class="btn tonight-next" data-step="field" data-gift="true" data-id="${linkedEpisode?.id || ''}">🎁 선물 만들기</button>` : '';
-    const complete = !introducing && !episode && !findNext && !careNext && !missionNext && (storyDone || fieldOpen);
+      exploreNext ? `<button type="button" class="btn tonight-next" data-step="explore" data-id="${place.id}">🧭 ${esc(title)}에 가 보자</button>` :
+      fieldNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${place?.id || ''}">${lost?.lostFromVisit ? '🔦 잃은 양 찾기' : '🐑 ' + esc(care.sheep.name) + ' 돌보기'}</button>` : '';
     return `<section class="tonight" aria-labelledby="tonight-title">
       <header><h2 id="tonight-title">🌙 오늘 밤 할 일</h2><span>${esc(christmasLabel(today))}</span></header>
       <ol class="tonight-steps">
         <li class="tonight-step${episode ? ' is-next' : ''}" data-tonight="story"${storyDone ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">📖</span><div><b>오늘 이야기</b><p>${storyLine}</p>
-          ${episode?.note ? `<small class="tonight-ellipsis">“${esc(episode.note)}”</small>` : ''}</div>
-          ${tonightMark(storyDone)}</li>
-        <li class="tonight-step${findNext || careNext || giftNext ? ' is-next' : ''}" data-tonight="field"${fieldDone ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">🐑</span><div><b>${care ? esc(care.sheep.name) + ' 돌보기' : '오늘 밤 들판'}
+          <span aria-hidden="true">📖</span><div><b>오늘 이야기</b><p>${storyLine}</p></div>${tonightMark(storyDone)}</li>
+        <li class="tonight-step${exploreNext ? ' is-next' : ''}" data-tonight="explore"${explored ? ' data-done="true"' : ''}>
+          <span aria-hidden="true">🧭</span><div><b>오늘의 장소</b><p>${title ? esc(title) : '이야기가 열리면 함께 가자'}</p></div>${tonightMark(explored)}</li>
+        <li class="tonight-step${fieldNext ? ' is-next' : ''}" data-tonight="field"${fieldDone ? ' data-done="true"' : ''}>
+          <span aria-hidden="true">🐑</span><div><b>${care ? esc(care.sheep.name) + ' 돌보기' : '내 양 돌보기'}
           ${care ? `<span class="tonight-hearts" aria-label="하트 ${care.hearts}/3">${Field.heartMarks(care.hearts)}</span>` : ''}</b>
-          ${!care ? `<p>${esc(Field.FIRST_STORY_HINT)}</p>` : ''}
-          ${giftReady && !giftNext ? '<small class="tonight-gift">🎁 선물을 만들 수 있어!</small>' : ''}${lost ? `<small class="tonight-lost">🔍 ${esc(Core.josa(lost.name, '이가'))} ${needFind ? '들판에서 길을 잃었어' : '안 보여 · 들판에서 찾아 줘'}</small>` : ''}</div>
+          ${!care ? `<p>${esc(Field.FIRST_STORY_HINT)}</p>` : ''}${lost ? `<small class="tonight-lost">🔍 ${esc(Core.josa(lost.name, '이가'))} 들판에서 안 보여</small>` : ''}</div>
           ${tonightMark(fieldDone)}</li>
-        <li class="tonight-step${missionNext ? ' is-next' : ''}" data-tonight="mission"${status === 'yes' || status === 'no' ? ' data-done="true"' : ''}>
+        <li class="tonight-step tonight-step-mission" data-tonight="mission"${missionState === 'yes' || missionState === 'no' ? ' data-done="true"' : ''}>
           <span aria-hidden="true">🎯</span><div><b>미션</b>
-          ${mission ? `<p${missionNext ? ' class="tonight-mission-text"' : ' class="tonight-ellipsis"'}>${esc(Bible.full(D.mission[mission.id]))}</p>` :
-            `<p>${playedTonight ? '오늘은 미션이 없어' : '이야기를 마치면 나와'}</p>`}
-          ${status === 'yes' ? '<small>했어</small>' : status === 'no' ? '<small>못 했어 · 괜찮아</small>' : ''}
-          ${missionNext ? `<div class="row tm-btns"><button class="btn ghost" data-m="no" data-id="${mission.id}">못 했어</button><button class="btn" data-m="yes" data-id="${mission.id}">했어!</button></div>` : ''}</div>
-          ${tonightMark(status === 'yes' || status === 'no')}</li>
+          ${missionState !== 'none' ? `<small class="tonight-ellipsis">${esc(Bible.full(D.mission[mission.id]))}</small>` : ''}
+          ${pending ? `<div class="tonight-mission-check"><button class="link" data-m="no" data-id="${pending.id}">못 했어</button>
+            <button class="link" data-m="yes" data-id="${pending.id}">했어!</button></div>` : missionState === 'wait' ? '<small>다음에 와서 체크해</small>' :
+            missionState === 'yes' ? '<small>했어</small>' : missionState === 'no' ? '<small>못 했어 · 괜찮아</small>' : '<small>이야기를 마치면 나와</small>'}</div>
+          ${tonightMark(missionState === 'yes' || missionState === 'no')}</li>
       </ol>
-      ${nextButton || (complete ? `<p class="tonight-done">오늘 밤 할 일 끝! 🌟${D.done.end ? '' : ' 내일 밤에 또 만나'}</p>` : '')}
+      ${nextButton || (!introducing && fieldDone ? '<p class="tonight-done">오늘 밤 할 일 끝! 🌟</p>' : '')}
+      ${event ? `<p class="tonight-event">오늘 ${esc(Explore.title(event.ep))}에 무슨 일이 생겼대 🧭</p>` : ''}
+      ${fieldDone && !introducing ? '<button class="link tonight-activity" type="button">🧭 지난 장소도 걸어 볼래?</button>' : ''}
     </section>`;
   }
 
@@ -501,22 +503,25 @@
   function versePage() {
     const root = show('verses', 'page');
     const groups = Core.mainEpisodes().map(e => ({ e, vs: Bible.marks(e.id).map(r => Bible.verses(r)[0]).filter(Boolean) })).filter(g => g.vs.length);
-    const total = groups.reduce((a, g) => a + g.vs.length, 0);
+    const explored = Explore.words().map(word => ({ ...word, vs: Bible.verses(word.ref) }));
+    const total = groups.reduce((a, g) => a + g.vs.length, 0) + explored.reduce((n, g) => n + g.vs.length, 0);
     root.innerHTML = `
       ${testBanner()}
       <div class="page-head"><button class="back">←</button><h1>📖 말씀 모음</h1><span class="head-count">${total}절</span></div>
       <p class="page-note">말씀 묵상에서 마음에 남아 표시한 구절들이에요. 표시를 바꾸려면 그 편을 다시 보기 하면 돼요.</p>
       ${total ? `<button class="btn ghost" id="vcopy">📋 모두 복사</button>` : ''}
+      ${explored.length ? `<h2 class="explore-word-heading">🧭 걸으며 만난 말씀</h2>${explored.map(g => `<section class="vgroup">
+        <div class="di-meta">${esc(g.title)}</div>${g.vs.map(v => `<blockquote class="vq">${esc(v.text)}<cite>${esc(v.label)}</cite></blockquote>`).join('')}</section>`).join('')}` : ''}
       ${groups.length ? groups.map(g => {
         const ch = CHAPTERS.find(c => c.n === g.e.ch);
         return `<section class="vgroup tone-${ch.tone}">
           <div class="di-meta">${esc(ch.label)} · ${esc(Core.dateLabel(g.e.date))} · ${esc(g.e.title)}</div>
           ${g.vs.map(v => `<blockquote class="vq">${esc(v.text)}<cite>${esc(v.label)}</cite></blockquote>`).join('')}
         </section>`;
-      }).join('') : `<p class="empty">아직 표시한 구절이 없어요.<br>매일 끝의 말씀 묵상에서 구절을 눌러 보세요.</p>`}`;
+      }).join('') : explored.length ? '' : `<p class="empty">아직 표시한 구절이 없어요.<br>매일 끝의 말씀 묵상에서 구절을 눌러 보세요.</p>`}`;
     root.querySelector('.back').onclick = home;
     const c = root.querySelector('#vcopy');
-    if (c) c.onclick = async () => Player.toast((await Note.copyText(Note.versesText())) ? '복사했어요. 메모장이나 카톡에 붙여 넣어 보세요' : '복사가 안 되는 브라우저예요');
+    if (c) c.onclick = async () => Player.toast((await Note.copyText([Note.versesText(), ...explored.flatMap(g => g.vs.map(v => v.text + ' (' + v.label + ')'))].filter(Boolean).join('\n\n'))) ? '복사했어요. 메모장이나 카톡에 붙여 넣어 보세요' : '복사가 안 되는 브라우저예요');
     bindTestReset(root);
   }
 

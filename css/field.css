@@ -302,12 +302,6 @@
 .field-act:active { transform: scale(.97); }
 .field-act.field-flock { border-color: #ffd27a55; background: #ffd27a14; color: #ffe6ae; cursor: pointer; }
 .field-panel-picture img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.field-locked { color: #c9c6d6; background: #ffffff07; cursor: pointer; }
-.field-locked small { color: #b8b4cb; font-size: 11px; }
-.field-locked span { font-size: 17px; }
-.field-locked-wide { width: 100%; display: flex; flex-direction: row; justify-content: center; gap: 7px; }
-.field-unlock-line { font-family: var(--serif); }
-.field-unlock-line b { color: var(--gold); }
 
 /* 시트 공통 보강 */
 .field-sheet { max-height: 88vh; overflow-y: auto; }
@@ -575,3 +569,47 @@ html.no-motion .field-wool-unit.bump { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .field-wool-unit.bump { animation: none; }
 }
+
+.field-shop-tabs, .field-wear-tabs { display: flex; gap: 6px; margin: 0 0 8px; }
+.field-shop-tabs button, .field-wear-tabs button {
+  flex: 1; min-width: 0; min-height: 40px; padding: 4px; font: 700 13px var(--sans);
+  color: #ddd5ef; background: #ffffff09; border: 1px solid #ffffff22; border-radius: 9px;
+}
+.field-shop-tabs button[aria-pressed=true], .field-wear-tabs button[aria-pressed=true] {
+  border-color: #e9ca8c; color: #ffe9b8; background: #f6ce7e23;
+}
+.field-gear-grid button { position: relative; min-height: 95px; padding: 1px 3px 6px; gap: 2px; }
+.field-gear-grid button > span:nth-child(2) { font-weight: 700; }
+.field-gear-icon { width: 64px; height: 59px; display: grid; place-items: center; font-size: 28px; color: var(--gear-color); }
+.field-gear-icon img { display: block; object-fit: contain; width: 66px; height: 60px; }
+.field-gear-icon [hidden], .field-wardrobe-sheet [hidden] { display: none; }
+.field-wardrobe-sheet[open] {
+  display: grid; grid-template-rows: auto auto auto minmax(80px, 1fr) auto auto auto;
+  gap: 7px; overflow: hidden; height: min(712px, 94dvh); max-height: 94dvh; padding: 12px;
+}
+.field-wardrobe-studio {
+  position: relative; isolation: isolate; overflow: hidden; border: 1px solid #eac88c3c; border-radius: 13px;
+  background: radial-gradient(ellipse at 50% 72%, #cbb7ed4d, transparent 57%),
+    linear-gradient(162deg, #25294c 8%, #332c54 64%, #4e3b55 100%);
+}
+.field-wardrobe-studio::before {
+  content: ''; z-index: -1; position: absolute; left: 16%; right: 16%; bottom: 12%; height: 25%; border-radius: 50%;
+  border: 1px solid #e9c2a951; background: #ac8eb12d; box-shadow: 0 5px 0 #251b3b80;
+}
+.field-wardrobe-name { position: absolute; top: 9px; left: 11px; pointer-events: none; }
+.field-wardrobe-name strong, .field-wardrobe-name small { display: block; }
+.field-wardrobe-name strong { font: 700 19px var(--serif); color: #fff2d2; }
+.field-wardrobe-name small, .field-wardrobe-hint { font-size: 11px; color: #e6d6ef; }
+.field-wardrobe-hint { position: absolute; right: 10px; bottom: 6px; pointer-events: none; }
+.field-wardrobe-preview { display: grid; place-items: center; height: clamp(154px, 33dvh, 266px); }
+.field-wardrobe-preview > * { grid-area: 1 / 1; }
+.f3d-turntable { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.f3d-turntable:active { cursor: grabbing; }
+.field-wardrobe-fallback { width: min(79%, 242px); height: 99%; object-fit: contain; }
+.field-wardrobe-options .field-wear-tabs { margin: 0; }
+.field-wardrobe-items { overflow-y: auto; align-content: start; padding: 2px; overscroll-behavior: contain; }
+.field-wardrobe-status { margin: 0; padding: 2px 3px; min-height: 20px; font-size: 12px; color: #ead6b1; }
+.field-wardrobe-actions { display: flex; gap: 6px; }
+.field-wardrobe-actions .btn, .field-wardrobe-card.btn { margin: 0; min-height: 42px; padding: 7px 10px; }
+.field-wardrobe-actions .btn { flex: 1; }
+.field-wardrobe-card { width: 100%; font-size: 13px; }

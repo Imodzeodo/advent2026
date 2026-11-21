@@ -412,6 +412,9 @@
   function fileName(id, download = false) {
     if (id.startsWith('B:')) return `그밤-배지-${id.slice(2)}.png`;
     if (id === 'APPOINT') return '그밤-등불지기-임명장.png';
+    if (id === 'EXPLORE') return '그밤-탐험-도전장.png';
+    if (id === 'JOURNEY') return '그밤-27일의-여정.png';
+    if (id === 'WARDROBE') return '그밤-내-양-옷장.png';
     if (id === 'FIELD') return '그밤-나의-들판.png';
     if (id === 'PATROL') return `그밤-순찰-${Core.nowKST().date}.png`;
     if (id.startsWith('GIFT:')) return `그밤-선물-${(window.Field?.giftCardData(id.slice(5))?.title || id.slice(5)).replace(/\s+/g, '-')}.png`;
@@ -516,7 +519,7 @@
     const lamp = ctx.createRadialGradient(x, 470, 30, x, 470, 420); lamp.addColorStop(0, 'rgba(255,196,110,.5)'); lamp.addColorStop(1, 'rgba(255,196,110,0)');
     ctx.fillStyle = lamp; ctx.fillRect(0, 60, W, 860);
     ctx.textAlign = 'center';
-    ctx.font = `700 38px ${SANS}`; ctx.fillStyle = '#f7dfa9'; ctx.fillText('🔦 오늘 밤 순찰 기록', x, 150);
+    ctx.font = `700 38px ${SANS}`; ctx.fillStyle = '#f7dfa9'; ctx.fillText('🔦 밤 순찰 도전장', x, 150);
     ctx.font = `700 70px ${SANS}`; ctx.fillStyle = '#ffe08a'; ctx.fillText('★'.repeat(rec.stars || 0) + '☆'.repeat(3 - (rec.stars || 0)), x, 268);
     ctx.font = `800 178px ${SERIF}`; ctx.fillStyle = '#fff0bd'; ctx.fillText(`${rec.penned ?? 0}/${rec.total ?? 0}`, x, 477, 875);
     ctx.font = `400 40px ${SANS}`; ctx.fillStyle = '#efe7d2'; ctx.fillText(rec.penned === rec.total ? '한 마리도 잃지 않고 다 지켰어!' : '우리 안으로 데려온 양', x, 560);
@@ -530,7 +533,7 @@
     ctx.fillText(highlights.join(' · '), x, 1045, 940);
     ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#fff8ed';
     ctx.fillText([D.nickname || '친구', D.ban].filter(Boolean).join(' · ') + ' · ' + kstDate(rec.date || Date.now()), x, H - 110, 940);
-    ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.7)'; ctx.fillText('"밤에 자기 양 떼를 지키더니" (눅 2:8)', x, H - 64, 940);
+    ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.7)'; ctx.fillText('내 순찰 기록, 이길 수 있어?', x, H - 64, 940);
     ctx.restore();
     return cv;
   }
@@ -586,5 +589,97 @@
     return cv;
   }
 
-  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawPatrol, drawGift, drawGrowth, share, toBlob, fileName, STYLE, cardNo };
+  async function drawWardrobe(sheep, items) {
+    const W = 1080, H = 1350, x = W / 2;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.ch4.frame, 953);
+    ctx.textAlign = 'center';
+    const glow = ctx.createRadialGradient(x, 535, 90, x, 535, 495);
+    glow.addColorStop(0, '#64578e');
+    glow.addColorStop(1, '#64578e00');
+    ctx.fillStyle = glow;
+    ctx.fillRect(30, 135, W - 60, 800);
+    ctx.font = `700 36px ${SANS}`; ctx.fillStyle = '#ffe0a0';
+    ctx.fillText('그 밤을 향하여 · 내 양의 옷장', x, 134);
+    const image = await portraitImg(sheep.species, { level: sheep.level, wear: sheep.wear });
+    if (image) ctx.drawImage(image, x - 390, 156, 780, 780);
+    ctx.font = `700 80px ${SERIF}`; ctx.fillStyle = '#fff3d5';
+    ctx.fillText(sheep.name, x, 975, 915);
+    ctx.font = `500 35px ${SANS}`; ctx.fillStyle = '#f9dfab';
+    const rows = items.length ? wrap(ctx, items.join(' · '), 860) : ['복슬복슬한 기본 옷'];
+    rows.forEach((line, i) => ctx.fillText(line, x, 1070 + i * 56));
+    ctx.restore();
+    return cv;
+  }
+
+  async function drawExploreChallenge(score) {
+    const W = 1080, H = 1350, x = W / 2;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.ch4.frame, 815);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd589'; ctx.font = `700 40px ${SANS}`;
+    ctx.fillText('그 밤을 향하여 · 성탄 길', x, 143);
+    ctx.fillStyle = '#fff6df'; ctx.font = `700 93px ${SERIF}`;
+    ctx.fillText('탐험 도전장', x, 270);
+    ctx.fillStyle = '#ffe19d'; ctx.font = `800 176px ${SANS}`;
+    ctx.fillText(`★ ${score.stars}/27`, x, 512);
+    ctx.fillStyle = '#eddfef'; ctx.font = `700 42px ${SANS}`;
+    ctx.fillText('전부 찾아낸 장소', x, 590);
+    const sheep = window.Field?.mainCare()?.sheep;
+    const img = sheep && await portraitImg(sheep.species, sheep);
+    if (img) ctx.drawImage(img, x - 170, 625, 340, 340);
+    ctx.font = `700 35px ${SANS}`;
+    ctx.fillText(`비밀 ${score.secrets} · 말씀 ${score.words} · 사진 ${score.photos}`, x, 1020, 940);
+    ctx.fillStyle = '#fff0c1'; ctx.font = `700 49px ${SERIF}`;
+    ctx.fillText('내 탐험 기록, 이길 수 있어?', x, 1140, 925);
+    ctx.fillStyle = '#ecd1b2'; ctx.font = `500 30px ${SANS}`;
+    ctx.fillText([Core.data.nickname || '친구', sheep?.name].filter(Boolean).join(' · '), x, 1243, 900);
+    ctx.restore();
+    return cv;
+  }
+
+  async function drawJourney(sequence, photoURL) {
+    const W = 1080, H = 1620, x = W / 2;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.ch4.frame, 2612);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff3d4'; ctx.font = `800 74px ${SERIF}`;
+    ctx.fillText('27일의 여정', x, 144);
+    ctx.fillStyle = '#eed0a5'; ctx.font = `600 32px ${SANS}`;
+    ctx.fillText('내 양과 함께 걸었던 성탄 길', x, 209);
+    const cols = 5, tile = 171, row = 195, gap = 16;
+    const images = await Promise.all(sequence.map(async ([id, photo]) =>
+      photo ? loadImg(await photoURL(id, photo)).catch(() => null) : null));
+    sequence.forEach(([id, photo], i) => {
+      const left = 81 + (i % cols) * (tile + gap), top = 248 + Math.floor(i / cols) * row;
+      const img = images[i];
+      ctx.save(); rr(ctx, left, top, tile, 150, 10); ctx.clip();
+      ctx.fillStyle = img ? '#363257' : '#242747'; ctx.fillRect(left, top, tile, 150);
+      if (img) {
+        const area = Math.min(img.height, img.width * 150 / tile);
+        const width = area * tile / 150;
+        ctx.drawImage(img, (img.width - width) / 2, (img.height - area) / 2, width, area, left, top, tile, 150);
+      } else {
+        ctx.fillStyle = '#9f93b5'; ctx.font = `700 34px ${SANS}`; ctx.fillText('·', left + tile / 2, top + 82);
+      }
+      ctx.restore();
+      ctx.fillStyle = '#f4ddba'; ctx.font = `700 19px ${SANS}`;
+      ctx.fillText(window.EXPLORE[id]?.title || id, left + tile / 2, top + 173, tile);
+    });
+    ctx.fillStyle = '#f9dfab'; ctx.font = `700 34px ${SANS}`;
+    ctx.fillText(`${Core.data.nickname || '친구'} · 함께 남긴 사진 ${sequence.filter(([, photo]) => photo).length}장`, x, 1530, 900);
+    ctx.restore();
+    return cv;
+  }
+
+  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawPatrol, drawGift, drawGrowth, drawWardrobe, drawExploreChallenge, drawJourney, share, toBlob, fileName, STYLE, cardNo };
 })();
