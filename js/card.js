@@ -452,8 +452,8 @@
     ctx.restore();
     ctx.strokeStyle = 'rgba(255,214,140,.65)'; ctx.lineWidth = 4; rr(ctx, 70, 290, 940, 744, 34); ctx.stroke();
     ctx.font = `700 44px ${SANS}`; ctx.fillStyle = '#ffe08a';
-    ctx.fillText(`양 ${sum.sheep || 0}마리${sum.dexTotal ? ` · 도감 ${sum.dex}/${sum.dexTotal}` : ''}`, x, 1110, 940);
-    if (sum.top) { ctx.font = `400 34px ${SANS}`; ctx.fillStyle = '#efe7d2'; ctx.fillText(`가장 큰 양 ⭐ ${sum.top.name} · Lv${sum.top.level}`, x, 1166, 940); }
+    ctx.fillText(sum.top ? `내 양 · ${sum.top.name}` : '나의 들판', x, 1110, 940);
+    if (sum.friends) { ctx.font = `400 34px ${SANS}`; ctx.fillStyle = '#efe7d2'; ctx.fillText(`친구 양 ${sum.friends}번 맞이했어`, x, 1166, 940); }
     ctx.font = `400 26px ${SANS}`; ctx.fillStyle = 'rgba(255,244,220,.72)';
     ctx.fillText(`${kstDate(Date.now())} · ${window.SITE?.label || '그 밤을 향하여'}`, x, H - 64, 940);
     ctx.restore();
@@ -476,7 +476,7 @@
   async function portraitImg(species, opt) {
     try { const url = await window.Field?.portrait?.(species, opt); return url ? await loadImg(url) : null; } catch (e) { return null; }
   }
-  async function drawDiscover(sheep) {
+  async function drawDiscover(sheep, { own = false, trait } = {}) {
     const sp = window.SHEEP_DEX?.byId?.[sheep.species]; if (!sp) throw new Error('없는 양');
     const D = Core.data, W = 1080, H = 1350, x = W / 2, legend = sp.rarity === 'legend';
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -488,15 +488,15 @@
     ctx.fillStyle = halo; ctx.fillRect(60, 120, 960, 800);
     ctx.textAlign = 'center';
     ctx.font = `800 40px ${SANS}`; ctx.fillStyle = legend ? '#ffe08a' : '#bfe3ff';
-    ctx.fillText(legend ? '✦ 전설의 양 발견! ✦' : '✦ 희귀 양 발견! ✦', x, 150);
-    const img = await portraitImg(sheep.species, { level: Math.max(5, sheep.level || 1), wear: sheep.wear || null });
+    ctx.fillText(own ? (legend ? '✦ 나의 양 · 전설 ✦' : '나의 양') : legend ? '✦ 전설의 양 발견! ✦' : '✦ 희귀 양 발견! ✦', x, 150);
+    const img = await portraitImg(sheep.species, { level: own ? sheep.level : Math.max(5, sheep.level || 1), wear: sheep.wear || null });
     if (img) ctx.drawImage(img, x - 330, 190, 660, 660);
     ctx.font = `700 84px ${SERIF}`; ctx.fillStyle = '#fff6dc'; ctx.fillText(sheep.name || sp.name, x, 905, 940);
     ctx.font = `400 36px ${SANS}`; ctx.fillStyle = legend ? '#ffd86a' : '#9fd4ff';
-    ctx.fillText(`${sp.name} · ${legend ? '전설' : '희귀'}`, x, 962);
+    ctx.fillText(`${sp.name} · ${{ common: '일반', rare: '희귀', legend: '전설' }[sp.rarity]}`, x, 962);
     ctx.font = `400 33px ${SANS}`; ctx.fillStyle = '#e6e2f4';
     let y = 1026;
-    for (const l of clamp(wrap(ctx, sp.desc, 880), 2)) { ctx.fillText(l, x, y); y += 46; }
+    for (const l of clamp(wrap(ctx, trait || sp.desc, 880), 2)) { ctx.fillText(l, x, y); y += 46; }
     if (legend && sp.verse && window.Bible) {
       const v = Bible.verses(sp.verse).map(t => t.text).join(' ');
       if (v) { ctx.font = `400 29px ${SERIF}`; ctx.fillStyle = '#f7e6b8'; for (const l of clamp(wrap(ctx, '“' + v + '”', 860), 2)) { ctx.fillText(l, x, y + 8); y += 40; } ctx.font = `400 25px ${SANS}`; ctx.fillStyle = '#e0b44a'; ctx.fillText(Bible.full(sp.verse), x, y + 12); y += 30; }
