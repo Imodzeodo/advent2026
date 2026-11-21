@@ -325,6 +325,9 @@
 
   /* ---------- 효과음 ---------- */
   const FX = {
+    exploreBell(t, step = 0) {
+      musicBox([69, 72, 76, 79][step % 4], t, .09, sfxBus);
+    },
     select: t => musicBox(79, t, 0.08, sfxBus),
     page: t => noise(t, 0.35, 0.05, 600, 2400),
     verse: t => { bell(84, t, 0.07); bell(88, t + 0.12, 0.05); },

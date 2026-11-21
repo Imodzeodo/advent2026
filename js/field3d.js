@@ -84,7 +84,8 @@
     if (!matCache.has(key)) {
       matCache.set(key, opt.basic
         ? new T.MeshBasicMaterial({ color, transparent: !!opt.transparent, opacity: opt.opacity ?? 1, depthWrite: !opt.transparent })
-        : new T.MeshStandardMaterial({ color, flatShading: true, roughness: opt.rough ?? 0.95, metalness: opt.metal ?? 0, emissive: opt.emissive || '#000000', emissiveIntensity: opt.ei ?? 1, transparent: !!opt.transparent, opacity: opt.opacity ?? 1 }));
+        : new T.MeshStandardMaterial({ color, flatShading: true, roughness: opt.rough ?? 0.95, metalness: opt.metal ?? 0, emissive: opt.emissive || '#000000', emissiveIntensity: opt.ei ?? 1, transparent: !!opt.transparent, opacity: opt.opacity ?? 1,
+            side: opt.doubleSided ? T.DoubleSide : T.FrontSide }));
     }
     return matCache.get(key);
   }
@@ -102,23 +103,540 @@
   }
 
   /* ---------- 양 만들기 ---------- */
-  const WEAR = {
-    '빨간 목도리': { kind: 'scarf', color: '#c23b3b' }, '꽃 화관': { kind: 'flower' }, '보라 방울': { kind: 'bell', color: '#8a5bd6' },
-    '은 종': { kind: 'bell', color: '#d9dee6', metal: 0.6 }, '분홍 리본': { kind: 'ribbon', color: '#f39ac0' }, '금빛 별 목걸이': { kind: 'star', color: '#ffd24a' },
-    '빨간 털모자': { kind: 'beanie', color: '#d23c3c' }, '초록 털모자': { kind: 'beanie', color: '#3f8a4a' }, '밀짚모자': { kind: 'strawhat' }, '목자 두건': { kind: 'headscarf' },
-    '별 머리띠': { kind: 'starband' }, '나비넥타이': { kind: 'bowtie', color: '#c23b3b' }, '동그란 안경': { kind: 'glasses' }, '망토': { kind: 'cape', color: '#8a52e0' }
-  };
+  const WEAR_SLOTS = ['head', 'face', 'neck', 'back', 'dye'];
+  const wardrobe = [
+    ['빨간 털모자', 'head', 3, 'pomhat', '#d34652', '🧶'],
+    ['초록 털모자', 'head', 3, 'earhat', '#398b61', '🧶'],
+    ['밀짚모자', 'head', 4, 'straw', '#edc376', '👒'],
+    ['목자 두건', 'head', 4, 'hood', '#c1a6df', '🧕'],
+    ['별 머리띠', 'head', 5, 'starband', '#ffd667', '⭐'],
+    ['꽃 화관', 'head', 3, 'petals', '#f58cb7', '🌸', '분홍 꽃 화관'],
+    ['혼인 꽃 화관', 'head', null, 'wedding-wreath', '#fff1d7', '🌼'],
+    ['흰 꽃 화관', 'head', null, 'daisies', '#fff5e3', '🌼'],
+    ['작은 왕관', 'head', 6, 'crown', '#ffd46b', '👑'],
+    ['리본 핀', 'head', 2, 'hairpin', '#e99fc3', '🎀'],
+    ['나무 뿔 장식', 'head', null, 'antlers', '#a5724e', '🦌'],
+    ['은 왕관', 'head', null, 'silver-crown', '#c6d1de', '♛'],
+    ['흰 깃털 핀', 'head', null, 'feather', '#fff4dd', '🪶'],
+    ['종이 별 모자', 'head', null, 'paper', '#a8b3f5', '✦'],
+    ['동그란 안경', 'face', 4, 'round', '#f3ca73', '👓'],
+    ['검은 선글라스', 'face', 5, 'shades', '#262839', '🕶️'],
+    ['하트 선글라스', 'face', 5, 'hearts', '#f479aa', '💗'],
+    ['볼 스티커', 'face', 2, 'stickers', '#ffde83', '🌟'],
+    ['콧수염', 'face', 3, 'moustache', '#4b2d3b', '〰'],
+    ['빨간 목도리', 'neck', 3, 'scarf', '#d54253', '🧣'],
+    ['초록 체크 목도리', 'neck', 5, 'plaid', '#256450', '🧣'],
+    ['나비넥타이', 'neck', 3, 'bowtie', '#5472bd', '🎀'],
+    ['보라 방울', 'neck', 4, 'jingle', '#a66be6', '🔔'],
+    ['은 종', 'neck', 5, 'bell', '#dbe9fa', '🔔'],
+    ['분홍 리본', 'neck', 3, 'ribbon', '#f498bc', '🎀'],
+    ['금빛 별 목걸이', 'neck', 5, 'star', '#ffcd56', '⭐'],
+    ['등불 목걸이', 'neck', null, 'lantern', '#efaa50', '🏮'],
+    ['망토', 'back', 6, 'cape', '#714cc8', '🟣', '보라 망토'],
+    ['남색 망토', 'back', 6, 'dark-cape', '#2f395b', '◆'],
+    ['목자 지팡이', 'back', null, 'staff', '#a8784d', '🦯'],
+    ['가죽 조끼', 'back', 6, 'vest', '#934d32', '🦺'],
+    ['빨간 망토', 'back', 6, 'mantle', '#cb354d', '🔴'],
+    ['작은 날개', 'back', null, 'wings', '#f7f1e7', '🪽'],
+    ['배낭', 'back', 5, 'pack', '#b57c43', '🎒'],
+    ['금빛 천사 날개', 'back', null, 'angel', '#ffd478', '🪽'],
+    ['분홍 염색', 'dye', 5, 'dye', '#f49cb8', '●'],
+    ['하늘 염색', 'dye', 5, 'dye', '#75b7ef', '●'],
+    ['민트 염색', 'dye', 5, 'dye', '#6ddac1', '●'],
+    ['보라 염색', 'dye', 5, 'dye', '#9c87b7', '●'],
+    ['노랑 염색', 'dye', 5, 'dye', '#f8d065', '●'],
+    ['주황 염색', 'dye', 5, 'dye', '#f59a58', '●'],
+    ['초콜릿 염색', 'dye', 5, 'dye', '#87564a', '●'],
+    ['남색 염색', 'dye', 5, 'dye', '#575f80', '●'],
+    ['검정 염색', 'dye', 5, 'dye', '#303040', '●'],
+    ['은빛 염색', 'dye', 7, 'dye', '#c8d9ea', '✧']
+  ].map(([name, slot, price, kind, color, symbol, label]) => Object.freeze({ name, slot, price, kind, color, symbol, label: label || name }));
+  Object.freeze(wardrobe);
+  const WEAR = new Map(wardrobe.map(item => [item.name, item]));
+  function normalizeWear(wear) {
+    const legacy = typeof wear === 'string' ? WEAR.get(wear) : null;
+    return Object.fromEntries(WEAR_SLOTS.map(slot => {
+      const name = legacy?.slot === slot ? legacy.name : wear?.[slot];
+      return [slot, WEAR.get(name)?.slot === slot ? name : null];
+    }));
+  }
+  const wearKey = wear => Object.values(normalizeWear(wear)).join('|');
   const stageOf = lv => lv >= 10 ? 3 : lv >= 5 ? 2 : lv >= 2 ? 1 : 0;
+
+  function gearShape(points, thickness = .055) {
+    const outline = new T.Shape();
+    points.forEach(([x, y], i) => i ? outline.lineTo(x, y) : outline.moveTo(x, y));
+    outline.closePath();
+    return new T.ExtrudeGeometry(outline, { depth: thickness, bevelEnabled: true, bevelThickness: .018, bevelSize: .016, bevelSegments: 1, curveSegments: 3 })
+      .translate(0, 0, -thickness / 2);
+  }
+  const starPoints = (outer, inner, arms = 5) => Array.from({ length: arms * 2 }, (_, i) => {
+    const angle = Math.PI / 2 + i * Math.PI / arms, radius = i % 2 ? inner : outer;
+    return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+  });
+
+  // 같은 모델을 착용 모습과 상점 아이콘에 쓴다.
+  function makeGear(item) {
+    const model = new T.Group();
+    model.name = item.name;
+    const facets = new T.IcosahedronGeometry(1, 0), box = new T.BoxGeometry(1, 1, 1);
+    const gold = mat('#f4c96a', { metal: .56, rough: .38, emissive: '#68450e', ei: .27 });
+    const cloth = mat(item.color);
+    const cream = mat('#fff3de');
+    const put = (geo, material, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0, parent = model) => {
+      const mesh = new T.Mesh(geo, material);
+      mesh.position.set(x, y, z);
+      mesh.scale.set(sx, sy, sz);
+      mesh.rotation.set(rx, ry, rz);
+      parent.add(mesh);
+      return mesh;
+    };
+    const ring = (radius, tube, material, x = 0, y = 0, z = 0, rx = Math.PI / 2, sz = 1) =>
+      put(new T.TorusGeometry(radius, tube, 5, 18), material, x, y, z, 1, 1, sz, rx);
+    const cylinder = (r1, r2, h, sides, material, x = 0, y = 0, z = 0) =>
+      put(new T.CylinderGeometry(r1, r2, h, sides), material, x, y, z);
+    const star = (radius, material, x, y, z, angle = 0) => put(gearShape(starPoints(radius, radius * .47)), material, x, y, z, 1, 1, 1, 0, 0, angle);
+    const stem = (a, b, radius, material) => {
+      const from = new T.Vector3(...a), to = new T.Vector3(...b);
+      const delta = to.clone().sub(from), at = from.addScaledVector(delta, .5);
+      const part = cylinder(radius * .63, radius, delta.length(), 5, material, at.x, at.y, at.z);
+      part.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), delta.normalize());
+    };
+    const collar = (m, thick = .035) => ring(.32, thick, m, 0, -.02, -.07, 1.22, 1.1);
+    const charm = (points, material, y = -.19, z = .22) => put(gearShape(points), material, 0, y, z);
+    const dark = mat('#322744');
+    switch (item.kind) {
+      case 'pomhat':
+        put(new T.SphereGeometry(1, 10, 5, 0, Math.PI * 2, 0, Math.PI / 2), cloth, 0, .015, -.03, .32, .30, .33);
+        ring(.30, .052, cream, 0, .015, -.03);
+        put(facets, cream, .02, .34, -.035, .09, .09, .09);
+        break;
+      case 'earhat':
+        put(new T.ConeGeometry(.33, .52, 8), cloth, -.045, .205, -.035, 1, 1, 1, 0, 0, .24);
+        ring(.30, .052, mat('#a5dab0'), 0, -.02, -.03);
+        for (const side of [-1, 1]) {
+          put(facets, cloth, side * .275, -.122, 0, .10, .17, .12);
+          stem([side * .28, -.19, .015], [side * .31, -.285, .10], .022, mat('#a5dab0'));
+        }
+        break;
+      case 'straw':
+        cylinder(.48, .45, .045, 15, cloth, 0, 0, -.04);
+        cylinder(.21, .27, .22, 11, cloth, 0, .127, -.05);
+        cylinder(.25, .265, .065, 11, mat('#b35443'), 0, .075, -.05);
+        break;
+      case 'hood': {
+        put(new T.SphereGeometry(1, 9, 5, 0, Math.PI * 2, 0, Math.PI * .63), cloth, 0, -.07, -.09, .36, .28, .39);
+        const drape = gearShape([[-.37, .08], [.35, .08], [.3, -.35], [.15, -.55], [-.29, -.38]], .032);
+        put(drape, cloth, 0, -.05, -.42, 1, 1, 1, -.22);
+        ring(.327, .03, mat('#eacb93'), 0, -.02, -.03);
+        break;
+      }
+      case 'starband':
+        ring(.29, .032, gold, 0, -.03, -.01, 1.36);
+        for (const [x, y, size] of [[-.245, .20, .095], [0, .34, .19], [.25, .22, .12]]) {
+          stem([x, .045, 0], [x, y, .04], .024, gold);
+          star(size, gold, x, y, .064, x);
+        }
+        break;
+      case 'petals':
+      case 'daisies': {
+        const daisy = item.kind === 'daisies';
+        ring(.30, .045, mat(daisy ? '#537b68' : '#36684e'), 0, -.03, -.02);
+        const petals = new T.SphereGeometry(1, 6, 4);
+        for (let i = 0; i < (daisy ? 7 : 5); i++) {
+          const angle = i * Math.PI / (daisy ? 6 : 4), x = Math.cos(angle) * .30, z = Math.sin(angle) * .27;
+          const y = .02 + (daisy ? .015 : i % 2 * .09);
+          if (daisy) {
+            for (let p = 0; p < 5; p++) { const a = p * Math.PI * .4; put(petals, cream, x + Math.cos(a) * .063, y + .018, z + Math.sin(a) * .063, .054, .038, .043, 0, -a); }
+            put(facets, gold, x, y + .053, z, .04, .024, .04);
+          } else {
+            const petal = [cloth, mat('#f8b0c8'), mat('#cf6c9e')][i % 3];
+            for (const [dx, dz] of [[0, 0], [.048, -.025], [-.036, .040]]) put(facets, petal, x + dx, y + .05, z + dz, .09, .075, .08);
+            put(facets, mat('#ffd09e'), x, y + .12, z, .029, .029, .029);
+          }
+        }
+        break;
+      }
+      case 'wedding-wreath':
+        ring(.31, .035, mat('#8b9567'), 0, -.02, -.02);
+        for (const side of [-1, 1]) for (let n = 0; n < 4; n++) {
+          const a = .52 + n * .38, x = side * Math.cos(a) * .32, z = Math.sin(a) * .255;
+          const y = .06 + (.055 * (3 - n));
+          stem([x, -.014, z], [x * 1.12, y, z], .014, mat('#74916b'));
+          put(facets, n % 2 ? cloth : cream, x * 1.12, y, z, .072, .072, .072, 0, n);
+        }
+        for (const side of [-1, 1]) {
+          const ribbon = gearShape([[0, 0], [.10, 0], [.13, -.26], [.08, -.22], [.035, -.28]], .019);
+          put(ribbon, mat('#fff0bb'), side * .20, .02, -.245, side, 1, 1, -.22, 0, side * .18);
+        }
+        break;
+      case 'crown':
+        put(new T.CylinderGeometry(.246, .29, .125, 9, 1, true), gold, 0, .07, 0);
+        ring(.27, .024, gold);
+        for (let i = 0; i < 7; i++) {
+          const a = i * Math.PI * 2 / 7;
+          cylinder(0, .067, i % 2 ? .14 : .25, 4, gold, Math.cos(a) * .226, i % 2 ? .195 : .225, Math.sin(a) * .226);
+        }
+        put(facets, mat('#8b4ac7', { emissive: '#6626a1', ei: .4 }), 0, .091, .256, .072, .067, .047);
+        break;
+      case 'silver-crown': {
+        const silver = mat(item.color, { metal: .64, rough: .36 });
+        cylinder(.28, .285, .12, 10, silver, 0, .02);
+        ring(.30, .028, mat('#72899d'));
+        for (let n = 0; n < 5; n++) {
+          const a = n * Math.PI * .4;
+          const spike = gearShape([[-.103, 0], [-.08, .17], [0, .25], [.08, .17], [.103, 0]], .035);
+          put(spike, silver, .23 * Math.sin(a), .065, .23 * Math.cos(a), 1, n === 0 ? 1.27 : 1, 1, 0, a);
+        }
+        put(facets, mat('#5385d3'), 0, .152, .28, .068, .092, .047);
+        break;
+      }
+      case 'shades': {
+        const frame = mat('#262334', { rough: .55 });
+        const glass = mat('#292d4a', { metal: .55, rough: .27 });
+        for (const side of [-1, 1]) {
+          const lens = gearShape([[-.145, .065], [.149, .065], [.117, -.070], [.055, -.105], [-.094, -.097], [-.147, -.042]], .065);
+          put(lens, frame, side * .18, .032, .032, 1, 1, 1, 0, side * .22, side * .08);
+          put(lens, glass, side * .18, .029, .066, .87, .8, .5, 0, side * .22, side * .08);
+          stem([side * .31, .06, .04], [side * .39, .052, -.25], .026, frame);
+          put(box, mat('#949cba'), side * .225, .08, .088, .099, .015, .012, 0, 0, side * .08);
+        }
+        put(box, frame, 0, .05, .044, .13, .036, .047);
+        break;
+      }
+      case 'hairpin': {
+        const knot = gearShape([[-.22, .09], [-.11, .16], [0, .045], [.13, .14], [.25, .09], [.20, -.08], [0, -.04], [-.22, -.1]]);
+        put(box, gold, .17, -.026, .16, .41, .049, .055, 0, -.35, -.38);
+        put(knot, cloth, .17, .052, .19, .82, .82, 1, 0, -.28, -.28);
+        put(facets, cream, .17, .053, .23, .056, .052, .040);
+        break;
+      }
+      case 'feather':
+        for (let n = 0; n < 5; n++) {
+          const width = .11 - n * .011;
+          put(facets, n % 2 ? mat('#dfdcf4') : cloth, .31 + n * .031, .1 + n * .065, .06 - n * .05, width, .078, .033, 0, .2, .4);
+        }
+        stem([.28, .03, .09], [.47, .43, -.18], .017, gold);
+        put(box, gold, .29, .015, .06, .15, .05, .11, 0, 0, .4);
+        break;
+      case 'antlers':
+        for (const side of [-1, 1]) {
+          const a = [side * .14, -.05, -.04], b = [side * .34, .24, -.08], c = [side * .39, .49, -.15];
+          stem(a, b, .07, cloth); stem(b, c, .049, cloth);
+          stem(b, [side * .59, .39, -.18], .04, cloth);
+          stem([side * .36, .35, -.11], [side * .19, .52, -.05], .035, cloth);
+        }
+        ring(.23, .023, mat('#614f70'), 0, -.04, -.03);
+        break;
+      case 'paper':
+        put(gearShape([[-.40, -.03], [-.29, .24], [-.16, .13], [0, .42], [.17, .13], [.31, .24], [.4, -.03]], .11), cloth, 0, .03, -.01);
+        put(gearShape([[-.39, 0], [0, .092], [.39, 0], [0, -.11]], .08), mat('#d8c9ff'), 0, .045, .051);
+        star(.106, gold, 0, .22, .079, -.13);
+        break;
+      case 'round':
+        for (const x of [-.155, .155]) {
+          ring(.128, .027, gold, x, 0, .064, 0);
+          stem([x * 1.72, .045, .06], [x * 1.95, .08, -.22], .027, gold);
+        }
+        put(box, gold, 0, .032, .063, .102, .027, .025);
+        break;
+      case 'hearts':
+        for (const x of [-.163, .163]) {
+          const shape = [[0, -.145], [-.14, -.014], [-.16, .064], [-.095, .125], [-.035, .109], [0, .069], [.046, .122], [.116, .120], [.16, .054], [.128, -.017]];
+          put(gearShape(shape, .045), cloth, x, .016, .082);
+          put(gearShape(shape, .030), mat('#773c68', { rough: .35, metal: .15 }), x, .02, .116, .78, .78, .75);
+          put(box, cream, x - .044, .074, .135, .067, .021, .008, 0, 0, .35);
+          stem([x * 1.78, .05, .074], [x * 1.86, .09, -.25], .026, cloth);
+        }
+        put(box, cloth, 0, .038, .083, .08, .04, .05);
+        break;
+      case 'stickers':
+        for (const side of [-1, 1]) {
+          star(.10, gold, side * .235, -.068, .07, side * .33);
+          star(.049, mat('#f9a7c7'), side * .31, -.019, .028, -side * .25);
+        }
+        break;
+      case 'moustache':
+        charm([[-.32, .04], [-.23, .10], [-.17, .075], [-.095, .031], [0, .066], [.095, .031], [.17, .075], [.23, .10], [.32, .04],
+          [.24, -.043], [.126, -.066], [0, -.025], [-.126, -.066], [-.24, -.043]], cloth, -.14, .15);
+        break;
+      case 'scarf':
+      case 'plaid': {
+        const plaid = item.kind === 'plaid';
+        collar(cloth, .093);
+        const tails = plaid ? [[-.13, -.26, .33, -.12], [.13, -.30, .42, .13]] : [[.17, -.29, .47, .25]];
+        for (const [x, y, height, tilt] of tails) {
+          const group = new T.Group(); group.position.set(x, y, .233); group.rotation.z = tilt; model.add(group);
+          put(box, cloth, 0, 0, 0, .18, height, .075, 0, 0, 0, group);
+          const stripe = mat(plaid ? '#e4b26b' : '#ef9a8e');
+          for (const offset of [-.13, .04, .14]) {
+            put(box, stripe, 0, offset, .043, .18, .016, .014, 0, 0, 0, group);
+          }
+          if (plaid) for (const offset of [-.047, .045]) put(box, stripe, offset, 0, .047, .017, height, .010, 0, 0, 0, group);
+          for (let i = 0; i < 4; i++) put(box, stripe, (i - 1.5) * .045, -height / 2 - .02, 0, .022, .052, .026, 0, 0, 0, group);
+        }
+        break;
+      }
+      case 'bowtie':
+      case 'ribbon': {
+        const ribbon = item.kind === 'ribbon';
+        collar(ribbon ? mat('#f0b7ce') : dark, .046);
+        charm([[-.25, .158], [-.27, -.12], [0, -.048], [.27, -.12], [.25, .158], [0, .055]], cloth, -.165, .24);
+        if (ribbon) for (const side of [-1, 1]) put(gearShape([[0, .13], [side * .15, -.23], [side * .073, -.19], [side * .024, -.245]]), cloth, 0, -.30, .223);
+        put(facets, ribbon ? cream : mat('#a8bde8'), 0, -.16, .284, .068, .075, .045);
+        break;
+      }
+      case 'jingle':
+      case 'bell':
+        collar(mat(item.kind === 'jingle' ? '#59416a' : '#746061'), .043);
+        if (item.kind === 'jingle') {
+          put(new T.SphereGeometry(1, 9, 6), mat(item.color, { metal: .24, rough: .45 }), 0, -.232, .229, .176, .168, .143);
+          put(box, dark, 0, -.293, .354, .165, .026, .034, 0, 0, -.2);
+          put(facets, gold, 0, -.082, .205, .047, .067, .041);
+        } else {
+          cylinder(.078, .19, .247, 9, mat(item.color, { metal: .62, rough: .35 }), 0, -.223, .209);
+          ring(.17, .029, gold, 0, -.342, .209);
+          put(facets, dark, 0, -.362, .209, .050, .06, .05);
+        }
+        break;
+      case 'star':
+        collar(gold, .035);
+        star(.218, gold, 0, -.19, .233, .10);
+        star(.077, cream, 0, -.174, .30, .10);
+        break;
+      case 'lantern': {
+        collar(mat('#89603f'), .039);
+        ring(.079, .017, gold, 0, -.091, .229, 0);
+        const lit = mat('#ffd27b', { emissive: '#f0a83d', ei: 1.4, rough: .42 });
+        put(box, lit, 0, -.227, .22, .18, .22, .15);
+        for (const x of [-.102, .102]) for (const z of [.132, .308]) {
+          put(box, dark, x, -.225, z, .027, .27, .027);
+        }
+        cylinder(0, .172, .12, 4, gold, 0, -.077, .22);
+        put(box, gold, 0, -.352, .22, .224, .036, .196);
+        break;
+      }
+      case 'cape':
+      case 'mantle':
+      case 'dark-cape': {
+        const royal = item.kind === 'cape', velvet = item.kind === 'mantle';
+        const hem = royal ? mat('#a88ad6') : velvet ? cream : mat('#657499');
+        const rows = [
+          [.32, .009, .36, .16], [.13, .038, .54, .17], [-.16, .038, .65, .205],
+          [-.41, -.045, .72, .23], [-.697, -.24, .73, .24], [-.779, -.56, .64, .06]
+        ].map(([z, y, width, dip], row) => [-1, -.63, -.30, 0, .30, .63, 1].map((side, col) => {
+          const edge = row === 5 ? (col % 2 ? -.038 : .02) : 0;
+          const point = royal && row === 5 ? (1 - Math.abs(side)) * .14 : 0;
+          return [side * width, y - side ** 2 * dip - point + edge,
+            z - (row === 5 ? (1 - Math.abs(side)) * .056 : 0)];
+        }));
+        const surfaces = [], panels = [];
+        for (let row = 0; row < rows.length - 1; row++) {
+          for (let column = 0; column < rows[row].length - 1; column++) {
+            const a = rows[row][column], b = rows[row][column + 1], c = rows[row + 1][column], d = rows[row + 1][column + 1];
+            (column % 3 === 1 ? panels : surfaces).push(...a, ...b, ...c, ...b, ...d, ...c);
+          }
+        }
+        function clothMesh(vertices, material) {
+          const geometry = new T.BufferGeometry();
+          geometry.setAttribute('position', new T.Float32BufferAttribute(vertices, 3));
+          geometry.computeVertexNormals();
+          put(geometry, material);
+        }
+        clothMesh(surfaces, mat(item.color, { doubleSided: true }));
+        const pleat = new T.Color(item.color).multiplyScalar(.78).getStyle();
+        clothMesh(panels, mat(pleat, { doubleSided: true }));
+        for (const n of [0, rows[0].length - 1]) {
+          for (let i = 0; i < rows.length - 1; i++) stem(rows[i][n], rows[i + 1][n], velvet ? .031 : .016, hem);
+        }
+        const bottom = rows.at(-1);
+        for (let n = 0; n < bottom.length - 1; n++) stem(bottom[n], bottom[n + 1], velvet ? .035 : .019, hem);
+        if (royal) {
+          const medal = star(.108, gold, 0, -.080, -.539);
+          medal.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), new T.Vector3(0, .795, -.607));
+          medal.rotateZ(.12);
+        }
+        if (item.kind === 'dark-cape') put(box, gold, 0, .048, .165, .094, .032, .091, 0, .58);
+        break;
+      }
+      case 'wings':
+      case 'angel': {
+        const angel = item.kind === 'angel';
+        model.userData.wings = [];
+        for (const side of [-1, 1]) {
+          const pivot = new T.Group(); pivot.position.set(side * .23, .013, 0); model.add(pivot);
+          pivot.rotation.y = side * .27;
+          for (let i = 0; i < (angel ? 5 : 4); i++) {
+            const angle = (angel ? .82 : .56) - i * .26;
+            const length = (angel ? .96 : .69) - i * .074;
+            const feather = gearShape([[0, -.077], [.52 * length, -.086], [length, -.014], [.83 * length, .093], [.27 * length, .115]], .043);
+            put(feather, i % 2 ? (angel ? gold : mat('#dfdeee')) : cloth, 0, -.043 * i, -.037 * i, side, 1, 1, 0, .08, side * angle, pivot);
+          }
+          put(facets, angel ? gold : cream, side * .1, -.03, .028, .21, .15, .1, 0, 0, 0, pivot);
+          model.userData.wings.push({ pivot, side });
+        }
+        break;
+      }
+      case 'staff':
+        stem([-.56, -.66, -.34], [.55, .49, -.38], .054, cloth);
+        put(new T.TorusGeometry(.21, .043, 6, 18, Math.PI * 1.52), cloth, .61, .47, -.38, 1, 1, 1, 0, 0, -.6);
+        for (let n = 0; n < 4; n++) {
+          const at = .03 + .057 * n;
+          put(new T.CylinderGeometry(.061, .061, .03, 8), mat('#6d4144'), at, at - .11, -.36, 1, 1, 1, 0, 0, -.77);
+        }
+        break;
+      case 'vest':
+        for (const side of [-1, 1]) {
+          const panel = gearShape([[-.55, .16], [-.28, .30], [.35, .24], [.55, .06], [.54, -.29], [.07, -.42], [-.40, -.35]], .057);
+          put(panel, cloth, side * .57, -.21, .05, 1, 1, 1, .14, side * Math.PI / 2, side * .19);
+          put(box, mat('#ac6344'), side * .19, -.30, .63, .25, .60, .075, .19, side * .48);
+          put(box, mat('#5d3632'), side * .61, -.39, .04, .07, .20, .31, 0, 0, side * .2);
+          for (let n = 0; n < 5; n++) put(box, mat('#efb987'), side * .649, -.385 - n * .008, -.08 + n * .058, .014, .024, .029, .32);
+        }
+        put(box, cloth, 0, .015, -.05, .95, .075, .66, .11);
+        put(box, gold, 0, -.36, .695, .116, .10, .05);
+        break;
+      case 'pack':
+        put(box, cloth, 0, 0, -.105, .54, .39, .42, -.08);
+        put(box, mat('#39766a'), 0, .172, -.121, .58, .10, .44, -.07);
+        put(box, mat('#d6a365'), 0, -.058, -.346, .315, .193, .072);
+        put(box, gold, 0, .005, -.386, .085, .074, .027);
+        for (const x of [-.20, .2]) put(box, mat('#684a52'), x, .02, .12, .068, .36, .12, -.1);
+        put(new T.CylinderGeometry(.074, .074, .56, 8), mat('#c96953'), 0, .25, -.148, 1, 1, 1, 0, 0, Math.PI / 2);
+        break;
+      case 'dye':
+        for (const [x, y, z, size] of [[0, 0, 0, .31], [-.17, .07, -.02, .22], [.17, .10, .015, .23], [.00, .196, -.065, .23], [-.06, -.106, .167, .197]]) {
+          put(facets, cloth, x, y, z, size, size * .95, size, x * 4, z * 8, y);
+        }
+        if (item.name === '은빛 염색') {
+          star(.096, cream, .23, .30, .135);
+          star(.06, cream, -.26, .22, .205);
+        }
+        break;
+    }
+    return model;
+  }
+
+  // 모자 크기는 장식 끝이 아니라 머리에 닿는 면과 전체 실루엣을 함께 고려한다.
+  const HEAD_FIT = {
+    pomhat: [.80, .245], earhat: [.75, .264], straw: [.61, .249], hood: [.78, .276],
+    starband: [.83, .248], petals: [.76, .258], daisies: [.77, .258], 'wedding-wreath': [.78, .255],
+    crown: [.91, .269, .72], 'silver-crown': [.87, .268, .73], hairpin: [.86, .256],
+    feather: [.82, .251], antlers: [.56, .247, .95], paper: [.74, .250]
+  };
+  const EYE_FIT = { round: [.155, 0, .064], shades: [.18, .032, .032], hearts: [.163, .016, .082] };
+
+  function coatProfile(woolGroup) {
+    const profile = { chest: .64, top: .39, rear: .32, flank: .56 };
+    for (const mesh of woolGroup.children) {
+      const vertices = mesh.geometry.attributes.position;
+      for (let i = 0; i < vertices.count; i++) {
+        const x = Math.abs(vertices.getX(i)), y = vertices.getY(i), z = vertices.getZ(i);
+        if (x < .42 && y > -.19 && y < .18) profile.chest = Math.max(profile.chest, z);
+        if (y > -.25 && y < .30 && z > -.48 && z < .39) profile.flank = Math.max(profile.flank, x);
+        if (x > .34) continue;
+        if (z > -.56 && z < .26) profile.top = Math.max(profile.top, y);
+        if (z > -.74 && z < -.27) profile.rear = Math.max(profile.rear, y);
+      }
+    }
+    return profile;
+  }
+
+  function dressModel(body, head, outfit, anim, skull, wide, woolGroup) {
+    const garments = {};
+    for (const slot of ['head', 'face', 'neck', 'back']) {
+      const item = WEAR.get(outfit[slot]);
+      if (!item) continue;
+      const model = makeGear(item);
+      if (slot === 'head') {
+        const [width, height, vertical = width] = HEAD_FIT[item.kind];
+        model.scale.set(width * skull, vertical * skull, width * skull);
+        model.position.set(0, height * skull, -.024 * skull);
+        head.add(model);
+      } else if (slot === 'face') {
+        const lens = EYE_FIT[item.kind];
+        if (lens) {
+          const [x, y, z] = lens;
+          const sy = .75 * skull, sz = .72 * skull;
+          model.scale.set(.152 * skull / x, sy, sz);
+          model.position.set(0, .060 * skull - y * sy, .295 * skull - z * sz);
+        } else if (item.kind === 'moustache') {
+          model.scale.set(.64 * skull, .60 * skull, .68 * skull);
+          model.position.set(0, -.022 * skull, .365 * skull);
+        } else {
+          model.scale.set(.71 * skull, .71 * skull, .62 * skull);
+          model.position.set(0, -.010 * skull, .223 * skull);
+        }
+        head.add(model);
+      } else {
+        body.add(model);
+        garments[slot] = { model, kind: item.kind };
+      }
+      if (model.userData.wings) anim.wings.push(...model.userData.wings);
+    }
+    if (!garments.neck && !garments.back) return null;
+    return { ...garments, profile: coatProfile(woolGroup), wide, skull };
+  }
+
+  function fitBodyWear(garments, wool) {
+    if (!garments) return;
+    const { neck, back, profile, wide, skull } = garments;
+    if (neck) {
+      const width = (neck.kind === 'bowtie' ? .79 : .86) * wide;
+      const sternum = lerp(.49, profile.chest, wool);
+      neck.model.scale.set(width, .82, .82);
+      neck.model.position.set(0, .835 - (skull - 1) * .11, sternum - .14);
+    }
+    if (!back) return;
+    const { model, kind } = back;
+    const top = .8 + lerp(.31, profile.top, wool);
+    const rear = .8 + lerp(.24, profile.rear, wool);
+    const spread = lerp(.82, 1, wool);
+    switch (kind) {
+      case 'pack':
+        model.scale.set(.92 * wide, .94, .91);
+        model.position.set(0, rear + .125, -.48);
+        break;
+      case 'wings':
+      case 'angel':
+        model.scale.set(.92 * wide, .92, .92);
+        model.position.set(0, top - .021, -.31);
+        break;
+      case 'staff':
+        model.scale.set(.91 * wide, .87, .90);
+        model.position.set(0, top - .23, -.27);
+        model.rotation.x = 1.10;
+        break;
+      case 'vest':
+        model.scale.set(lerp(.80, (profile.flank + .012) / .57, wool), 1, lerp(.83, 1, wool));
+        model.position.set(0, top - .044, -.14);
+        break;
+      default:
+        model.scale.set(wide * spread, .87, lerp(.83, .96, wool));
+        model.position.set(0, top + .010, -.095);
+        break;
+    }
+  }
+
+  function animateWings(figure, seconds) {
+    for (const { pivot, side } of figure.userData.anim.wings) {
+      pivot.rotation.y = side * (.25 + Math.sin(seconds * 3.3) * .21);
+      pivot.rotation.z = side * Math.sin(seconds * 3.3 + .8) * .09;
+    }
+  }
 
   function buildSheep(species, level = 1, wear = null, seed = 1, woolLen = 1) {
     const dex = (window.SHEEP_DEX && window.SHEEP_DEX.byId[species]) || window.SHEEP_DEX?.[0];
     const L = dex.look, st = stageOf(level), rnd = seeded(seed * 97 + hashStr(species));
+    const outfit = normalizeWear(wear);
+    const woolColor = WEAR.get(outfit.dye)?.color || L.wool;
+    const silver = outfit.dye === '은빛 염색';
     const root = new T.Group(); root.userData.kind = 'sheep';
     const body = new T.Group(); root.add(body);
     const ico = new T.IcosahedronGeometry(1, 0), oct = new T.OctahedronGeometry(1, 0);
     const wide = L.round ? 1.14 : 1;
     // 속몸(털을 깎아도 남는 짧은 털) — 털색을 살짝 분홍빛으로
-    const skin = new T.Color(L.wool).lerp(new T.Color('#f2c9b8'), 0.35).getStyle();
+    const skin = new T.Color(woolColor).lerp(new T.Color('#f2c9b8'), 0.35).getStyle();
     body.add(new T.Mesh(place(ico, 0, 0.78, -0.02, 0.4 * wide, 0.34, 0.6), mat(skin, { rough: 1 })));
     // 바깥 털(깎이는 부분): 몸 가운데(0,0.8,0)를 기준으로 줄었다 늘었다
     const woolG = new T.Group(); woolG.position.set(0, 0.8, 0); body.add(woolG);
@@ -137,7 +655,7 @@
     }
     for (let i = 0; i < 4; i++) puffs.push(place(ico, (rnd() - 0.5) * 0.5, -0.22, (rnd() - 0.5) * 0.9, 0.28, 0.2, 0.3, rnd() * 3, rnd() * 3, 0));
     puffs.push(place(ico, 0, 0.08, -0.78, 0.16, 0.15, 0.14, 1, 0.4, 0));
-    const woolMat = mat(L.wool, { rough: L.metal ? 0.5 : 1, metal: L.metal || 0 });
+    const woolMat = mat(woolColor, { rough: silver ? .53 : L.metal ? .50 : 1, metal: silver ? .33 : L.metal || 0 });
     woolG.add(merged(puffs, woolMat));
     if (spots.length) woolG.add(merged(spots, mat(L.spots, { rough: 1 })));
     if (specks.length) woolG.add(merged(specks, mat('#ffe08a', { emissive: '#ffcf4a', ei: 1.6 })));
@@ -175,10 +693,13 @@
       body.add(leg); legs.push(leg);
     }
     // 장식(꾸미기가 기본 장식보다 우선) + 종 고유 장식
-    const w = wear && WEAR[wear];
-    const anim = { flames: [], drops: [], halo: null };
-    addAccessory(body, head, w ? w.kind : L.acc, w || {}, st >= 2 || !!w);
-    addSignature(body, head, L.acc, anim, woolG);
+    const nativeSlot = { nightcap: 'head', bow: 'head', flame: 'head', crown: 'head', halo: 'head', flower: 'head',
+      leaf: 'head', grass: 'face', scarf: 'neck', bell: 'neck', star: 'neck', lantern: 'neck', backpack: 'back' }[L.acc];
+    const accessory = outfit[nativeSlot] ? null : L.acc;
+    const anim = { flames: [], drops: [], halo: null, wings: [] };
+    addAccessory(body, head, accessory, {}, st >= 2);
+    addSignature(body, head, accessory, anim, woolG);
+    const garments = dressModel(body, head, outfit, anim, hs, wide, woolG);
     // 빛나는 털
     const glows = [];
     if (L.glow) { const g = glowSprite(L.glow, 2.6, 0.42); g.position.set(0, 0.83, 0); body.add(g); glows.push(g); }
@@ -191,7 +712,8 @@
     const scale = [0.74, 0.86, 1, 1.04][st] * (L.size || 1);
     root.scale.setScalar(scale);
     const wl = clamp(woolLen ?? 1, 0, 1);
-    Object.assign(root.userData, { body, head, legs, glows, species, level, wear, st, scale, woolG, tuftMesh, anim, wool: wl, woolShown: wl, woolColor: L.wool });
+    Object.assign(root.userData, { body, head, legs, glows, species, level, wear, wearKey: wearKey(outfit),
+      st, scale, woolG, tuftMesh, anim, garments, wool: wl, woolShown: wl, woolColor });
     applyWool(root);
     return root;
   }
@@ -200,6 +722,7 @@
     const u = o.userData, k = 0.36 + 0.64 * u.woolShown;
     u.woolG.scale.set(k, 0.42 + 0.58 * u.woolShown, k);
     u.tuftMesh.scale.setScalar(0.5 + 0.5 * u.woolShown);
+    fitBodyWear(u.garments, u.woolShown);
   }
   // 종마다 한눈에 구분되는 장식
   function addSignature(body, head, kind, anim, woolG) {
@@ -617,7 +1140,8 @@
         if (s.lost) return;
         const o = sheepObjs.get(s.id);
         if (!o) spawnSheep(s, i, !!update.ready);
-        else if (o.userData.level !== s.level && stageOf(o.userData.level) !== stageOf(s.level) || o.userData.wear !== s.wear) rebuildSheep(s);
+        else if (o.userData.species !== s.species || stageOf(o.userData.level) !== stageOf(s.level) ||
+                 o.userData.wearKey !== wearKey(s.wear)) rebuildSheep(s);
         else { o.userData.level = s.level; o.userData.data = s; setMiss(o, !!s.miss); if (!(shear && shear.o === o) && !o.userData.shearProg) { const w = s.wool ?? 1; if (w !== o.userData.wool) { o.userData.wool = w; if (w < 0.3) o.userData.shiver = o.userData.shiver ?? 0; } } }
       });
       for (const [n, obj] of itemObjs) if (st.slots[n] !== obj.userData.item) { scene.remove(obj); disposeObj(obj); itemObjs.delete(n); }
@@ -961,6 +1485,7 @@
     }
     function animExtras(o, dt, t) {
       const u = o.userData, a = u.anim; if (!a) return;
+      animateWings(o, t);
       a.flames.forEach(f => { const n = 1 + Math.sin(t * 14 + o.position.x) * 0.12 + Math.sin(t * 9) * 0.08; f.scale.set(n, n * 1.1, n); });
       a.drops.forEach((d, i) => { d.position.y += Math.sin(t * 2 + i) * 0.002; });
       if (a.halo) a.halo.rotation.z += dt * 0.8;
@@ -1300,37 +1825,894 @@
   }
 
   /* ---------- 초상(도감·카드) ---------- */
-  let pr = null; const portraitCache = new Map();
+  let studio;
+  const portraitCache = new Map(), iconCache = new Map();
+  function makeStudio(snapshot = false) {
+    const renderer = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: snapshot });
+    renderer.outputColorSpace = T.SRGBColorSpace;
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
+    renderer.setClearColor(0x000000, 0);
+    const scene = new T.Scene();
+    scene.add(new T.HemisphereLight('#a4b1ec', '#534064', 1.45));
+    const key = new T.DirectionalLight('#f3eeff', 2.0); key.position.set(-3, 5, 6); scene.add(key);
+    const rim = new T.DirectionalLight('#ffcf91', .95); rim.position.set(5, 3, -4); scene.add(rim);
+    const fill = new T.DirectionalLight('#91c9fe', .46); fill.position.set(5, 1, 5); scene.add(fill);
+    return { renderer, scene, camera: new T.PerspectiveCamera(31, 1, .05, 50) };
+  }
+
+  function studioFigure(sheep) {
+    const object = buildSheep(sheep.species, sheep.level || 3, sheep.wear, 3);
+    object.children.forEach(child => { if (child.geometry?.type === 'CircleGeometry') child.visible = false; });
+    return object;
+  }
+
+  function figureBounds(object) {
+    const bounds = new T.Box3();
+    object.updateMatrixWorld(true);
+    object.traverseVisible(mesh => {
+      if (!mesh.isMesh || !mesh.material.visible) return;
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      bounds.union(mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld));
+    });
+    return bounds;
+  }
+
+  function fitStudio(camera, bounds, direction, turns = false) {
+    const center = bounds.getCenter(new T.Vector3()), size = bounds.getSize(new T.Vector3());
+    const width = turns ? Math.hypot(size.x, size.z) : size.x * Math.abs(direction.z) + size.z * Math.abs(direction.x);
+    const vertical = size.y + Math.max(size.x, size.z) * direction.y * .62;
+    const span = Math.max(vertical, width / camera.aspect);
+    const distance = span * 1.08 / (2 * Math.tan(camera.fov * Math.PI / 360)) + Math.max(size.x, size.z) * .37;
+    camera.position.copy(center).addScaledVector(direction, distance);
+    camera.lookAt(center);
+  }
+
+  function disposeFigure(object) {
+    const geometry = new Set();
+    object.traverse(child => {
+      if (child.geometry) geometry.add(child.geometry);
+      if (child.isSprite) { child.material.map?.dispose(); child.material.dispose(); }
+      if (child === object.userData.hit) child.material.dispose();
+    });
+    for (const part of geometry) part.dispose();
+  }
+
+  function studioImage(object, size, direction) {
+    studio ||= makeStudio(true);
+    const { renderer, scene, camera } = studio;
+    renderer.setSize(size, size, false);
+    fitStudio(camera, figureBounds(object), direction);
+    scene.add(object);
+    renderer.render(scene, camera);
+    const url = renderer.domElement.toDataURL('image/png');
+    scene.remove(object);
+    disposeFigure(object);
+    return url;
+  }
+
   async function portrait(species, opts = {}) {
     await load();
-    const key = species + '|' + stageOf(opts.level || 3) + '|' + (opts.wear || '') + '|' + (opts.size || 256);
+    const key = [species, stageOf(opts.level || 3), wearKey(opts.wear), opts.size || 256].join(':');
     if (portraitCache.has(key)) return portraitCache.get(key);
-    const S = opts.size || 256;
-    if (!pr) {
-      const renderer = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-      renderer.outputColorSpace = T.SRGBColorSpace; renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.35;
-      const scene = new T.Scene();
-      scene.add(new T.HemisphereLight('#6a78c8', '#2a3a2a', 1.3));
-      const key1 = new T.DirectionalLight('#dfe6ff', 1.5); key1.position.set(-3, 5, 6); scene.add(key1);
-      const warm = new T.DirectionalLight('#ffcf8a', 0.7); warm.position.set(5, 2, -2); scene.add(warm);
-      const camera = new T.PerspectiveCamera(30, 1, 0.1, 50);
-      pr = { renderer, scene, camera };
-    }
-    pr.renderer.setPixelRatio(1); pr.renderer.setSize(S, S, false);
-    const obj = buildSheep(species, opts.level || 3, opts.wear || null, 3);
-    obj.rotation.y = 0.12; obj.position.set(0, 0, 0); obj.scale.setScalar(obj.userData.scale / (window.SHEEP_DEX.byId[species]?.look.size || 1));
-    obj.children.forEach(c => { if (c.geometry && c.geometry.type === 'CircleGeometry') c.visible = false; });
-    pr.scene.add(obj);
-    pr.camera.position.set(2.75, 1.62, 3.0); pr.camera.lookAt(0.05, 0.64, 0.1);
-    pr.renderer.setClearColor(0x000000, 0); pr.renderer.render(pr.scene, pr.camera);
-    const url = pr.renderer.domElement.toDataURL('image/png');
-    pr.scene.remove(obj); obj.traverse(c => { if (c.geometry) c.geometry.dispose(); });
+    const object = studioFigure({ species, ...opts });
+    object.rotation.y = .08;
+    const url = studioImage(object, opts.size || 256, new T.Vector3(2.3, 1.0, 3.2).normalize());
+    if (portraitCache.size >= 120) portraitCache.delete(portraitCache.keys().next().value);
     portraitCache.set(key, url);
     return url;
   }
 
+  async function wearIcon(name) {
+    if (!WEAR.has(name)) return null;
+    if (iconCache.has(name)) return iconCache.get(name);
+    await load();
+    if (iconCache.has(name)) return iconCache.get(name);
+    const item = WEAR.get(name);
+    const direction = item.slot === 'back' ? [-2.4, 1.2, -3.9] : [1.45, 1.19, 3.9];
+    const url = studioImage(makeGear(item), 160, new T.Vector3(...direction).normalize());
+    iconCache.set(name, url);
+    return url;
+  }
+
+  async function turntable(container, sheep) {
+    await load();
+    const { renderer, scene, camera } = makeStudio();
+    renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+    const canvas = renderer.domElement;
+    canvas.className = 'f3d-turntable';
+    container.appendChild(canvas);
+    const direction = new T.Vector3(.33, .24, .91).normalize();
+    const reduced = calm();
+    let figure, bounds, angle = -.2, pointer = null, lastX = 0, last = 0, idleAfter = 0, raf;
+    const resize = () => {
+      const width = container.clientWidth || 320, height = container.clientHeight || 255;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      fitStudio(camera, bounds, direction, true);
+    };
+    const update = next => {
+      if (figure) { scene.remove(figure); disposeFigure(figure); }
+      figure = studioFigure(next);
+      bounds = figureBounds(figure);
+      scene.add(figure);
+      resize();
+    };
+    const down = event => {
+      if (pointer !== null) return;
+      pointer = event.pointerId;
+      lastX = event.clientX;
+      canvas.setPointerCapture?.(pointer);
+    };
+    const move = event => {
+      if (event.pointerId !== pointer) return;
+      angle += (event.clientX - lastX) * .014;
+      lastX = event.clientX;
+    };
+    const up = event => {
+      if (event.pointerId !== pointer) return;
+      pointer = null;
+      idleAfter = performance.now() + 1500;
+    };
+    const frame = now => {
+      raf = requestAnimationFrame(frame);
+      const dt = Math.min(.05, (now - (last || now)) / 1000);
+      last = now;
+      if (!canvas.isConnected || document.hidden) return;
+      if (!reduced && pointer === null && now > idleAfter) angle += dt * .35;
+      figure.rotation.y = angle;
+      if (!reduced) animateWings(figure, now / 1000);
+      renderer.render(scene, camera);
+    };
+    update(sheep);
+    const observer = new ResizeObserver(resize); observer.observe(container);
+    canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
+    canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+    raf = requestAnimationFrame(frame);
+    return { update, destroy() {
+      cancelAnimationFrame(raf); observer.disconnect();
+      disposeFigure(figure); renderer.dispose(); renderer.forceContextLoss?.(); canvas.remove();
+    } };
+  }
+
+  /* ---------- 성탄 길 탐험 ---------- */
+  const EXPLORE_EDGE = 8;
+  const EXPLORE_COLORS = { photo: '#b9e8bd', guard: '#e4a7a7', light: '#eeb77c', person: '#ffd17e', quest: '#ff9fcc', verse: '#fff8e9', exit: '#cbdda3', secret: '#af97ff' };
+
+  function exploreWorld(scene, kit, seed, layout) {
+    const rand = seeded(hashStr(seed));
+    const dusk = layout.time === 'dusk', dawn = layout.time === 'dawn';
+    const night = !dusk && !dawn;
+    const paved = ['temple', 'sanctuary', 'roof', 'gate'].includes(kit);
+    const hillside = ['hillpath', 'galilee', 'elizabeth'].includes(kit);
+    const dry = layout.variant === 'dry';
+    const height = (x, z) => paved ? 0 : hillside ? .17 * Math.sin(x * .47) * Math.cos(z * .5) - z * .055 : .045 * Math.sin(x * .7 + z * .4);
+    const blocks = [], batches = new Map(), birds = [], fx = [];
+    const box = new T.BoxGeometry(1, 1, 1), rock = new T.IcosahedronGeometry(1, 0);
+    const col = new T.CylinderGeometry(1, 1, 1, 8), cone = new T.ConeGeometry(1, 1, 5);
+    const stone = mat(paved ? '#aaa7ac' : '#938779'), edge = mat('#d4c1a7'), dark = mat('#726e88');
+    const wood = mat('#785145'), windowLight = mat('#ffbd68', { emissive: '#ff962e', ei: 1.3 });
+    const door = mat('#513d55'), olive = mat(dry ? '#80785b' : '#607a5c'), juniper = mat('#3f6262');
+    const terra = mat('#925f63'), bricks = mat('#c28a6a');
+    const batch = (shape, material, ...transform) => {
+      if (!batches.has(material)) batches.set(material, []);
+      batches.get(material).push(place(shape, ...transform));
+    };
+    const cube = (material, x, y, z, w, h, d, rx, ry, rz) => batch(box, material, x, y, z, w, h, d, rx, ry, rz);
+    const stop = (x, z, r) => blocks.push([x, z, r]);
+    const at = (item, x, z, angle = 0) => {
+      const prop = buildItem(item, {});
+      prop.position.set(x, height(x, z), z); prop.rotation.y = angle;
+      prop.traverse(child => { if (child.isLight) child.visible = false; });
+      scene.add(prop);
+      return prop;
+    };
+    const oliveTree = (x, z, scale = 1, tall = false) => {
+      const y = height(x, z);
+      batch(col, wood, x, y + .79 * scale, z, .14 * scale, 1.6 * scale, .14 * scale, 0, 0, .11);
+      if (tall) batch(cone, juniper, x, y + 2.05 * scale, z, .68 * scale, 3.3 * scale, .68 * scale);
+      else for (let i = 0; i < 5; i++) batch(rock, olive, x + Math.cos(i * 2.4) * .7 * scale,
+        y + (1.7 + rand() * .45) * scale, z + Math.sin(i * 2.4) * .6 * scale, .78 * scale, .56 * scale, .68 * scale, 0, rand() * 6);
+      if (Math.abs(x) < EXPLORE_EDGE && Math.abs(z) < EXPLORE_EDGE) stop(x, z, .52 * scale);
+    };
+    const building = (x, z, s, style = 'house') => {
+      const y = height(x, z), house = style === 'house', tavern = style === 'inn';
+      const w = (tavern ? 4.9 : house ? 3.1 : 4.6) * s, h = (tavern ? 3.4 : house ? 2.8 : 2.9) * s;
+      const facade = house ? bricks : stone;
+      cube(facade, x, y + h * .5, z, w, h, 1.95 * s);
+      cube(dark, x, y + h + .04, z, w + .19, .16, 2.1 * s);
+      cube(door, x, y + .77 * s, z + 1.006 * s, .78 * s, 1.54 * s, .075);
+      for (const hand of [-1, 1]) {
+        cube(wood, x + hand * w * .31, y + h * .64, z + 1.017 * s, .63 * s, .62 * s, .051);
+        cube(windowLight, x + hand * w * .31, y + h * .64, z + 1.056 * s, .42 * s, .43 * s, .027);
+        cube(wood, x + hand * w * .31, y + h * .64, z + 1.08 * s, .055, .43 * s, .035);
+        cube(edge, x + hand * w * .37, y + h + .27, z + .71 * s, w * .19, .4, .18);
+      }
+      if (tavern) for (const side of [-1, 1]) {
+        cube(wood, x + side * w * .41, y + h * .36, z + 1.8 * s, .12, h * .73, .12);
+        cube(terra, x + side * w * .25, y + h * .76, z + 1.53 * s, w * .51, .10, 1.2 * s, .16);
+      }
+      if (z > -9) for (let i = -1; i <= 1; i++) stop(x + i * w * .26, z, .99 * s);
+    };
+    const pillar = (x, z, h) => {
+      cube(edge, x, .18, z, 1.0, .36, 1.0);
+      batch(col, stone, x, h * .5 + .28, z, .34, h, .34);
+      cube(edge, x, h + .25, z, .88, .24, .88);
+      stop(x, z, .47);
+    };
+
+    const sky = new T.Color(night ? '#252451' : dusk ? '#825c87' : '#516a9d');
+    scene.fog = new T.Fog(sky, 17, 62);
+    scene.background = sky;
+    const dome = new T.Mesh(new T.SphereGeometry(82, 16, 10), new T.ShaderMaterial({
+      side: T.BackSide, depthWrite: false,
+      uniforms: { horizon: { value: sky.clone().lerp(new T.Color(dusk ? '#c9897d' : dawn ? '#e8b892' : '#685077'), .55) },
+        high: { value: new T.Color(night ? '#100f37' : dawn ? '#4a6294' : '#34325c') } },
+      vertexShader: 'varying vec3 vSky; void main(){ vSky = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'varying vec3 vSky; uniform vec3 horizon, high; void main(){ float h = smoothstep(-0.04, 0.64, normalize(vSky).y); gl_FragColor = vec4(mix(horizon, high, h), 1.0); #include <colorspace_fragment> }'.replace('#include <colorspace_fragment>', '\n#include <colorspace_fragment>\n')
+    }));
+    dome.renderOrder = -3; scene.add(dome);
+    scene.add(new T.HemisphereLight(dawn ? '#ccd9ff' : '#c6caff', '#756169', night ? 1.33 : 1.7));
+    const sun = new T.DirectionalLight(dusk ? '#ffd1a4' : '#f4e9e8', 1.6);
+    sun.position.set(-5, 10, 5); scene.add(sun);
+    const stable = kit === 'stable';
+    const groundGeo = new T.PlaneGeometry(64, 54, 48, 40).rotateX(-Math.PI / 2).translate(0, 0, -8).toNonIndexed();
+    const p = groundGeo.attributes.position, colors = new Float32Array(p.count * 3);
+    const earth = new T.Color(stable ? '#896347' : paved ? '#958b95' : dry ? '#a8795d' : ['nazareth', 'workshop', 'well', 'inn'].includes(kit) ? '#876f71' : '#697454');
+    const pathColor = new T.Color(stable ? '#b38a55' : paved ? '#aa9da6' : dry ? '#c5906c' : '#aa8a79');
+    const strawLight = new T.Color('#ffc06a');
+    const tint = new T.Color();
+    for (let n = 0; n < p.count; n += 3) {
+      const x = (p.getX(n) + p.getX(n + 1) + p.getX(n + 2)) / 3, z = p.getZ(n);
+      const path = Math.abs(x - Math.sin(z * .31 + seed % 4) * (hillside ? 2 : .5)) < (paved ? 2.8 : 1.14);
+      tint.copy(path ? pathColor : earth).multiplyScalar(.87 + rand() * .22);
+      if (stable) {
+        const d = Math.hypot(x * 1.17, (z + 5.9) * .49);
+        const strength = layout.christmas ? .69 : layout.eve ? .43 : .16;
+        tint.lerp(strawLight, strength * Math.exp(-.15 * d * d));
+      }
+      for (let i = n; i < n + 3; i++) {
+        p.setY(i, height(p.getX(i), p.getZ(i)));
+        colors.set([tint.r, tint.g, tint.b], i * 3);
+      }
+    }
+    groundGeo.setAttribute('color', new T.BufferAttribute(colors, 3)); groundGeo.computeVertexNormals();
+    const ground = new T.Mesh(groundGeo, new T.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+    scene.add(ground);
+    const starPos = [];
+    for (let i = 0; i < (night ? 170 : 37); i++) {
+      const a = rand() * 6.283;
+      starPos.push(Math.cos(a) * 50, 9 + rand() * 25, Math.sin(a) * 50);
+    }
+    const starsGeo = new T.BufferGeometry().setAttribute('position', new T.Float32BufferAttribute(starPos, 3));
+    scene.add(new T.Points(starsGeo, new T.PointsMaterial({ color: '#fff0d0', size: 1.8, sizeAttenuation: false, opacity: .77, transparent: true, fog: false })));
+
+    for (let i = 0; i < 14; i++) {
+      const x = -31 + i * 4.65, z = -21 - rand() * 13;
+      batch(cone, mat(paved ? '#6e6588' : '#505e76'), x, .3, z, 8 + rand() * 4, 5 + rand() * 8, 8, 0, rand() * 6);
+      if (i % 2 === 0) building(x * .82, z + 5, .53 + rand() * .29);
+    }
+
+    if (kit === 'temple' || kit === 'sanctuary') {
+      const inner = kit === 'sanctuary';
+      for (const side of [-1, 1]) {
+        const row = inner ? 5.3 : 6.5;
+        for (let i = 0; i < 4; i++) pillar(side * row, -6.5 + i * 2.8 + (seed % 3) * .18, inner ? 3.75 : 2.8);
+        cube(stone, side * 3.4, 2.1, -9.55, 2.8, 4.2, 1.18);
+        cube(edge, side * 1.71, 1.95, -8.94, .67, 3.9, .36);
+      }
+      cube(door, 0, 1.9, -9.7, 3.38, 3.8, .69);
+      cube(windowLight, 0, 1.8, -9.29, inner ? 1.26 : .19, 3.55, .094);
+      cube(stone, 0, 4.32, -9.57, 9.0, .48, 1.6);
+      cube(edge, 0, 4.01, -8.69, 9.03, .17, .19);
+      cube(edge, 0, 4.78, -9.7, 9.45, .30, 1.75);
+      for (const side of [-1, 1]) {
+        cube(terra, side * 2.53, 2.44, -8.91, .42, 2.21, .07);
+        cube(edge, side * 2.53, 3.66, -8.9, .58, .08, .11);
+        at('등불 기둥', side * 4.55, -6.09, -.22 * side);
+      }
+      for (let i = 0; i < 3; i++) cube(edge, 0, .08 + i * .10, -8.1 - i * .38, 8.1 - i * .37, .16 + i * .20, .43);
+      for (let lane = -3; lane <= 3; lane++) {
+        for (let j = -4; j <= 4; j++) cube((lane + j + seed) % 3 ? stone : edge, lane * 2.07 + (j % 2) * .32, .017, j * 2.07, 2.02, .039, 2.02);
+      }
+      if (layout.variant === 'crowd') {
+        for (let i = 0; i < 10; i++) {
+          const side = i % 2 ? 1 : -1, x = side * (2.1 + (i % 4) * 1.14), z = -6 + Math.floor(i / 2) * 1.17 + rand() * .53;
+          const stature = .76 + rand() * .57;
+          batch(col, mat(['#766188', '#b98773', '#738589'][i % 3]), x, .39 * stature, z, .25, .77 * stature, .25);
+          batch(rock, mat('#bd8967'), x, .93 * stature, z, .151, .18, .15);
+          batch(cone, mat('#dcc1a1'), x, 1.08 * stature, z, .219, .23, .21);
+        }
+      }
+      const altarZ = inner ? -5.8 : -7.28;
+      cube(wood, 0, .54, altarZ, .88, 1.08, .69);
+      cube(edge, 0, 1.08, altarZ, 1.01, .12, .83); stop(0, altarZ, .61);
+      const smokeGeo = new T.SphereGeometry(.14, 6, 4);
+      for (let i = 0; i < 6; i++) {
+        const cloud = new T.Mesh(smokeGeo, new T.MeshBasicMaterial({ color: '#e2c5d8', transparent: true, opacity: .22, depthWrite: false }));
+        scene.add(cloud); fx.push({ cloud, x: 0, z: altarZ, base: 1.2, i });
+      }
+      for (let i = 0; i < 5; i++) {
+        const bird = new T.Group();
+        for (const side of [-1, 1]) {
+          const wing = new T.Mesh(cone, mat('#f0eadf'));
+          wing.rotation.z = side * 1.45; wing.position.x = side * .12; wing.scale.set(.11, .32, .14);
+          bird.add(wing);
+        }
+        bird.position.set(-5.4 + (i % 3) * .69, .14, 3.55 + Math.floor(i / 3) * .56);
+        birds.push({ bird, home: bird.position.clone(), i }); scene.add(bird);
+      }
+    } else if (kit === 'roof') {
+      for (let i = -4; i <= 4; i++) {
+        cube(stone, i * 2.2, .38, -8.6, 2.17, .76, .23);
+        cube(edge, i * 2.2, .015, .22, 2.16, .033, 16.9);
+      }
+      for (const side of [-1, 1]) {
+        cube(stone, side * 8.75, .43, -.6, .23, .86, 16.0);
+        cube(bricks, side * 5.9, .64, -6.4, 2.6, 1.29, 2.35);
+        at('등불 기둥', side * 5.7, -4.8, side * .24);
+      }
+      cube(terra, 3.0, .052, -1.5, 2.1, .12, 1.9);
+      building(-1.6, -10.2, .78);
+    } else if (kit === 'gate') {
+      for (const side of [-1, 1]) {
+        cube(stone, side * 4.9, 1.95, -7.2, 5.9, 3.9, 1.36);
+        cube(dark, side * 2.0, 2.39, -7.16, 1.18, 4.78, 1.76);
+        for (let i = 0; i < 5; i++) cube(edge, side * (2.1 + i * 1.2), 4.03, -7.2, .64, .63, 1.18);
+      }
+      cube(stone, 0, 4.27, -7.2, 3.54, .93, 1.5);
+      cube(terra, 0, 4.43, -6.38, 1.62, .45, .12);
+      at('등불 기둥', -4.9, -5.8); at('등불 기둥', 4.9, -5.8);
+    } else if (kit === 'nazareth' || kit === 'workshop' || kit === 'well' || kit === 'inn') {
+      const stand = kit === 'workshop';
+      building(-5.4, -7.46, 1.02, kit === 'inn' ? 'inn' : 'house');
+      building(.1, -9.45, 1.24, kit === 'inn' ? 'inn' : 'house');
+      building(5.7, -7.76, 1.07, kit === 'inn' ? 'inn' : 'house');
+      if (stand) {
+        const tx = 1.8, tz = -5.4, y = height(tx, tz);
+        cube(wood, tx, y + .91, tz, 2.65, .22, 1.05);
+        for (const side of [-1, 1]) cube(wood, tx + side * .93, y + .40, tz, .32, .80, .83);
+        cube(terra, tx + .47, y + 1.054, tz + .19, .51, .18, .16);
+        stop(tx, tz, .85);
+        for (let i = 0; i < 7; i++) cube(i % 2 ? wood : edge, 5.5 + .07 * i, y + .15 + .155 * i, tz - .2, 1.92, .153, .22 + .03 * i, 0, i * .17);
+      } else {
+        const x = kit === 'well' ? -1.9 : 5.8, z = kit === 'well' ? -3.85 : -.73;
+        at('우물', x, z); stop(x, z, .85);
+      }
+      oliveTree(-6.7, -.4, 1.36);
+      if (layout.variant === 'wedding') {
+        for (let i = 0; i < 8; i++) cube(i % 2 ? terra : edge, -4.0 + i * 1.16, 2.7 - Math.sin(i * .44) * .44, -4.5, .42, .31, .068, 0, 0, i * .29);
+        cube(wood, -4.8, 1.38, -4.5, .1, 2.76, .10); cube(wood, 4.8, 1.38, -4.5, .1, 2.76, .10);
+      }
+    } else if (kit === 'stable') {
+      const lit = Boolean(layout.christmas || layout.eve);
+      const z = -7.4, y = height(0, z);
+      cube(wood, 0, y + 1.19, z - 1, 6.75, 2.4, .24);
+      for (const side of [-1, 1]) {
+        cube(wood, side * 3.14, y + 1.19, z, .23, 2.4, 2.57);
+        cube(wood, side * 2.83, y + 1.42, z + 1.25, .19, 2.84, .21);
+        cube(terra, side * 1.66, y + 2.91, z + .1, 3.66, .26, 3.43, 0, 0, side * -.38);
+      }
+      cube(lit ? windowLight : door, 0, y + 1.22, z - .86, lit ? 4.28 : 3.43, 2.2, .081);
+      for (const side of [-1, 1]) for (let i = 0; i < 4; i++) cube(wood, side * (1.09 + i * .46), y + 1.24, z - .78, .086, 2.4, .088);
+      const crib = z + 1.37;
+      const straw = mat('#c39a58'), paleStraw = mat('#e5bf76');
+      for (let i = 0; i < 64; i++) {
+        const x = (rand() - .5) * 6.8, dist = -7.5 + rand() * 5.25;
+        const layer = .013 + rand() * .019;
+        cube(i % 3 ? straw : paleStraw, x, height(x, dist) + layer, dist,
+          .046 + rand() * .036, .016, .17 + rand() * .34, 0, rand() * Math.PI);
+      }
+      for (const side of [-1, 1]) {
+        const x = side * 2.57;
+        cube(straw, x, y + .21, crib + .28, .73, .35, .59, -.025, side * .09);
+        cube(paleStraw, x, y + .397, crib + .28, .72, .045, .55, -.03, side * .09);
+        for (const shift of [-.17, .17]) cube(wood, x + shift, y + .404, crib + .28, .044, .025, .56, 0, side * .09);
+      }
+      if (lit) {
+        const cribLight = new T.PointLight('#ffba69', layout.christmas ? 14 : 7, 8.2, 1.7);
+        cribLight.position.set(0, y + 1.19, crib + .36); scene.add(cribLight);
+      }
+      cube(wood, 0, y + .48, crib, 1.64, .44, .68);
+      cube(edge, 0, y + .72, crib, 1.55, .12, .65);
+      for (const side of [-1, 1]) cube(wood, .59 * side, y + .22, crib, .17, .49, .65, 0, 0, side * .18);
+      if (layout.blanket?.length && layout.christmas) {
+        for (let i = 0; i < 8; i++) {
+          const color = mat(layout.blanket[i % layout.blanket.length]);
+          cube(color, -.58 + i * .165, y + .803, crib + .06, .173, .035, .49);
+          cube(color, -.58 + i * .165, y + .659, crib + .319, .173, .28, .035, -.17);
+        }
+      }
+    } else {
+      const village = kit === 'elizabeth' || kit === 'hillpath' && !dry;
+      if (village) building(0, -8.65, kit === 'elizabeth' ? 1.66 : 1.0, 'farm');
+      if (kit === 'field') {
+        const fire = at('모닥불', 0, -5.5); fire.scale.setScalar(1.22); stop(0, -5.5, .75);
+        at('돌 양 우리', 5.8, -5.7); at('목자 천막', -5.4, -6.6, -.1);
+      }
+      const rows = kit === 'elizabeth' || kit === 'hillpath' && !dry;
+      if (rows) for (const side of [-1, 1]) {
+        for (let j = 0; j < 3; j++) for (let i = 0; i < 5; i++) {
+          const x = side * (6.35 + j * .83), z = -5.8 + i * 1.55, y = height(x, z);
+          cube(wood, x, y + .31, z, .081, .62, .081);
+          batch(rock, olive, x, y + .5, z, .40, .28, .42, 0, i);
+          batch(rock, mat('#7e557d'), x + side * -.23, y + .38, z + .11, .10, .13, .12);
+        }
+      }
+      if (layout.variant === 'feast') {
+        for (const x of [-3.4, 3.4]) {
+          const y = height(x, -5.7);
+          cube(wood, x, y + .5, -5.7, 1.55, .09, .66);
+          for (const side of [-1, 1]) cube(wood, x + side * .60, y + .23, -5.7, .13, .46, .50);
+          batch(col, terra, x, y + .68, -5.74, .19, .29, .19);
+        }
+      }
+      for (let i = 0; i < 7; i++) {
+        const x = (i % 2 ? 1 : -1) * (6.85 + rand() * 1.8), z = -7 + (i % 4) * 2.1;
+        if (!dry) oliveTree(x, z, .73 + rand() * .65, i % 3 === 0);
+      }
+      batch(rock, dark, 5.95, height(5.95, -5.35) + .34, -5.35, .89, .6, .77, 0, 1.56);
+    }
+
+    for (let i = 0; i < (paved ? 18 : 135); i++) {
+      const x = (rand() - .5) * 28, z = 9 - rand() * 24;
+      if (Math.abs(x) < 1.8 || paved && Math.abs(x) < 7.55) continue;
+      const s = .045 + rand() * .25, y = height(x, z);
+      if (i % 3) batch(cone, dry ? stone : olive, x, y + s * .55, z, s * .26, s * 2.3, s * .27, .18, i, .25);
+      else batch(rock, dark, x, y + s * .3, z, s, s * .52, s * .73, i, i * .3);
+    }
+    // Irregular landmarks outside the path keep re-used kits recognizable on different nights.
+    for (const x of [-6.7, 6.7]) {
+      const z = 5.8 + rand() * .8, y = height(x, z);
+      cube(bricks, x, y + .35, z, 1.25, .70, .44, 0, (rand() - .5) * .65);
+      cube(edge, x, y + .716, z, 1.28, .12, .48);
+      stop(x, z, .48);
+    }
+
+    for (const [m, list] of batches) {
+      scene.add(merged(list, m));
+      list.forEach(g => g.dispose());
+    }
+    box.dispose(); col.dispose();
+    if (!birds.length) cone.dispose();
+    rock.dispose();
+    const star = new T.Sprite(new T.SpriteMaterial({ map: starTexture(), transparent: true, depthWrite: false, blending: T.AdditiveBlending, fog: false }));
+    if (layout.christmas && kit === 'stable') {
+      star.position.set(0.65, 5.0, -10.7);
+      star.scale.setScalar(4.8);
+    } else {
+      star.position.set(3.1, 7.8, -22); star.scale.setScalar(2.65);
+    }
+    if (night || layout.christmas) scene.add(star);
+    else { star.material.map.dispose(); star.material.dispose(); }
+    return { ground, height, blocks, birds, fx, star, dome };
+  }
+
+  function explorePath(from, to, open) {
+    const edge = EXPLORE_EDGE, d = .43, width = Math.floor(edge * 2 / d) + 1;
+    const point = (ix, iz) => [ix * d - edge, iz * d - edge];
+    const idx = x => clamp(Math.round((x + edge) / d), 0, width - 1);
+    const line = (a, b) => {
+      const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (d * .52));
+      for (let i = 1; i <= n; i++) if (!open(lerp(a[0], b[0], i / n), lerp(a[1], b[1], i / n))) return false;
+      return true;
+    };
+    if (line(from, to)) return [to];
+    const source = idx(from[1]) * width + idx(from[0]), queue = [source];
+    const seen = new Int16Array(width * width).fill(-1);
+    const neighbors = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]];
+    seen[source] = source;
+    let best = source, bestDist = Infinity;
+    for (let i = 0; i < queue.length; i++) {
+      const here = queue[i], ix = here % width, iz = Math.floor(here / width), a = here === source ? from : point(ix, iz);
+      const distance = Math.hypot(a[0] - to[0], a[1] - to[1]);
+      if (distance < bestDist) { best = here; bestDist = distance; }
+      if (open(...to) && distance < d * 1.6 && line(a, to)) { best = here; break; }
+      for (const [dx, dz] of neighbors) {
+        const x = ix + dx, z = iz + dz, next = z * width + x;
+        if (x < 0 || z < 0 || x >= width || z >= width || seen[next] !== -1 || !line(a, point(x, z))) continue;
+        seen[next] = here; queue.push(next);
+      }
+    }
+    const route = line(point(best % width, Math.floor(best / width)), to) && open(...to) ? [to] : [];
+    for (let p = best; p !== source; p = seen[p]) route.push(point(p % width, Math.floor(p / width)));
+    route.reverse();
+    const result = [];
+    for (let i = 0; i < route.length;) {
+      const anchor = result.at(-1) || from;
+      let furthest = route.length - 1;
+      while (furthest > i && !line(anchor, route[furthest])) furthest--;
+      result.push(route[furthest]); i = furthest + 1;
+    }
+    return result;
+  }
+
+  async function mountExplore(container, options, handlers = {}) {
+    await load();
+    const { sheep, layout = {} } = options;
+    const seed = options.seed || hashStr(options.place || 'temple');
+    const renderer = new T.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+    renderer.outputColorSpace = T.SRGBColorSpace;
+    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.46;
+    const small = navigator.deviceMemory && navigator.deviceMemory < 4;
+    const pixelRatio = Math.min(small ? 1 : 1.35, window.devicePixelRatio || 1);
+    renderer.setPixelRatio(pixelRatio);
+    const wrap = document.createElement('div');
+    wrap.className = 'f3d-explore';
+    const canvas = renderer.domElement;
+    canvas.setAttribute('aria-label', '양을 이동할 3D 탐험 장소');
+    const hud = document.createElement('div');
+    hud.className = 'f3d-explore-labels';
+    wrap.append(canvas, hud); container.append(wrap);
+
+    const scene = new T.Scene(), camera = new T.PerspectiveCamera(53, 1, .1, 105);
+    const world = exploreWorld(scene, options.kit || options.place, seed, layout);
+    const player = buildSheep(sheep.species, sheep.level, sheep.wear, seed, sheep.wool ?? 1);
+    player.position.set(0, world.height(0, 6.2), 6.2); player.rotation.y = Math.PI;
+    scene.add(player);
+    const target = new T.Vector3(0, .77, 5.0);
+    const camPosition = new T.Vector3(), aim = new T.Vector3(), spot = new T.Vector3();
+    const elementPos = new T.Vector3(), raycaster = new T.Raycaster(), pointerPos = new T.Vector2();
+    const elements = new Map(), effectSprites = new Set();
+    const groundRing = new T.RingGeometry(.55, .66, 24).rotateX(-Math.PI / 2);
+    const crystal = new T.OctahedronGeometry(.24);
+    const lantern = glowSprite('#ffe1aa', 3, .65);
+    lantern.visible = false;
+    lantern.position.set(-.5, .82, .5); player.add(lantern);
+    const goal = new T.Mesh(new T.RingGeometry(.23, .29, 18).rotateX(-Math.PI / 2), mat('#ffc880', { basic: true }));
+    goal.visible = false; scene.add(goal);
+    const reduced = calm();
+    const azBase = [-.18, .19, -.31, .25][layout.angle || 0] || 0;
+    let az = azBase, azWant = azBase, activePointer, route = [], waitForTarget = null;
+    let raf, lastFrame, stopped = false, reaction = null, talking, doveAt, followOrigin, markerWidth = 0, markerHeight = 0;
+    let lastMetric = 0, frames = 0, frameTime = 0, sinceSlow = 0, resolution = pixelRatio, firstFrame = true;
+    let metrics = { fps: 0, calls: 0, triangles: 0, ratio: resolution };
+    const enterDistance = 1.2;
+    const open = (x, z) => {
+      if (Math.abs(x) > EXPLORE_EDGE || Math.abs(z) > EXPLORE_EDGE) return false;
+      if (world.blocks.some(([ox, oz, r]) => (x - ox) ** 2 + (z - oz) ** 2 < (r + .24) ** 2)) return false;
+      for (const { marker } of elements.values()) {
+        if (marker.type === 'clear' && (x - marker.pos[0]) ** 2 + (z - marker.pos[1]) ** 2 < .47 ** 2) return false;
+      }
+      return true;
+    };
+
+    function resize() {
+      const width = container.clientWidth, height = container.clientHeight;
+      if (!width || !height) return;
+      markerWidth = width; markerHeight = height;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height; camera.updateProjectionMatrix();
+    }
+    const observer = new ResizeObserver(resize);
+    observer.observe(container); resize();
+    function removeMarker(id) {
+      const current = elements.get(id);
+      current?.obj.removeFromParent();
+      current?.label.remove();
+      if (current?.sign) disposeFigure(current.sign);
+      if (current?.item?.isSprite) { current.item.material.map?.dispose(); current.item.material.dispose(); }
+      elements.delete(id);
+    }
+    const rockForWolf = () => new T.IcosahedronGeometry(1, 0);
+    function atExploreLantern(lit) {
+      const lantern = new T.Group();
+      const stem = new T.Mesh(new T.CylinderGeometry(.05, .13, .44, 6), mat('#845f59'));
+      stem.position.y = .24; lantern.add(stem);
+      const cup = new T.Mesh(new T.CylinderGeometry(.21, .12, .15, 7), mat('#b48658'));
+      cup.position.y = .49; lantern.add(cup);
+      if (lit) {
+        const flame = new T.Mesh(new T.ConeGeometry(.15, .34, 6), mat('#ffd573', { emissive: '#ff9b38', ei: 2.2 }));
+        flame.position.y = .675; lantern.add(flame);
+        const glow = glowSprite('#ffca80', 1.4, .70);
+        glow.position.y = .62; lantern.add(glow);
+      }
+      return lantern;
+    }
+
+    function addMarker(marker) {
+      const [x, z] = marker.pos;
+      const y = world.height(x, z);
+      const obj = new T.Group(); obj.position.set(x, y + .06, z);
+      const color = EXPLORE_COLORS[marker.type] || '#9ce4ff';
+      const light = mat(color, { basic: true, transparent: true, opacity: .8 });
+      const ring = new T.Mesh(groundRing, light);
+      obj.add(ring);
+      let item, sign;
+      if (marker.type === 'exit') {
+        sign = new T.Group();
+        sign.add(new T.Mesh(place(new T.BoxGeometry(), 0, .52, 0, .11, 1.04, .12), mat('#895e47')));
+        sign.add(new T.Mesh(place(new T.BoxGeometry(), 0, 1.03, 0, .91, .27, .14, 0, .11, .035), mat('#b68b60')));
+        obj.add(sign);
+      } else if (marker.type === 'verse') {
+        sign = new T.Group();
+        sign.add(new T.Mesh(place(new T.BoxGeometry(), 0, .32, 0, .52, .64, .23, 0, 0, -.08), mat('#c3adab')));
+        sign.add(new T.Mesh(place(new T.BoxGeometry(), 0, .58, .11, .37, .052, .045), mat('#eaddc3')));
+        obj.add(sign);
+      } else if (marker.type === 'person' || marker.type === 'quest') {
+        sign = new T.Group();
+        const robeColor = marker.type === 'quest' ? '#bf6487' : ['#8565a2', '#697d94', '#8d745e', '#a47886', '#67668d'][hashStr(marker.title) % 5];
+        const robe = new T.Mesh(new T.CylinderGeometry(.19, .34, .87, 7), mat(robeColor));
+        robe.position.y = .47; sign.add(robe);
+        const head = new T.Mesh(new T.IcosahedronGeometry(.205, 1), mat('#c98d68'));
+        head.position.y = 1.0; sign.add(head);
+        const shawl = new T.Mesh(new T.ConeGeometry(.26, .29, 8), mat('#d9b99e'));
+        shawl.position.y = 1.14; sign.add(shawl); obj.add(sign);
+      } else if (marker.type === 'light') {
+        sign = atExploreLantern(marker.lit);
+        obj.add(sign);
+      } else if (marker.type === 'guard') {
+        sign = new T.Group();
+        const coat = mat('#3b354e');
+        const body = new T.Mesh(rockForWolf(), coat);
+        body.position.y = .46; body.scale.set(.29, .28, .63); sign.add(body);
+        const muzzle = new T.Mesh(rockForWolf(), coat);
+        muzzle.position.set(0, .53, .55); muzzle.scale.set(.22, .19, .32); sign.add(muzzle);
+        for (const side of [-1, 1]) {
+          const ear = new T.Mesh(new T.ConeGeometry(.105, .30, 4), coat);
+          ear.position.set(side * .13, .77, .44); sign.add(ear);
+          const eye = new T.Mesh(new T.SphereGeometry(.039, 5, 4), mat('#ffb48c', { basic: true }));
+          eye.position.set(side * .098, .60, .77); sign.add(eye);
+        }
+        obj.add(sign);
+      } else if (marker.type === 'follow' && marker.symbol === '〰') {
+        item = glowSprite('#e5bfd9', 1.36, .67);
+        item.position.y = .46; obj.add(item);
+      } else if (marker.type === 'clear') {
+        item = new T.Mesh(crystal, mat('#9f8991'));
+        item.scale.set(2.15, 1.35, 1.7); item.position.y = .3; obj.add(item);
+      } else {
+        item = new T.Mesh(crystal, mat(color, { emissive: color, ei: .55 }));
+        item.position.y = .32; obj.add(item);
+      }
+      scene.add(obj);
+      const label = document.createElement('button');
+      label.type = 'button'; label.className = 'f3d-explore-label';
+      label.style.setProperty('--label-half', Math.min(78, 13 + String(marker.title).length * 5.5) + 'px');
+      label.style.setProperty('--marker', color);
+      const sigil = document.createElement('i'); sigil.textContent = marker.symbol;
+      const caption = document.createElement('span'); caption.textContent = marker.title;
+      label.append(sigil, caption);
+      label.addEventListener('click', () => {
+        if (!label.hidden) moveTo(...marker.pos, marker.id);
+      });
+      hud.append(label);
+      if (marker.type === 'follow' && followOrigin) {
+        obj.position.copy(followOrigin);
+        followOrigin = null;
+      }
+      elements.set(marker.id, { marker, obj, label, item, ring, sign, near: false });
+    }
+
+    function setMarkers(list) {
+      const markers = new Map(list.map(marker => [marker.id, marker]));
+      for (const [id, previous] of elements) {
+        const marker = markers.get(id);
+        if (!marker || JSON.stringify(marker) !== JSON.stringify(previous.marker)) removeMarker(id);
+      }
+      for (const marker of list) if (!elements.has(marker.id)) addMarker(marker);
+      lantern.visible = list.some(marker => marker.type === 'guard');
+    }
+    setMarkers(options.markers || []);
+    function spawnPickup(id, pos) {
+      removeMarker(id); addMarker({ id, pos, title: '반짝이는 물건', symbol: '✦', type: 'find' });
+    }
+    function moveTo(x, z, markerId = null) {
+      const [tx, tz] = [clamp(x, -EXPLORE_EDGE, EXPLORE_EDGE), clamp(z, -EXPLORE_EDGE, EXPLORE_EDGE)];
+      let end = [tx, tz];
+      if (markerId && !open(tx, tz)) {
+        const tries = Array.from({ length: 12 }, (_, i) => [tx + Math.sin(i / 12 * Math.PI * 2) * .93, tz + Math.cos(i / 12 * Math.PI * 2) * .93]);
+        const option = tries.filter(pt => open(...pt)).sort((a, b) => Math.hypot(a[0] - player.position.x, a[1] - player.position.z) - Math.hypot(b[0] - player.position.x, b[1] - player.position.z))[0];
+        if (option) end = option;
+      }
+      route = explorePath([player.position.x, player.position.z], end, open);
+      waitForTarget = markerId;
+      if (markerId && elements.has(markerId)) elements.get(markerId).near = false;
+      const final = route.at(-1);
+      goal.visible = !!final;
+      if (final) goal.position.set(final[0], world.height(...final) + .084, final[1]);
+      handlers.onMove?.();
+    }
+    function down(event) {
+      if (!event.isPrimary || activePointer) return;
+      canvas.setPointerCapture?.(event.pointerId);
+      activePointer = { id: event.pointerId, x: event.clientX, moved: false, az };
+    }
+    function move(event) {
+      if (event.pointerId !== activePointer?.id) return;
+      const delta = event.clientX - activePointer.x;
+      if (Math.abs(delta) > 8) activePointer.moved = true;
+      if (activePointer.moved) azWant = clamp(activePointer.az - delta * .007, azBase - .78, azBase + .78);
+    }
+    function up(event) {
+      if (event.pointerId !== activePointer?.id) return;
+      const drag = activePointer.moved;
+      activePointer = null;
+      if (drag || event.type === 'pointercancel') return;
+      const rect = canvas.getBoundingClientRect();
+      pointerPos.set((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2);
+      raycaster.setFromCamera(pointerPos, camera);
+      const hit = raycaster.intersectObject(world.ground)[0]?.point;
+      if (hit) moveTo(hit.x, hit.z);
+    }
+    canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
+    canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+    canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); handlers.onUnavailable?.(); });
+
+    function say(id, line) {
+      talking?.label.remove();
+      const label = document.createElement('span'); label.className = 'f3d-explore-speech'; label.textContent = line;
+      hud.append(label); talking = { id, label, until: performance.now() + 2500 };
+    }
+    function react(id, kind = 'spark') {
+      if (kind === 'doves') { doveAt = performance.now(); return; }
+      reaction = { start: performance.now(), kind, id };
+      if (kind === 'star') return;
+      if (reduced || kind === 'sleep') return;
+      const spark = new T.Sprite(new T.SpriteMaterial({ map: starTexture(), transparent: true, depthWrite: false, blending: T.AdditiveBlending }));
+      spark.position.copy(elements.get(id)?.obj.position || player.position);
+      spark.position.y += .7; spark.scale.setScalar(kind === 'scare' ? 3.4 : 1.2);
+      spark.userData.start = performance.now();
+      effectSprites.add(spark); scene.add(spark);
+    }
+    function project(label, pos, y) {
+      elementPos.copy(pos); elementPos.y += y; elementPos.project(camera);
+      const { x, y: top, z } = elementPos;
+      if (Math.abs(x) > .97 || Math.abs(top) > .93 || z < -1 || z > 1) return false;
+      const half = parseFloat(label.style.getPropertyValue('--label-half')) || 75;
+      const left = clamp((x + 1) * markerWidth * .5, half, markerWidth - half);
+      label.style.transform = `translate3d(${left.toFixed(1)}px,${((1 - top) * markerHeight * .5).toFixed(1)}px,0) translate(-50%,-100%)`;
+      return true;
+    }
+
+    function frame(now) {
+      if (stopped) return;
+      raf = requestAnimationFrame(frame);
+      if (!markerWidth || document.hidden) { lastFrame = now; return; }
+      const elapsed = now - (lastFrame ?? now), delta = Math.min(.07, elapsed / 1000);
+      lastFrame = now;
+      const t = now / 1000, p = player.position, u = player.userData;
+      const requested = waitForTarget;
+      const step = route[0];
+      const stride = 3.45 * delta;
+      if (step) {
+        const dx = step[0] - p.x, dz = step[1] - p.z, dist = Math.hypot(dx, dz);
+        if (dist <= stride) { p.x = step[0]; p.z = step[1]; route.shift(); }
+        else { p.x += dx / dist * stride; p.z += dz / dist * stride; }
+        const diff = Math.atan2(dx, dz) - player.rotation.y;
+        player.rotation.y += Math.atan2(Math.sin(diff), Math.cos(diff)) * Math.min(delta * 10, 1);
+      } else { waitForTarget = null; goal.visible = false; }
+      p.y = world.height(p.x, p.z);
+      const sleep = reaction?.kind === 'sleep';
+      const bounce = !reduced && reaction?.kind === 'spark' ? Math.max(0, 1 - (now - reaction.start) / 700) * .28 : 0;
+      u.body.position.y = lerp(u.body.position.y, sleep ? -.33 : (step && !reduced ? Math.sin(t * 20) * .05 : 0) + bounce, .22);
+      legSwingExplore(u.legs, t, !reduced && step ? 1 : 0, sleep);
+      if (!reduced) animateWings(player, t);
+      const gazing = reaction?.kind === 'star' && now - reaction.start < 2800;
+      spot.set(p.x, p.y + (gazing ? 3.55 : 1.28), p.z - 1.36);
+      target.lerp(spot, firstFrame || reduced ? 1 : Math.min(1, delta * 3.6));
+      az = lerp(az, azWant, Math.min(1, delta * 7));
+      camPosition.set(target.x + Math.sin(az) * 8, target.y + (gazing ? 2.10 : 3.85), target.z + Math.cos(az) * 8);
+      camera.position.copy(camPosition);
+      aim.copy(target);
+      camera.lookAt(aim); camera.updateMatrixWorld();
+      firstFrame = false;
+      for (const v of elements.values()) {
+        const { marker, obj, label, item, ring } = v;
+        const distance = Math.hypot(marker.pos[0] - p.x, marker.pos[1] - p.z);
+        if (marker.type === 'follow') {
+          const dx = marker.pos[0] - obj.position.x, dz = marker.pos[1] - obj.position.z;
+          const step = reduced ? 1 : Math.min(1, delta * 1.9 / Math.max(.03, Math.hypot(dx, dz)));
+          obj.position.x += dx * step; obj.position.z += dz * step;
+          obj.position.y = world.height(obj.position.x, obj.position.z) + .10;
+        }
+        const visible = !(marker.type === 'secret' || marker.hidden) || distance < 1.85;
+        if (marker.type === 'follow' && item && !reduced) {
+          item.position.x = Math.sin(t * 2.1) * .36;
+          item.position.z = Math.sin(t * 1.39) * .49;
+        }
+        obj.visible = visible;
+        label.hidden = !visible || !project(label, obj.position, v.sign ? 1.45 : .76);
+        ring.scale.setScalar(reduced ? 1 : 1 + Math.sin(t * 2.8 + obj.position.x) * .084);
+        if (item && !reduced) { item.rotation.y = t * 1.6; item.position.y = .35 + Math.sin(t * 2.8) * .11; }
+        if (distance >= enterDistance + .3) v.near = false;
+        if (!marker.lit && !v.near && distance <= enterDistance && (!requested || requested === marker.id) && handlers.canInteract?.() !== false) {
+          v.near = true;
+          route = []; goal.visible = false;
+          if (marker.type === 'follow') followOrigin = obj.position.clone();
+          if (marker.type === 'exit') handlers.onExit?.(marker.place);
+          else handlers.onReach?.(marker.id);
+          if (stopped) return;
+          break;
+        }
+      }
+      if (talking) {
+        if (now >= talking.until) { talking.label.remove(); talking = null; }
+        else talking.label.hidden = !project(talking.label, elements.get(talking.id)?.obj.position || p, 2.05);
+      }
+      if (!reduced) for (const { cloud, x, z, base, i } of world.fx) {
+        const phase = (t * .43 + i / 6) % 1;
+        cloud.position.set(x + Math.sin(t * .95 + i) * .18 * phase, base + phase * 1.62, z);
+        cloud.scale.setScalar(.7 + phase * 1.42);
+        cloud.material.opacity = Math.sin(phase * Math.PI) * .24;
+      }
+      if (doveAt) for (const { bird, home, i } of world.birds) {
+        const phase = Math.max(0, (now - doveAt) / 1000 - i * .095);
+        bird.position.set(home.x + phase * (i * .31 - .6), home.y + phase * 1.55, home.z - phase * 2.23);
+        bird.visible = phase < 2.5 && !reduced;
+        bird.children.forEach((wing, n) => { wing.rotation.x = Math.sin(t * 20) * (n ? 1 : -1) * .7; });
+      }
+      for (const sprite of effectSprites) {
+        const age = (now - sprite.userData.start) / 820;
+        sprite.material.opacity = 1 - age;
+        sprite.position.y += delta * .96;
+        if (age >= 1) {
+          sprite.removeFromParent(); sprite.material.map.dispose(); sprite.material.dispose(); effectSprites.delete(sprite);
+        }
+      }
+      renderer.render(scene, camera);
+      if (elapsed > 0 && elapsed < 250) { frames++; frameTime += elapsed; }
+      if (!lastMetric) lastMetric = now;
+      if (now - lastMetric > 1400) {
+        metrics = { fps: frameTime ? Math.round(frames * 1000 / frameTime) : 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, ratio: resolution };
+        if (metrics.fps < 48 && resolution > .75) sinceSlow++; else sinceSlow = 0;
+        if (sinceSlow >= 2) { resolution = Math.max(.75, resolution * .83); renderer.setPixelRatio(resolution); resize(); sinceSlow = 0; }
+        lastMetric = now; frames = 0; frameTime = 0;
+      }
+    }
+    raf = requestAnimationFrame(frame);
+    const destroy = () => {
+      if (stopped) return;
+      stopped = true; cancelAnimationFrame(raf); observer.disconnect();
+      for (const id of elements.keys()) removeMarker(id);
+      groundRing.dispose(); crystal.dispose();
+      disposeFigure(scene); world.ground.material.dispose(); world.dome.material.dispose();
+      scene.traverse(obj => { if (obj.isPoints || world.fx.some(f => f.cloud === obj)) obj.material.dispose(); });
+      renderer.dispose(); renderer.forceContextLoss(); wrap.remove();
+    };
+    return { setMarkers, spawnPickup, react, say, photo() {
+      const old = camera.position.clone();
+      const oldQuaternion = camera.quaternion.clone();
+      const p = player.position, oldFacing = player.rotation.y;
+      const masks = Array.from(elements.values(), ({ obj }) => [obj, obj.visible]);
+      for (const [obj] of masks) obj.visible = false;
+      camera.position.set(p.x + 2.42, p.y + 2.37, p.z + 4.23);
+      camera.lookAt(p.x, p.y + .98, p.z);
+      player.rotation.y = .17;
+      renderer.render(scene, camera);
+      const output = document.createElement('canvas');
+      output.width = 330; output.height = 360;
+      const crop = Math.min(canvas.width, canvas.height * output.width / output.height);
+      const cropHeight = crop * output.height / output.width;
+      output.getContext('2d').drawImage(canvas, (canvas.width - crop) / 2, (canvas.height - cropHeight) / 2, crop, cropHeight, 0, 0, output.width, output.height);
+      camera.position.copy(old); camera.quaternion.copy(oldQuaternion);
+      player.rotation.y = oldFacing;
+      for (const [obj, visible] of masks) obj.visible = visible;
+      renderer.render(scene, camera);
+      return output.toDataURL('image/jpeg', .83);
+    }, focus(id) {
+      const marker = elements.get(id)?.marker;
+      if (marker) moveTo(...marker.pos, id);
+    }, destroy, metrics: () => ({ ...metrics }), _debug: { player, camera, moveTo, markers: elements, blocks: world.blocks } };
+  }
+
+  function legSwingExplore(legs, t, strength, rest) {
+    for (const [i, leg] of legs.entries()) {
+      leg.rotation.x = Math.sin(t * 13) * strength * (i === 0 || i === 3 ? .58 : -.58);
+      leg.scale.y = lerp(leg.scale.y, rest ? .31 : 1, .17);
+    }
+  }
+
+  let webGLAvailable;
   function supported() {
-    try { const c = document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl'))); } catch (e) { return false; }
+    if (webGLAvailable != null) return webGLAvailable;
+    try {
+      const gl = window.WebGLRenderingContext && document.createElement('canvas').getContext('webgl2');
+      webGLAvailable = !!gl;
+      gl?.getExtension?.('WEBGL_lose_context')?.loseContext();
+    } catch { webGLAvailable = false; }
+    return webGLAvailable;
   }
   function load() {
     if (T) return Promise.resolve(T);
@@ -1338,5 +2720,5 @@
     return loading;
   }
 
-  window.Field3D = { supported, load, mount, portrait, SLOTS, stageOf };
+  window.Field3D = { supported, load, mount, mountExplore, portrait, wearIcon, turntable, wardrobe, normalizeWear, SLOTS, stageOf };
 })();

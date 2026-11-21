@@ -1028,17 +1028,16 @@
     const fieldOpen = !!window.Field?.has();
     const lastDay = ep.id === 'end';
     const starSize = 104;
-    const firstSheep = firstDay && Core.data.field?.sheep?.[0];
-    const fieldLabel = firstSheep ? `${Core.josa(firstSheep.name, '이가')} 기다려` :
-      fieldOpen && Field.mainCare()?.hearts === 3 ? '들판 들르기' : '오늘 밤 들판으로';
+    const place = window.Explore?.isOpen(ep) && Explore.title(ep.id);
+    const fieldLabel = place ? `${place}에 가 보자` : '오늘 밤 들판으로';
     const ov = showOverlay(`
       <div class="card done">
         ${firstDay ? '<div class="first-day-banner">대림절이 시작됐어 · 첫째 초</div>' : ''}
         <div class="done-star">${Art.bigStar(before / total, starSize)}</div>
         <div class="done-title">${first ? '별이 조금 더 밝아졌어' : '다시 보기 끝'}</div>
         ${first || gemLine ? `<div class="done-sub">${first ? `<div>카드 No.${Card.cardNo(ep.id)} 획득</div>` : ''}${gemLine ? `<span class="gem-line">${esc(gemLine)}</span>` : ''}</div>` : ''}
-        ${lastDay ? '<button class="btn finale-go">🌟 27일의 기록 보기</button>' : ''}
-        ${fieldOpen ? `<button class="btn${lastDay ? ' ghost' : ''}" data-v="field">🐑 ${esc(fieldLabel)}</button>` : ''}
+        ${fieldOpen ? `<button class="btn" data-v="field">${place ? '🧭' : '🐑'} ${esc(fieldLabel)}</button>` : ''}
+        ${lastDay ? '<button class="btn ghost finale-go">🌟 27일의 기록 보기</button>' : ''}
         ${chapterGuest ? '<p class="done-field-guest">🐑 들판에 친구 양이 놀러 왔어</p>' : ''}
         ${skyLine()}
         ${newBadges.length ? `<div class="new-badges">${newBadges.map(b =>
@@ -1061,7 +1060,7 @@
       box && box.classList.add('pulse');
     }, 700);
     const finishedId = ep.id;
-    ov.querySelector('[data-v=field]')?.addEventListener('click', () => Field.page({ tonight: finishedId }));
+    ov.querySelector('[data-v=field]')?.addEventListener('click', () => place ? Explore.enter(finishedId) : Field.page({ tonight: finishedId }));
     ov.querySelector('[data-v=card]').onclick = () => App.card(finishedId);
     ov.querySelectorAll('[data-badge]').forEach(button => { button.onclick = () => App.card('B:' + button.dataset.badge); });
     ov.querySelector('.finale-go')?.addEventListener('click', () => App.finale());

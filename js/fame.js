@@ -71,6 +71,13 @@
     { id: 'field7', icon: '🌾', name: '한 주 내내', desc: '내 양 7일 돌보기', ok: () => (window.Field?.stats().careDays || 0) >= 7 },
     { id: 'found', icon: '🔦', name: '찾았다!', desc: '잃은 양 찾기', ok: () => (window.Field?.stats().found || 0) >= 1 },
     { id: 'dex10', icon: '📖', name: '양 박사', desc: '친구 양 10종 만나기', ok: () => (window.Field?.stats().friendKinds || 0) >= 10 },
+    { id: 'watchman', icon: '🌙', name: '밤의 파수꾼', desc: '밤 순찰 별 셋 3번', ok: () => (D().field?.patrolPerfect || 0) >= 3 },
+    { id: 'explorer', icon: '🧭', name: '베들레헴 탐험가', desc: '장소 10곳에서 전부 찾기', ok: () => (window.Explore?.counts().stars || 0) >= 10 },
+    { id: 'seeker', icon: '🗝️', name: '비밀을 찾은 자', desc: '비밀 장소 5곳 찾기', ok: () => (window.Explore?.counts().secrets || 0) >= 5 },
+    { id: 'outfitter', icon: '🧵', name: '양 옷장 장인', desc: '내 양에게 다섯 칸 모두 입히기', ok: () =>
+      Object.values(window.Field3D?.normalizeWear(window.Field?.mainCare()?.sheep?.wear) || {}).filter(Boolean).length === 5 },
+    { id: 'wordCollector', icon: '📜', name: '말씀 수집가', desc: '말씀 비석 15개 읽기', ok: () => (window.Explore?.counts().words || 0) >= 15 },
+    { id: 'journeyPhoto', icon: '📷', name: '여정 사진가', desc: '여정 앨범에 사진 20장 담기', ok: () => (window.Explore?.counts().photos || 0) >= 20 },
     { id: 'legend', icon: '🌟', name: '전설을 만나다', desc: '전설 양 만나기', ok: () => (window.Field?.stats().legends || 0) >= 1 }
   ].filter(b => b.id !== 'codes4' || (window.CODES || []).length);
 
