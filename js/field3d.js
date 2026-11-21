@@ -2082,6 +2082,7 @@
     const dry = layout.variant === 'dry';
     const height = (x, z) => paved ? 0 : hillside ? .17 * Math.sin(x * .47) * Math.cos(z * .5) - z * .055 : .045 * Math.sin(x * .7 + z * .4);
     const blocks = [], batches = new Map(), birds = [], fx = [];
+    let campfire, rearPath;
     const box = new T.BoxGeometry(1, 1, 1), rock = new T.IcosahedronGeometry(1, 0);
     const col = new T.CylinderGeometry(1, 1, 1, 8), cone = new T.ConeGeometry(1, 1, 5);
     const stone = mat(paved ? '#aaa7ac' : '#938779'), edge = mat('#d4c1a7'), dark = mat('#726e88');
@@ -2108,6 +2109,13 @@
       else for (let i = 0; i < 5; i++) batch(rock, olive, x + Math.cos(i * 2.4) * .7 * scale,
         y + (1.7 + rand() * .45) * scale, z + Math.sin(i * 2.4) * .6 * scale, .78 * scale, .56 * scale, .68 * scale, 0, rand() * 6);
       if (Math.abs(x) < EXPLORE_EDGE && Math.abs(z) < EXPLORE_EDGE) stop(x, z, .52 * scale);
+    };
+    const visitor = (x, z, color) => {
+      const y = height(x, z), stature = .82 + rand() * .37;
+      batch(col, mat(color), x, y + .39 * stature, z, .24, .78 * stature, .24);
+      batch(rock, mat('#b8896d'), x, y + .93 * stature, z, .15, .18, .15);
+      batch(cone, mat('#dac2a8'), x, y + 1.08 * stature, z, .21, .23, .21);
+      stop(x, z, .33);
     };
     const building = (x, z, s, style = 'house') => {
       const y = height(x, z), house = style === 'house', tavern = style === 'inn';
@@ -2259,6 +2267,12 @@
       cube(stone, 0, 4.27, -7.2, 3.54, .93, 1.5);
       cube(terra, 0, 4.43, -6.38, 1.62, .45, .12);
       at('등불 기둥', -4.9, -5.8); at('등불 기둥', 4.9, -5.8);
+      for (const [lane, x] of [-2.5, 1.1, 4.4].entries()) {
+        for (let i = 0; i < 4; i++) visitor(x + (i % 2) * .32, 3.45 - i * 1.36 - lane * 1.4,
+          ['#7f6679', '#727889', '#98795f'][(lane + i) % 3]);
+      }
+      cube(wood, 2.8, .53, -4, 1.75, 1.06, .59);
+      cube(edge, 2.8, 1.09, -4, .72, .065, .33);
     } else if (kit === 'nazareth' || kit === 'workshop' || kit === 'well' || kit === 'inn') {
       const stand = kit === 'workshop';
       building(-5.4, -7.46, 1.02, kit === 'inn' ? 'inn' : 'house');
@@ -2276,6 +2290,32 @@
         at('우물', x, z); stop(x, z, .85);
       }
       oliveTree(-6.7, -.4, 1.36);
+      if (kit === 'inn') {
+        building(7.9, -4.4, .63);
+        rearPath = new T.Group();
+        const flagstones = new T.BoxGeometry(1, 1, 1);
+        const stones = [];
+        for (let i = 0; i < 7; i++) {
+          const z = -4.7 - i * .53, x = 7.25 + Math.sin(i * .61) * .31;
+          stones.push(place(flagstones, x, height(x, z) + .032, z, .71, .065, .48, 0, i * .45));
+        }
+        rearPath.add(merged(stones, edge));
+        stones.forEach(geometry => geometry.dispose());
+        flagstones.dispose();
+        const glow = glowSprite('#ffc681', 2.65, .78);
+        glow.position.set(7.35, .59, -7.66); rearPath.add(glow); scene.add(rearPath);
+      }
+      if (kit === 'well') {
+        for (let i = 0; i < 3; i++) cube(edge, -4.2, .08 + i * .065, -2.65 - i * .29, 1.06, .16 + i * .09, .3);
+        for (const [x, z, size] of [[.9, -2.1, .27], [-.4, .1, .58]]) {
+          batch(col, mat('#698ca6', { rough: .25 }), x, height(x, z) + .018, z, size, .025, size * .72);
+        }
+      }
+      if (stand) {
+        for (const side of [-1, 1]) cube(wood, -5.4 + .72 * side, .94, -5.85, .16, 1.9, .25);
+        cube(wood, -5.4, 1.91, -5.85, 1.58, .18, .25);
+        at('등불 기둥', 3.25, -5.9);
+      }
       if (layout.variant === 'wedding') {
         for (let i = 0; i < 8; i++) cube(i % 2 ? terra : edge, -4.0 + i * 1.16, 2.7 - Math.sin(i * .44) * .44, -4.5, .42, .31, .068, 0, 0, i * .29);
         cube(wood, -4.8, 1.38, -4.5, .1, 2.76, .10); cube(wood, 4.8, 1.38, -4.5, .1, 2.76, .10);
@@ -2292,7 +2332,17 @@
       const interior = mat('#a27147');
       cube(interior, 0, y + 1.22, z - .86, 4.28, 2.2, .081);
       for (const side of [-1, 1]) for (let i = 0; i < 4; i++) cube(wood, side * (1.09 + i * .46), y + 1.24, z - .78, .086, 2.4, .088);
-      const crib = z + 1.37;
+      const crib = z + 1.18;
+      if (layout.eve) {
+        const doorZ = z + 1.33;
+        for (const side of [-1, 1]) {
+          cube(wood, side * .55, y + 1.16, doorZ, 1.04, 2.32, .12);
+          for (let i = 0; i < 4; i++) cube(interior, side * (.18 + .24 * i), y + 1.16, doorZ + .08, .202, 2.31, .035);
+          cube(wood, side * .54, y + .62, doorZ + .11, 1.05, .13, .08);
+        }
+        cube(windowLight, 0, y + 1.18, doorZ + .09, .057, 2.28, .028);
+        stop(0, doorZ - .43, .52);
+      }
       const straw = mat('#c39a58'), paleStraw = mat('#e5bf76');
       for (let i = 0; i < 60; i++) {
         const x = (rand() - .5) * 9.5, dist = -7.5 + rand() * 11;
@@ -2323,21 +2373,64 @@
           cube(color, -.58 + i * .165, y + .659, crib + .319, .173, .28, .035, -.17);
         }
       }
+      if (layout.christmas) {
+        batch(rock, mat('#f6e7cd'), -.1, y + .875, crib, .47, .15, .24, 0, .04, -.07);
+        batch(rock, mat('#dcaf87'), .28, y + .91, crib + .044, .144, .125, .139);
+        stop(0, crib, .58);
+      }
     } else {
       const village = kit === 'elizabeth' || kit === 'hillpath' && !dry;
       if (village) building(0, -8.65, kit === 'elizabeth' ? 1.66 : 1.0, 'farm');
       if (kit === 'field') {
         const fire = at('모닥불', 0, -5.5); fire.scale.setScalar(1.22); stop(0, -5.5, .75);
+        campfire = fire.userData.flicker;
+        if (night) campfire.light.visible = true;
+        else {
+          const x = 6.8, z = -6.3, y = height(x, z);
+          batch(col, mat('#4f90a0', { rough: .25 }), x, y + .023, z, .57, .036, .38);
+          for (let i = 0; i < 7; i++) batch(rock, edge, x + .59 * Math.cos(i * .9), y + .06, z + .39 * Math.sin(i * .9), .14, .12, .16);
+        }
         at('돌 양 우리', 5.8, -5.7); at('목자 천막', -5.4, -6.6, -.1);
       }
-      const rows = kit === 'elizabeth' || kit === 'hillpath' && !dry;
+      const rows = layout.variant === 'vineyard' || kit === 'hillpath' && !dry;
       if (rows) for (const side of [-1, 1]) {
         for (let j = 0; j < 3; j++) for (let i = 0; i < 5; i++) {
           const x = side * (6.35 + j * .83), z = -5.8 + i * 1.55, y = height(x, z);
           cube(wood, x, y + .31, z, .081, .62, .081);
+          if (layout.variant === 'vineyard') cube(wood, x, y + .52, z, .07, .065, 1.6);
           batch(rock, olive, x, y + .5, z, .40, .28, .42, 0, i);
           batch(rock, mat('#7e557d'), x + side * -.23, y + .38, z + .11, .10, .13, .12);
         }
+      }
+      if (dry) {
+        const x = 6.4, z = -3.9, y = height(x, z);
+        for (let i = 0; i < 9; i++) batch(rock, edge, x + .53 * Math.cos(i * .698), y + .13, z + .53 * Math.sin(i * .698), .25, .19, .23, 0, i);
+      }
+      if (kit === 'galilee') {
+        const summit = layout.variant === 'summit';
+        if (summit) {
+          for (const [x, y, z] of [[3.7, 5.6, -16], [6.1, 7.4, -17.2], [8.9, 6.4, -18.1]]) {
+            const point = glowSprite('#fff1c3', .75, .92);
+            point.position.set(x, y, z); scene.add(point);
+          }
+          for (const [x, z, size] of [[6.1, -6.4, .86], [-4.8, -5.3, .75], [1.05, -7, .48]]) {
+            batch(rock, dark, x, height(x, z) + .42, z, size, .67, size, 0, z);
+          }
+        } else {
+          cube(mat('#6c8ca5', { rough: .32 }), 7.5, .24, -12.8, 13, .035, 6.5);
+          for (const [x, z] of [[-4.8, 1.2], [4.85, -3.15], [-3.4, -2.65]]) oliveTree(x, z, .98);
+        }
+      }
+      if (layout.variant === 'courtyard') {
+        for (const x of [-5.1, -3.9, 4.1, 5.3]) cube(wood, x, height(x, -4.9) + .31, -4.9, .08, .62, .08);
+        for (const x of [-4.5, 4.7]) cube(wood, x, height(x, -4.9) + .58, -4.9, 1.27, .07, .08);
+        cube(wood, 3.04, height(3.04, -7.25) + .34, -7.25, .69, .28, .77);
+        cube(edge, 3.04, height(3.04, -7.25) + .49, -7.25, .6, .055, .67);
+      }
+      if (layout.variant === 'vineyard') {
+        const x = 7.2, z = 3.5, y = height(x, z);
+        batch(col, stone, x, y + .16, z, .65, .32, .65);
+        batch(col, terra, x, y + .33, z, .49, .025, .49);
       }
       if (layout.variant === 'feast') {
         for (const x of [-3.4, 3.4]) {
@@ -2377,15 +2470,15 @@
     if (!birds.length) cone.dispose();
     rock.dispose();
     const star = new T.Sprite(new T.SpriteMaterial({ map: starTexture(), transparent: true, depthWrite: false, blending: T.AdditiveBlending, fog: false }));
-    if (layout.christmas && kit === 'stable') {
-      star.position.set(0.65, 5.0, -10.7);
-      star.scale.setScalar(4.8);
+    if (stable) {
+      star.position.set(.65, 5, -10.7);
+      star.scale.setScalar(layout.christmas ? 4.8 : 3.7);
     } else {
       star.position.set(3.1, 7.8, -22); star.scale.setScalar(2.65);
     }
     if (night || layout.christmas) scene.add(star);
     else { star.material.map.dispose(); star.material.dispose(); }
-    return { ground, height, blocks, birds, fx, star, dome };
+    return { ground, height, blocks, birds, fx, star, dome, campfire, rearPath };
   }
 
   function explorePath(from, to, open) {
@@ -2447,7 +2540,7 @@
 
     const scene = new T.Scene(), camera = new T.PerspectiveCamera(53, 1, .1, 105);
     const world = exploreWorld(scene, options.kit || options.place, seed, layout);
-    const player = buildSheep(sheep.species, sheep.level, sheep.wear, seed, sheep.wool ?? 1);
+    let player = buildSheep(sheep.species, sheep.level, sheep.wear, seed, sheep.wool ?? 1);
     player.position.set(0, world.height(0, 6.2), 6.2); player.rotation.y = Math.PI;
     scene.add(player);
     const target = new T.Vector3(0, .77, 5.0);
@@ -2459,6 +2552,36 @@
     const lantern = glowSprite('#ffe1aa', 3, .65);
     lantern.visible = false;
     lantern.position.set(-.5, .82, .5); player.add(lantern);
+    let carrying = '', carryLabel, kneeling = false, foundLamb;
+    let fireStrength = world.campfire && layout.time === 'night' ? .3 : 1;
+    if (options.progress?.[options.place] === 'done') fireStrength = 1;
+    function setCarry(symbol) {
+      if (symbol === carrying) return;
+      carrying = symbol;
+      carryLabel?.remove();
+      carryLabel = null;
+      if (!symbol) return;
+      carryLabel = document.createElement('span');
+      carryLabel.className = 'f3d-explore-speech explore-cargo';
+      carryLabel.textContent = symbol;
+      hud.append(carryLabel);
+    }
+    function kneel(addWings = true) {
+      if (addWings && !kneeling) {
+        const dressed = buildSheep(sheep.species, sheep.level, { ...normalizeWear(sheep.wear), back: '금빛 천사 날개' }, seed, sheep.wool ?? 1);
+        dressed.position.copy(player.position);
+        player.removeFromParent(); disposeFigure(player);
+        player = dressed; player.add(lantern); scene.add(player);
+      }
+      const newlyKnelt = !kneeling;
+      kneeling = true;
+      player.rotation.y = Math.PI;
+      const u = player.userData;
+      u.body.position.y = -.33;
+      u.head.rotation.x = .17;
+      legSwingExplore(u.legs, 0, 0, true);
+      if (newlyKnelt) react('sheep', 'spark');
+    }
     const goal = new T.Mesh(new T.RingGeometry(.23, .29, 18).rotateX(-Math.PI / 2), mat('#ffc880', { basic: true }));
     goal.visible = false; scene.add(goal);
     const reduced = calm();
@@ -2491,6 +2614,7 @@
       current?.obj.removeFromParent();
       current?.label.remove();
       if (current?.sign) disposeFigure(current.sign);
+      if (current?.item?.isMesh && current.item.geometry !== crystal) current.item.geometry.dispose();
       if (current?.item?.isSprite) { current.item.material.map?.dispose(); current.item.material.dispose(); }
       elements.delete(id);
     }
@@ -2541,6 +2665,26 @@
       } else if (marker.type === 'light') {
         sign = atExploreLantern(marker.lit);
         obj.add(sign);
+      } else if (marker.type === 'bell') {
+        sign = new T.Group();
+        const bell = new T.Mesh(new T.CylinderGeometry(.19, .31, .39, 9), mat('#d29a55', { metal: .25 }));
+        bell.position.y = .67;
+        const clapper = new T.Mesh(new T.SphereGeometry(.075, 6, 5), mat('#ffcf8c'));
+        clapper.position.y = .46; sign.add(bell, clapper); obj.add(sign);
+      } else if (marker.type === 'bush') {
+        sign = new T.Group();
+        for (let i = 0; i < 4; i++) {
+          const leaf = new T.Mesh(new T.IcosahedronGeometry(.34, 0), mat(i % 2 ? '#617b55' : '#47705e'));
+          leaf.position.set(Math.cos(i * 1.57) * .23, .22 + i * .03, Math.sin(i * 1.57) * .22);
+          sign.add(leaf);
+        }
+        obj.add(sign);
+      } else if (marker.type === 'reflection') {
+        item = glowSprite('#c4ecff', .7, .84);
+        item.position.y = .09; obj.add(item);
+      } else if (marker.type === 'follow' && marker.symbol === '✦') {
+        item = glowSprite('#ffecba', 1.32, .84);
+        item.position.y = .45; obj.add(item);
       } else if (marker.type === 'guard') {
         sign = new T.Group();
         const coat = mat('#3b354e');
@@ -2577,7 +2721,7 @@
         if (!label.hidden) moveTo(...marker.pos, marker.id);
       });
       hud.append(label);
-      if (marker.type === 'follow' && followOrigin) {
+      if (marker.moving && followOrigin) {
         obj.position.copy(followOrigin);
         followOrigin = null;
       }
@@ -2648,10 +2792,17 @@
       if (kind === 'doves') { doveAt = performance.now(); return; }
       reaction = { start: performance.now(), kind, id };
       if (kind === 'star') return;
-      if (reduced || kind === 'sleep') return;
+      if (kind === 'lamb' && !reduced) {
+        const lamb = buildSheep('cotton', 1, null, seed);
+        lamb.scale.multiplyScalar(.65);
+        const origin = elements.get(id).obj.position.clone();
+        lamb.position.copy(origin); scene.add(lamb);
+        foundLamb = { lamb, origin, start: reaction.start };
+      }
+      if (reduced || kind === 'rustle') return;
       const spark = new T.Sprite(new T.SpriteMaterial({ map: starTexture(), transparent: true, depthWrite: false, blending: T.AdditiveBlending }));
       spark.position.copy(elements.get(id)?.obj.position || player.position);
-      spark.position.y += .7; spark.scale.setScalar(kind === 'scare' ? 3.4 : 1.2);
+      spark.position.y += .7; spark.scale.setScalar(kind === 'scare' ? 3.4 : kind === 'note' ? 1.75 : 1.2);
       spark.userData.start = performance.now();
       effectSprites.add(spark); scene.add(spark);
     }
@@ -2683,10 +2834,30 @@
         player.rotation.y += Math.atan2(Math.sin(diff), Math.cos(diff)) * Math.min(delta * 10, 1);
       } else { waitForTarget = null; goal.visible = false; }
       p.y = world.height(p.x, p.z);
-      const sleep = reaction?.kind === 'sleep';
+      if (step && requested !== 'photo' && requested !== 'activity') kneeling = false;
+      const sleep = kneeling;
+      if (world.rearPath) world.rearPath.visible = options.progress?.[options.place] === 'done';
+      if (foundLamb) {
+        const { lamb, origin, start } = foundLamb;
+        const phase = Math.min(1, (now - start) / 850);
+        lamb.position.lerpVectors(origin, p, phase);
+        lamb.position.y = world.height(lamb.position.x, lamb.position.z) + Math.abs(Math.sin(phase * Math.PI * 2)) * .35;
+        lamb.rotation.y = Math.atan2(p.x - origin.x, p.z - origin.z);
+        if (phase >= 1) {
+          lamb.removeFromParent(); disposeFigure(lamb); foundLamb = null;
+        }
+      }
+      if (world.campfire) {
+        const { flame, light, glow } = world.campfire;
+        const flicker = reduced ? 1 : 1 + Math.sin(t * 12) * .09;
+        flame.scale.set(.78 + fireStrength * .22, fireStrength * flicker, .78 + fireStrength * .22);
+        light.intensity = 6 * fireStrength * flicker;
+        glow.material.opacity = .55 * fireStrength;
+      }
       const bounce = !reduced && reaction?.kind === 'spark' ? Math.max(0, 1 - (now - reaction.start) / 700) * .28 : 0;
       u.body.position.y = lerp(u.body.position.y, sleep ? -.33 : (step && !reduced ? Math.sin(t * 20) * .05 : 0) + bounce, .22);
       legSwingExplore(u.legs, t, !reduced && step ? 1 : 0, sleep);
+      u.head.rotation.x = lerp(u.head.rotation.x, sleep ? .17 : 0, .19);
       if (!reduced) animateWings(player, t);
       const gazing = reaction?.kind === 'star' && now - reaction.start < 2800;
       spot.set(p.x, p.y + (gazing ? 3.55 : 1.28), p.z - 1.36);
@@ -2700,7 +2871,7 @@
       for (const v of elements.values()) {
         const { marker, obj, label, item, ring } = v;
         const distance = Math.hypot(marker.pos[0] - p.x, marker.pos[1] - p.z);
-        if (marker.type === 'follow') {
+        if (marker.moving) {
           const dx = marker.pos[0] - obj.position.x, dz = marker.pos[1] - obj.position.z;
           const step = reduced ? 1 : Math.min(1, delta * 1.9 / Math.max(.03, Math.hypot(dx, dz)));
           obj.position.x += dx * step; obj.position.z += dz * step;
@@ -2711,21 +2882,26 @@
           item.position.x = Math.sin(t * 2.1) * .36;
           item.position.z = Math.sin(t * 1.39) * .49;
         }
-        obj.visible = visible;
+        obj.visible = visible || marker.type === 'bush';
+        ring.visible = visible && marker.type !== 'reflection';
+        if (reaction?.kind === 'rustle' && reaction.id === marker.id) {
+          obj.rotation.z = Math.sin((now - reaction.start) * .046) * .16 * Math.max(0, 1 - (now - reaction.start) / 460);
+        }
         label.hidden = !visible || !project(label, obj.position, v.sign ? 1.45 : .76);
         ring.scale.setScalar(reduced ? 1 : 1 + Math.sin(t * 2.8 + obj.position.x) * .084);
-        if (item && !reduced) { item.rotation.y = t * 1.6; item.position.y = .35 + Math.sin(t * 2.8) * .11; }
+        if (item && !reduced && marker.type !== 'reflection') { item.rotation.y = t * 1.6; item.position.y = .35 + Math.sin(t * 2.8) * .11; }
         if (distance >= enterDistance + .3) v.near = false;
-        if (!marker.lit && !v.near && distance <= enterDistance && (!requested || requested === marker.id) && handlers.canInteract?.() !== false) {
+        if ((step || requested) && !marker.lit && !v.near && distance <= enterDistance && (!requested || requested === marker.id) && handlers.canInteract?.() !== false) {
           v.near = true;
           route = []; goal.visible = false;
-          if (marker.type === 'follow') followOrigin = obj.position.clone();
+          if (marker.moving) followOrigin = obj.position.clone();
           if (marker.type === 'exit') handlers.onExit?.(marker.place);
           else handlers.onReach?.(marker.id);
           if (stopped) return;
           break;
         }
       }
+      if (carryLabel) carryLabel.hidden = !project(carryLabel, p, 1.48);
       if (talking) {
         if (now >= talking.until) { talking.label.remove(); talking = null; }
         else talking.label.hidden = !project(talking.label, elements.get(talking.id)?.obj.position || p, 2.05);
@@ -2770,15 +2946,20 @@
       scene.traverse(obj => { if (obj.isPoints || world.fx.some(f => f.cloud === obj)) obj.material.dispose(); });
       renderer.dispose(); renderer.forceContextLoss(); wrap.remove();
     };
-    return { setMarkers, spawnPickup, react, say, photo() {
+    return { setMarkers, spawnPickup, react, say, setCarry, kneel, tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo() {
       const old = camera.position.clone();
       const oldQuaternion = camera.quaternion.clone();
       const p = player.position, oldFacing = player.rotation.y;
       const masks = Array.from(elements.values(), ({ obj }) => [obj, obj.visible]);
       for (const [obj] of masks) obj.visible = false;
-      camera.position.set(p.x + 2.42, p.y + 2.37, p.z + 4.23);
-      camera.lookAt(p.x, p.y + .98, p.z);
-      player.rotation.y = .17;
+      if (layout.christmas) {
+        camera.position.set(p.x + 4.15, p.y + 2.9, p.z + 4.1);
+        camera.lookAt(p.x - .05, p.y + .9, p.z - 1.38);
+      } else {
+        camera.position.set(p.x + 2.42, p.y + 2.37, p.z + 4.23);
+        camera.lookAt(p.x, p.y + .98, p.z);
+        player.rotation.y = .17;
+      }
       renderer.render(scene, camera);
       const output = document.createElement('canvas');
       output.width = 330; output.height = 360;
