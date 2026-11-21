@@ -186,7 +186,7 @@
     sh.rotation.x = -Math.PI / 2; sh.position.y = 0.03; root.add(sh);
     const hit = new T.Mesh(new T.BoxGeometry(1.4, 1.7, 2.0), new T.MeshBasicMaterial({ visible: false }));
     hit.position.y = 0.9; root.add(hit); root.userData.hit = hit;
-    const scale = [0.62, 0.8, 1, 1.04][st] * (L.size || 1);
+    const scale = [0.74, 0.86, 1, 1.04][st] * (L.size || 1);
     root.scale.setScalar(scale);
     const wl = clamp(woolLen ?? 1, 0, 1);
     Object.assign(root.userData, { body, head, legs, glows, species, level, wear, st, scale, woolG, tuftMesh, anim, wool: wl, woolShown: wl, woolColor: L.wool });
@@ -877,7 +877,7 @@
       }
       // 이름표
       labels.innerHTML = '';
-      if (mode.proc) mode.proc.labels.forEach(([o, name]) => { if (!o.userData.sat) return; const p = o.position.clone(); p.y += 1.6 * o.userData.scale + 0.25; p.project(camera); const lab = document.createElement('span'); lab.className = 'f3d-label small'; lab.textContent = name; lab.style.left = ((p.x + 1) / 2 * 100) + '%'; lab.style.top = ((1 - p.y) / 2 * 100) + '%'; labels.appendChild(lab); });
+      if (mode.proc) mode.proc.labels.forEach(([o, name]) => { if (!o.userData.sat) return; const p = o.position.clone(); p.y += 1.6 * o.userData.scale + 0.25; p.project(camera); const lab = document.createElement('span'); lab.className = 'f3d-label small'; lab.textContent = name; lab.style.left = clamp((p.x + 1) / 2 * 100, 9, 91) + '%'; lab.style.top = ((1 - p.y) / 2 * 100) + '%'; lab.style.zIndex = Math.round(1000 - p.z * 1000); labels.appendChild(lab); });
       else if (selected) {
         const o = sheepObjs.get(selected) || visitorObjs.get(selected);
         if (o) { const p = o.position.clone(); p.y += 2.0 * o.userData.scale + 0.3; p.project(camera); const lab = document.createElement('span'); lab.className = 'f3d-label'; lab.textContent = o.userData.data?.name || ''; lab.style.left = ((p.x + 1) / 2 * 100) + '%'; lab.style.top = ((1 - p.y) / 2 * 100) + '%'; if (lab.textContent) labels.appendChild(lab); }
@@ -1158,7 +1158,7 @@
         }
         let tt = 0, doneAt = null;
         const st = {
-          labels: flock.map((o, i) => [o, list[i].name || '']),
+          labels: flock.map((o, i) => [o, i < 6 || n <= 8 ? (list[i].name || '') : '']).filter(([, nm]) => nm),
           step(dt, t) {
             dust.forEach(d => { const u = d.userData; u.y -= u.sp * dt; if (u.y < 0) u.y = 9; d.position.set(u.x + Math.sin(tt * 0.6 + u.ph) * 0.6, groundY(u.x, u.z) + u.y, u.z); d.material.opacity = Math.min(1, tt / 2) * (0.35 + 0.45 * Math.abs(Math.sin(tt * 1.5 + u.ph))); });
             tt += dt; cam.dist = lerp(cam.dist, 11, dt * 0.1); cam.target.lerp(tmpV.set(0, 0.9, -1.0), 1 - Math.pow(0.05, dt));

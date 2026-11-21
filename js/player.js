@@ -192,7 +192,7 @@
     return all.size;
   }
   function updateGemHud() {
-    el.gemHud.hidden = !gemTotal;
+    el.gemHud.hidden = !gemTotal || !!el.overlay.querySelector('.card.done');
     el.gemHud.querySelector('b').textContent = gotGems().length;
     el.gemHud.querySelector('span').textContent = gemTotal;
   }
@@ -213,7 +213,14 @@
     fly.style.left = (r.left - rr.left + r.width / 2) + 'px'; fly.style.top = (r.top - rr.top) + 'px';
     el.root.appendChild(fly);
     requestAnimationFrame(() => { fly.style.left = (h.left - rr.left + 12) + 'px'; fly.style.top = (h.top - rr.top + 6) + 'px'; fly.style.opacity = '0.2'; });
-    setTimeout(() => { fly.remove(); updateGemHud(); el.gemHud.classList.remove('bump'); void el.gemHud.offsetWidth; el.gemHud.classList.add('bump'); }, 650);
+    setTimeout(() => {
+      if (!fly.isConnected) return;
+      fly.remove();
+      updateGemHud();
+      el.gemHud.classList.remove('bump');
+      void el.gemHud.offsetWidth;
+      el.gemHud.classList.add('bump');
+    }, 650);
   }
   // 말하는 인물을 그림에서 살짝 움직이게
   function setSpeaking(who) {
@@ -987,8 +994,8 @@
     let gemLine = '';
     if (gemTotal) {
       const got = gotGems().length;
-      if (got >= gemTotal && !D.gemBonus[ep.id]) { D.gemBonus[ep.id] = 1; Core.addOil(1, 'gems'); gemLine = `✦ 빛 조각 ${got}/${gemTotal} 다 모았어! 기름 +1`; }
-      else gemLine = `✦ 빛 조각 ${got}/${gemTotal}` + (got < gemTotal ? ' · 다시 보기로 마저 모을 수 있어' : '');
+      if (got >= gemTotal && !D.gemBonus[ep.id]) { D.gemBonus[ep.id] = 1; Core.addOil(1, 'gems'); gemLine = '✦ 빛 조각을 다 모았어 · 기름 +1'; }
+      else if (got < gemTotal) gemLine = '✦ 남은 빛 조각은 다시 보면서 모을 수 있어';
     }
     Core.save();
     const chapterGuest = first && await window.Field?.awardChapterGuest(ep.id);
@@ -996,12 +1003,18 @@
     const newBadges = Fame.checkNew();
     const after = Core.starCount(), total = Core.starTotal();
     clearDialog('');
+    el.gemHud.hidden = true;
+    document.querySelectorAll('body > .toast:not(.has-action)').forEach(item => item.remove());
     if (ep.id === '0') {
+      const firstStory = Core.epById('1-0');
+      const ready = firstStory && App.storyAvailable(firstStory);
       const ov = showOverlay(`
         <div class="card done">
           ${Art.bigStar(0.05, 120)}
           <div class="done-title">준비 끝!</div>
-          <div class="done-sub">${Core.REL ? '성탄 26일 전, 첫 번째 이야기가 열려.<br>그날 0시에 만나자.' : '📅 <b>11월 29일 주일 오전 11시</b><br>첫 번째 초가 켜지는 날, 첫 이야기가 열려.<br>예배 끝나고 반에서 같이 시작하자!'}</div>
+          <div class="done-sub">${ready ? '첫 이야기가 열렸어. 홈에서 시작해 봐.' :
+            Core.REL ? '성탄 26일 전, 첫 번째 이야기가 열려.<br>그날 0시에 만나자.' :
+              '📅 <b>11월 29일 주일 오전 11시</b><br>첫 이야기가 열려. 예배 끝나고 같이 시작하자!'}</div>
           <button class="btn">홈으로</button>
         </div>`, 'center full hold');
       ov.querySelector('button').onclick = () => App.home({ top: true });
@@ -1009,27 +1022,34 @@
     }
     // 다음 편: 열려 있으면 바로 이어서, 아니면 언제 열리는지 예고
     const list = Core.mainEpisodes(), nx = list[list.findIndex(x => x.id === ep.id) + 1];
-    const nextOpen = nx && Core.isOpen(nx) && !D.done[nx.id] && window.STORY[nx.id];
-    const nextLine = !nx || nextOpen || D.done[nx.id] ? '' : `<div class="next-tease">🌙 다음 이야기 「${esc(nx.title)}」<br><small>${esc(Core.dateLabel(nx.date))} ${Core.hourLabel(nx.openHour)}에 열려요</small></div>`;
+    const nextOpen = nx && App.storyAvailable(nx) && !D.done[nx.id] && window.STORY[nx.id];
+    const nextLine = !nx || nextOpen || D.done[nx.id] ? '' : `<div class="next-tease">🌙 다음 이야기 「${esc(nx.title)}」<br><small>${esc(Core.dateLabel(nx.date))} ${Core.hourLabel(nx.openHour)}에 열려</small></div>`;
     const firstDay = first && ep.id === '1-0';
     const fieldOpen = !!window.Field?.has();
+    const lastDay = ep.id === 'end';
+    const starSize = 104;
     const firstSheep = firstDay && Core.data.field?.sheep?.[0];
     const fieldLabel = firstSheep ? `${Core.josa(firstSheep.name, '이가')} 기다려` :
       fieldOpen && !Field.shearTonight() ? '들판 들르기' : '오늘 밤 들판으로';
     const ov = showOverlay(`
       <div class="card done">
-        ${firstDay ? '<div class="first-day-banner">대림절이 시작됐어요 · 첫째 초</div>' : ''}
-        <div class="done-star">${Art.bigStar(before / total, 150)}</div>
+        ${firstDay ? '<div class="first-day-banner">대림절이 시작됐어 · 첫째 초</div>' : ''}
+        <div class="done-star">${Art.bigStar(before / total, starSize)}</div>
         <div class="done-title">${first ? '별이 조금 더 밝아졌어' : '다시 보기 끝'}</div>
-        <div class="done-sub">별빛 ${after} / ${total}${first ? ` · 카드 No.${Card.cardNo(ep.id)} 획득` : ''}${gemLine ? `<br><span class="gem-line">${esc(gemLine)}</span>` : ''}</div>
-        ${fieldOpen ? `<button class="btn" data-v="field">🐑 ${esc(fieldLabel)}</button>` : ''}
+        ${first || gemLine ? `<div class="done-sub">${first ? `<div>카드 No.${Card.cardNo(ep.id)} 획득</div>` : ''}${gemLine ? `<span class="gem-line">${esc(gemLine)}</span>` : ''}</div>` : ''}
+        ${lastDay ? '<button class="btn finale-go">🌟 27일의 기록 보기</button>' : ''}
+        ${fieldOpen ? `<button class="btn${lastDay ? ' ghost' : ''}" data-v="field">🐑 ${esc(fieldLabel)}</button>` : ''}
         ${chapterGuest ? '<p class="done-field-guest">🐑 들판에 손님이 찾아왔어</p>' : ''}
         ${skyLine()}
-        ${newBadges.length ? `<div class="new-badges">${newBadges.map(b => `<div class="nb"><span>${b.icon}</span><b>${esc(b.name)}</b><small>새 배지</small><button class="btn ghost small" data-badge="${b.id}">카드 보기</button></div>`).join('')}</div>` : ''}
+        ${newBadges.length ? `<div class="new-badges">${newBadges.map(b =>
+          `<button type="button" class="nb" data-badge="${b.id}" aria-label="새 배지 ${esc(b.name)} 카드 보기"><span aria-hidden="true">${b.icon}</span>${esc(b.name)}</button>`
+        ).join('')}</div>` : ''}
         ${nextLine}
-        <button class="btn${fieldOpen ? ' ghost' : ''}" data-v="card">인증 카드 보기</button>
-        ${nextOpen ? `<button class="btn ghost next-go" data-v="next">다음 편 이어서 ▶ 「${esc(nx.title)}」</button>` : ''}
-        <button class="btn ghost" data-v="home">홈으로</button>
+        <div class="row done-secondary">
+          <button class="btn ghost" data-v="card">인증 카드 보기</button>
+          <button class="btn${fieldOpen || lastDay ? ' ghost' : ''}" data-v="home">홈으로</button>
+        </div>
+        ${nextOpen && !fieldOpen ? `<button class="btn ghost next-go" data-v="next">다음 편 이어서 ▶ 「${esc(nx.title)}」</button>` : ''}
       </div>`, 'center full');
     setTimeout(() => {
       if (my !== runId || !ov.isConnected) return;
@@ -1037,22 +1057,14 @@
       Sound.sfx('star');
       if (newBadges.length) setTimeout(() => Sound.sfx('badge'), 900);
       const box = ov.querySelector('.done-star');
-      if (box) box.innerHTML = Art.bigStar(after / total, 150);
+      if (box) box.innerHTML = Art.bigStar(after / total, starSize);
       box && box.classList.add('pulse');
     }, 700);
     const finishedId = ep.id;
     ov.querySelector('[data-v=field]')?.addEventListener('click', () => Field.page({ tonight: finishedId }));
     ov.querySelector('[data-v=card]').onclick = () => App.card(finishedId);
     ov.querySelectorAll('[data-badge]').forEach(button => { button.onclick = () => App.card('B:' + button.dataset.badge); });
-    if (ep.id === 'end') {
-      const fin = document.createElement('button');
-      // 성탄절에는 27일의 기록이 주인공. 들판은 그 아래 보조 버튼으로.
-      fin.className = 'btn finale-go'; fin.textContent = '🌟 27일의 기록 보기';
-      fin.onclick = () => App.finale();
-      const fieldBtn = ov.querySelector('[data-v=field]');
-      fieldBtn?.classList.add('ghost');
-      (fieldBtn ? fieldBtn.before.bind(fieldBtn) : ov.querySelector('.done-sub').after.bind(ov.querySelector('.done-sub')))(fin);
-    }
+    ov.querySelector('.finale-go')?.addEventListener('click', () => App.finale());
     ov.querySelector('[data-v=home]').onclick = () => App.home({ top: true });
     const nb = ov.querySelector('[data-v=next]'); if (nb) nb.onclick = () => App.go(nx.id);
   }
