@@ -51,10 +51,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .home-star svg { animation: breathe 5s ease-in-out infinite; }
 .home-head h1 { font-family: var(--serif); font-size: 30px; margin: 6px 0 2px; letter-spacing: 1px; }
 .sub { color: var(--dim); margin: 0; font-size: 14px; }
-.stats { display: flex; justify-content: center; align-items: center; gap: 7px; margin-top: 7px; }
-.stats span { white-space: nowrap; color: var(--dim); font-size: 12px; }
-.stats .home-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
-.stats span + span::before { content: '·'; margin-right: 7px; color: var(--dim); }
+.home-who { margin: 7px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); font-size: 12px; }
 .warn { background: #6e2d2d; padding: 10px 12px; border-radius: 10px; font-size: 13px; margin: 8px 0; }
 .start { margin: 16px 0 6px; animation: glowpulse 2.4s ease-in-out infinite; }
 .install-note { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border: 1px solid var(--line); border-radius: 14px; margin: 12px 0; padding: 12px 14px; background: #151a37; }
@@ -229,6 +226,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .appoint-card .card-preview { width: min(100%, 262px, 44dvh); margin: 0 auto; }
 .done-title { font-family: var(--serif); font-size: 22px; margin-top: 6px; }
 .done-sub { color: var(--dim); margin: 6px 0 14px; line-height: 1.6; }
+.done-secondary .btn { min-height: 44px; padding: 8px 6px; font-size: 14px; }
 .done-field-guest { margin: 0 0 12px; padding: 7px 10px; border-radius: 10px; background: #ffd27a1a; color: #ffe1a4; }
 
 /* 표제 카드 */
@@ -367,12 +365,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .medi-pray { font-size: 14px; color: #6b5536; line-height: 1.6; margin: 10px 0 6px; text-align: center; }
 
 /* ---------- 완료 화면의 새 배지 ---------- */
-.new-badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 0 0 12px; }
-.nb { background: rgba(255, 210, 122, .14); border: 1px solid rgba(255, 210, 122, .6); border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; align-items: center; animation: popin2 .6s ease both .9s; }
-.nb span { font-size: 26px; }
-.nb b { font-size: 13px; }
-.nb small { font-size: 10.5px; color: var(--gold); }
-@keyframes popin2 { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+.new-badges { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 9px 0; }
+.nb { display: flex; align-items: center; gap: 5px; min-height: 36px; padding: 4px 9px; border: 1px solid #ffd27a66;
+  border-radius: 10px; background: #ffd27a1f; color: var(--gold); font-size: 12px; cursor: pointer; }
+.nb span { font-size: 17px; }
 
 /* 말씀 묵상: 전체가 한 번에 스크롤 */
 .card.medi { padding: 0; overflow: hidden; }
@@ -641,6 +637,7 @@ html.no-motion .who.speaking { animation: none; }
 .tonight-step b { font-size: 14px; }
 .tonight-step p, .tonight-step small { display: block; color: var(--dim); margin: 1px 0 0; font-size: 12px; line-height: 1.4; }
 .tonight-step.is-next p { color: #fff0c8; }
+.tonight-step p.tonight-mission-text { font-size: 13px; line-height: 1.5; }
 .tonight-step small.tonight-gift { color: #ffd98a; font-weight: 700; }
 .tonight-step small.tonight-lost { color: #ffb4a8; }
 .tonight-ellipsis { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -667,9 +664,9 @@ html.no-motion .who.speaking { animation: none; }
 .sk-name { font-size: 10.5px; fill: rgba(205, 215, 245, .55); font-family: var(--sans); letter-spacing: .5px; }
 .sk-name.full { fill: #ffd27a; font-weight: 700; }
 .sky-hint { font-size: 12.5px; color: var(--dim); line-height: 1.6; margin: 8px 2px 0; }
-.sky-done { margin: 10px auto 2px; text-align: center; }
-.sky-mini { width: 170px; height: auto; display: block; margin: 0 auto; border-radius: 12px; background: radial-gradient(100% 100% at 50% 0%, #1a2350, #0b1030); }
-.sky-msg { font-size: 13.5px; color: #dfe6ff; margin-top: 6px; }
+.sky-done { display: flex; align-items: center; gap: 10px; margin: 10px auto 2px; text-align: left; }
+.sky-mini { width: 94px; height: auto; display: block; flex: none; border-radius: 10px; background: radial-gradient(100% 100% at 50% 0%, #1a2350, #0b1030); }
+.sky-msg { font-size: 13.5px; color: #dfe6ff; }
 .sky-msg.full { color: #ffd27a; font-weight: 700; }
 .sk-new { animation: skyNew 1.6s ease-out 1s both; transform-box: fill-box; transform-origin: center; }
 @keyframes skyNew { 0% { opacity: 0; transform: scale(3); } 60% { opacity: 1; transform: scale(.9); } 100% { transform: scale(1); } }

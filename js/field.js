@@ -166,7 +166,7 @@
     const today = date();
     if (!Array.isArray(f.visitors)) f.visitors = [];
     const seen = new Set();
-    f.visitors = f.visitors.filter(v => v && (v.until >= today || ((v.chapterGift || v.helper) && !v.until)) && (!window.SHEEP_DEX || Object.hasOwn(window.SHEEP_DEX.byId, v.species)) &&
+    f.visitors = f.visitors.filter(v => v && (v.helper || v.until >= today || (v.chapterGift && !v.until)) && (!window.SHEEP_DEX || Object.hasOwn(window.SHEEP_DEX.byId, v.species)) &&
       !f.dex[v.species] && !seen.has(v.species) && seen.add(v.species));
     if (typeof f.visitRoll !== 'number') f.visitRoll = 0;
     if (typeof f.patrolDay !== 'string') f.patrolDay = '';
@@ -332,7 +332,8 @@
     return deliverChapterGuests(ensure()).includes(episode);
   }
   function activeVisitors(data) {
-    return data.visitors.slice(0, 2);
+    const helper = data.visitors.find(v => v.helper);
+    return helper ? [helper, ...data.visitors.filter(v => v !== helper).slice(0, 1)] : data.visitors.slice(0, 2);
   }
   function sundayGuestDue(data, today) {
     return isSunday(today) && data.sundayVisitDay !== today && data.sheep.length < MAX_SHEEP &&
@@ -346,7 +347,7 @@
       if (!species) return null;
       // 이미 입구가 꽉 찼다면 전설 손님은 기다리게 두고 일반 손님의 자리를 내 준다.
       if (data.visitors.length >= 2) {
-        const ordinary = data.visitors.findIndex(v => spec(v.species).rarity === 'common');
+        const ordinary = data.visitors.findIndex(v => !v.helper && !v.chapterGift && spec(v.species).rarity === 'common');
         if (ordinary !== -1) data.visitors.splice(ordinary, 1);
       }
       visitor = addVisitor(data, species, today);
@@ -364,7 +365,7 @@
       if (data.woolGifts[gift.id] || !giftOpen(gift)) continue;
       for (const row of giftMaterials(gift, data.woolBag).rows) {
         if (row.id === 'any' || !row.missing) continue;
-        if (data.sheep.some(s => woolOf(s) === row.id) || data.visitors.some(v => spec(v.species).wool === row.id)) continue;
+        if (data.sheep.some(s => woolOf(s) === row.id) || data.visitors.some(v => v.helper && spec(v.species).wool === row.id)) continue;
         return { gift, wool: row.id };
       }
     }
@@ -375,14 +376,16 @@
     const need = woolNeed(data);
     if (!need) return null;
     const list = DEX().filter(s => s.wool === need.wool && !data.dex[s.id] && s.rarity !== 'legend');
-    const choice = list.find(s => s.rarity === 'common') || list[0];
+    const waiting = data.visitors.find(v => spec(v.species).wool === need.wool && spec(v.species).rarity !== 'legend');
+    const choice = waiting ? spec(waiting.species) : list.find(s => s.rarity === 'common') || list[0];
     if (!choice) return null;
-    if (data.visitors.length >= 2) {
+    if (!waiting && data.visitors.length >= 2) {
       const ordinary = data.visitors.findIndex(v => !v.helper && !v.chapterGift && spec(v.species).rarity === 'common');
-      data.visitors.splice(ordinary === -1 ? data.visitors.length - 1 : ordinary, 1);
+      if (ordinary !== -1) data.visitors.splice(ordinary, 1);
     }
-    const visitor = addVisitor(data, choice.id, null);
+    const visitor = waiting || addVisitor(data, choice.id, null);
     visitor.helper = need.gift.id;
+    visitor.until = null;
     data.visitors = [visitor, ...data.visitors.filter(v => v !== visitor)];
     Core.save();
     return visitor;
@@ -897,7 +900,7 @@
   }
 
   /* ---------- 들판 화면 ---------- */
-  async function page({ tonight } = {}) {
+  async function page({ tonight, gift = false } = {}) {
     if (!has()) return App.home();
     const app = document.getElementById('app');
     if (!window.SHEEP_DEX) {
@@ -941,8 +944,8 @@
     let episode = tonight && Core.epById(tonight);
     let word = '';
     let unlock;
-    let servedTonight = field().selfReturn?.day === date() ? `${josa(field().selfReturn.name, '이가')} 밤사이 혼자 돌아왔어. 다음엔 꼭 찾아 주자.` : '';
-    let visitTimer = 0, woolDayTimer = 0, lastShearTick = -Infinity;
+    let servedTonight = field().selfReturn?.day === date() ? `${josa(field().selfReturn.name, '이가')} 밤사이 돌아왔어.` : '';
+    let visitTimer = 0, woolDayTimer = 0, woolBumpTimer = 0, woolGainTimer = 0, lastShearTick = -Infinity;
     let woolTouched = false;
     const greetedLegends = new Set();
     const api = { get view() { return view; }, teardown };
@@ -979,6 +982,8 @@
       clearTimeout(holdTimer);
       clearTimeout(visitTimer);
       clearTimeout(woolDayTimer);
+      clearTimeout(woolBumpTimer);
+      clearTimeout(woolGainTimer);
       root.querySelectorAll('dialog[open]').forEach(d => d.close());
       try { view?.destroy(); } catch { /* 이미 정리됨 */ }
       view = null;
@@ -1025,12 +1030,12 @@
         if (!alive || busy || moving || root.querySelector('dialog[open]')) return;
         const sheep = field().sheep.find(s => s.id === id);
         if (!sheep || !shearReady(sheep)) return;
+        if (!woolTouched) navigator.vibrate?.(9);
         woolTouched = true;
         const now = performance.now();
-        if (now - lastShearTick < 85) return;
+        if (now - lastShearTick < 100) return;
         lastShearTick = now;
         Sound.sfx('shearTick');
-        navigator.vibrate?.(7);
       },
       onShearEmpty() { if (alive && !busy && !moving) showHoldFeedback('내일 밤이면 다시 복슬해져.'); },
       onTapVisitor(id) { if (!busy && !moving) visitorSheet(id); },
@@ -1146,7 +1151,7 @@
       const data = ensure();
       const today = date();
       const visitors = activeVisitors(data);
-      const justMet = mode === 'loading' ? [] : visitors.filter(v => v.chapterGift && !v.until);
+      const justMet = mode === 'loading' ? [] : visitors.filter(v => v.chapterGift && !v.helper && !v.until);
       if (justMet.length) {
         justMet.forEach(v => { v.until = today; });
         Core.save();
@@ -1154,8 +1159,9 @@
       // 선물에 모자란 색 털을 주는 양부터 깎게 앞에 둔다.
       const short = new Set(GIFTS.filter(gift => !data.woolGifts[gift.id] && giftOpen(gift, allGiftsOpen))
         .flatMap(gift => giftMaterials(gift, data.woolBag).rows.filter(row => row.missing).map(row => row.id)));
+      const woolPriority = id => short.has(id) ? 2 : short.has('any') && id !== 'white' ? 1 : 0;
       const shearable = data.sheep.filter(sheep => shearReady(sheep, today))
-        .sort((a, b) => Number(short.has(woolOf(b))) - Number(short.has(woolOf(a))));
+        .sort((a, b) => woolPriority(woolOf(b)) - woolPriority(woolOf(a)));
       const tonightLeft = shearTonight(today);
       const marketOpen = featureOpen('market', data);
       const missing = data.sheep.find(s => s.lost);
@@ -1172,7 +1178,8 @@
           <b>털 바구니</b><div class="field-wool-colors">${WOOL_IDS.filter(id => woolAmount(data.woolBag, id)).map(id => woolUnit(id, woolAmount(data.woolBag, id))).join('') || '<small>털을 깎으면 여기 모여</small>'}</div>
         </section>
         ${moving ? '' : `${mode === '2d' && shearable.length ?
-          `<button type="button" class="btn field-shear">✂️ 털 깎기 <small>· ${esc(shearable[0].name)}</small></button>` :
+          `<button type="button" class="btn field-shear${tonightLeft ? '' : ' ghost'}">${tonightLeft ? '✂️ 털 깎기' : '✂️ 더 깎기'}
+            <small>· ${esc(shearable[0].name)} · ${woolType(woolOf(shearable[0])).name}</small></button>` :
           `<p class="field-shear-hint">${!shearable.length ? '✓ 오늘 밤엔 다 깎았어' : tonightLeft ? '✂️ 양을 쓱쓱 문질러 봐 · ' + tonightLeft + '마리 남음' : '✓ 오늘 밤 몫은 다 했어 · 더 깎아도 돼'}</p>`}
           <p class="field-feedback" role="status">${esc(message)}</p>`}`;
       const dex = Object.keys(data.dex).length;
@@ -1337,7 +1344,11 @@
         return;
       }
       const kind = woolOf(sheep);
-      const bunches = sheep.level >= 10 ? 3 : sheep.level >= 5 ? 2 : 1;
+      const base = sheep.level >= 10 ? 3 : sheep.level >= 5 ? 2 : 1;
+      const elapsed = daysBetween(sheep.shornOn || sheep.born, today);
+      // 이튿날 자란 털은 기본 몫에 들어가므로 건너뛴 날만 센다.
+      const bonusWool = Number.isFinite(elapsed) ? Math.min(3, Math.max(0, elapsed - 1)) : 0;
+      const bunches = base + bonusWool;
       addWool(data.woolBag, kind, bunches);
       sheep.shornOn = today;
       sheep.care++;
@@ -1353,14 +1364,23 @@
       Core.save();
       Sound.sfx('shearDone');
       navigator.vibrate?.(18);
-      servedTonight = `${woolType(kind).name} +${bunches}뭉치`;
+      const woolGain = `${woolType(kind).name} +${bunches}뭉치`;
+      servedTonight = bonusWool ? `털이 많이 자랐네! 밀린 털 +${bonusWool} · ${woolGain}` : woolGain;
       render();
       view?.say?.(id, `+${bunches}`, woolType(kind).color);
       // 날아간 털 뭉치가 바구니에 닿을 즈음 그 색 칸이 통 튄다.
-      setTimeout(() => {
+      clearTimeout(woolBumpTimer);
+      clearTimeout(woolGainTimer);
+      woolBumpTimer = setTimeout(() => {
         const unit = care.querySelector(`.field-wool-unit[data-wool="${kind}"]`);
         if (!unit) return;
-        unit.classList.remove('bump'); void unit.offsetWidth; unit.classList.add('bump');
+        unit.classList.add('bump');
+        const bag = unit.closest('.field-wool-bag');
+        bag.insertAdjacentHTML('beforeend', `<small class="field-wool-gain" aria-hidden="true">+${bunches}</small>`);
+        woolGainTimer = setTimeout(() => {
+          unit.classList.remove('bump');
+          bag.querySelector('.field-wool-gain')?.remove();
+        }, 920);
       }, view ? 650 : 120);
       if (!view) {
         const sheepButton = stageEl.querySelector(`[data-sheep-id="${CSS.escape(id)}"]`);
@@ -1394,7 +1414,8 @@
 
     function giftSheet(id) {
       const data = ensure();
-      const first = GIFTS.find(item => !data.woolGifts[item.id] && giftOpen(item, allGiftsOpen));
+      const pending = GIFTS.filter(item => !data.woolGifts[item.id] && giftOpen(item, allGiftsOpen));
+      const first = pending.find(item => giftMaterials(item, data.woolBag).ready) || pending[0];
       const modal = sheet('🎁 선물 상자', `
         <nav class="field-gift-tabs" aria-label="받는 사람">${GIFTS.map(gift =>
           `<button type="button" data-gift="${gift.id}" aria-pressed="false">${gift.to}${data.woolGifts[gift.id] ? ' ✓' : ''}</button>`).join('')}</nav>
@@ -1586,8 +1607,16 @@
           react(result.sheep.id, 'join');
           badges();
           if (sp.rarity !== 'common') {
-            setTimeout(() => alive && cardSheet(sp.rarity === 'legend' ? '전설의 양 발견!' : '희귀 양 발견!',
-              () => Card.drawDiscover(result.sheep), 'SHEEP:' + sp.id, `${sp.name} 발견 카드`), view ? 1300 : 300);
+            const showDiscovery = () => {
+              if (!alive) return;
+              if (busy || moving || woolTouched || root.querySelector('dialog[open]')) {
+                setTimeout(showDiscovery, 650);
+                return;
+              }
+              cardSheet(sp.rarity === 'legend' ? '전설의 양 발견!' : '희귀 양 발견!',
+                () => Card.drawDiscover(result.sheep), 'SHEEP:' + sp.id, `${sp.name} 발견 카드`);
+            };
+            setTimeout(showDiscovery, view ? 1300 : 300);
           }
         };
       };
@@ -1973,6 +2002,7 @@
 
     render();
     if (mode === 'loading') start3D();
+    if (gift && giftReady()) giftSheet();
     if (!Core.TEST_DATE) {
       const watchWoolDay = () => {
         const untilMidnight = DAY_MS - (Date.now() + 9 * 3600000) % DAY_MS;

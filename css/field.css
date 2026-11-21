@@ -68,7 +68,7 @@
 .field-shear small { font-weight: 400; }
 .field-shear-hint { margin: 6px 0 0; text-align: center; color: #dad3e8; font-size: 13px; }
 .field-wool-bag {
-  display: grid; justify-items: center; gap: 5px; margin: 8px auto 0; padding: 7px 4px 8px;
+  position: relative; display: grid; justify-items: center; gap: 5px; margin: 8px auto 0; padding: 7px 4px 8px;
   border: 1px solid #d9ac7057; border-radius: 16px; background: #272337; color: #f4ddac;
 }
 .field-wool-bag > b { font: 700 13px/1.2 var(--serif); }
@@ -443,5 +443,10 @@
 .field-helper-line { margin: 10px 0 0; padding: 9px 11px; border-radius: 12px; background: rgba(255, 220, 150, .12); color: #ffe7b8; font-size: 13.5px; line-height: 1.5; text-align: left; }
 .field-wool-unit.bump { animation: wool-bump .55s cubic-bezier(.3, 1.6, .5, 1); }
 .field-wool-unit.bump i { box-shadow: 0 0 0 3px #fff6, 0 0 12px var(--wool); }
+.field-wool-gain { position: absolute; top: 5px; right: 10px; padding: 2px 6px; border-radius: 99px;
+  background: #f4d59a; color: #312238; font-size: 11px; font-weight: 700; white-space: nowrap; }
 @keyframes wool-bump { 0% { transform: scale(1); } 40% { transform: scale(1.45); } 100% { transform: scale(1); } }
 html.no-motion .field-wool-unit.bump { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .field-wool-unit.bump { animation: none; }
+}
