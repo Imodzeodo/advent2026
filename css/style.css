@@ -823,3 +823,8 @@ html.no-motion .who.speaking { animation: none; }
 .tonight-mission-check .link { color: #e0c99f; padding: 2px 5px 2px 0; }
 .tonight-event { margin: 9px 2px 2px; font-size: 12px; color: #e4cda0; }
 .explore-word-heading { margin: 16px 0 8px; font: 700 19px var(--serif); color: var(--gold); }
+
+.tonight-step[data-tonight="explore"] { padding-block: 10px; background: #d7a55b1f; border: 1px solid #d4a96c4d; }
+.tonight-step[data-tonight="explore"] b { font-size: 17px; color: #ffedbd; }
+.tonight .tonight-next[data-step="explore"] { min-height: 52px; font-size: 17px; }
+.tonight-next[data-step="explore"] small { display: inline-block; margin-left: 4px; font-size: 11px; }
