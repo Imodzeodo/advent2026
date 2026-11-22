@@ -709,13 +709,369 @@
     for (const [i, extra] of Object.entries(layer.steps)) Object.assign(adventure.steps[i], extra);
   }
 
-  for (const [index, adventure] of days.entries()) {
-    const area = window.EXPLORE['1-' + index], { targets, visual, word, photo, secret, stars, time, variant } = adventure;
+  const wedge = cargo('나무 말뚝', '🪵'), scraps = cargo('나무 조각', '🪵');
+  const flowers = cargo('흰 꽃잎', '🌸'), rope = cargo('새 줄', '🪢');
+  const waterskin = cargo('가죽 물통', '💧'), washBasin = cargo('빈 대야', '🪣');
+  const peaceDays = [
+    {
+      visual: 'desert', ambience: ['모험 산길', '모험 산길', '모험 밤길'],
+      zones: ['광야 어귀', '마른 물길', '바람 고개'],
+      crossings: [[-8, 7], [9, -11]],
+      spawn: [0, 17], word: [14.6, -8.4], photo: [2, -19], secret: [-16.3, -17],
+      stars: [[-18.3, 9.8], [11.5, -18.2], [18, -.3]],
+      starClues: ['광야 어귀 서쪽, 납작한 돌들이 포개진 곳.', '고개 동쪽의 낮은 턱 너머. 옆에서 돌아 들어갈 수도 있어.', '물이 흘렀던 자국을 동쪽으로 따라가 봐.'],
+      fauna: [['나귀', [2.8, 14]], ['염소', [-9.7, 2.2]], ['비둘기', [1.4, -15]]],
+      targets: {
+        joseph: person('요셉', -2.6, 14.6), guide: person('고갯길 목자', 9.9, -13.5),
+        rock1: at('어귀의 납작한 돌', -7.9, 5.4, 'clear'),
+        rock2: at('물길에 박힌 돌', -2.6, 2, 'clear'),
+        rock3: at('물길을 가르는 큰 돌', 4.2, -2, 'clear'),
+        rock4: at('굽이의 모난 돌', 9.6, -7.8, 'clear'),
+        rock5: at('고개에 걸린 돌', 6.2, -14, 'clear'),
+        pass: at('돌을 치운 고갯길', -2.2, -17.8, 'event'),
+        stonewright: person('돌표지를 세우는 사람', -7.1, 12.4), marker: at('넘어진 갈림길 돌표지', -12.9, -5.8, 'clear'),
+        herder: person('나귀를 돌보는 아이', 12.1, -15.3), saddlecloth: at('마른 물길에 떨어진 안장 천', 14.9, 1.4),
+        traveler: person('광야를 건너는 행인', 11.2, 14.5), cairn: at('마른 물길 옆 돌무더기', 17, -5.2, 'visit'),
+        tent: person('언덕 천막의 노인', -13.7, -15.7), cup: at('어귀 나귀 곁의 가죽 물통', -5, 16.4),
+        shade: at('낮은 바위 그늘', 13.2, -2.1, 'visit'), travelerRest: at('행인과 만나기로 한 고개', 12.1, -16.5, 'visit'),
+      },
+      steps: [
+        step('광야 어귀에서 요셉과 이야기하자', 'talk', 'joseph', { line: '회당에서 길을 닦으라는 말씀을 들었어. 여기선 딱 봐도 어디부터 손대야 할지 알겠다.' }),
+        step('고갯길 목자에게 어디가 막혔는지 묻자', 'talk', 'guide', { line: '물이 빠지고 돌 다섯이 남았어. 어귀부터 여기까지 길 가운데를 살펴봐.' }),
+        step('광야 길을 막은 돌 다섯 개를 가장자리로 굴리자', 'clear', 'rock1 rock2 rock3 rock4 rock5', { intro: '돌 곁에서 한 번 더 밀면 길 밖으로 굴릴 수 있어.' }),
+        step('돌을 치운 고갯길을 끝까지 걸어 보자', 'scene', 'pass', { line: '길이 트이자 고개 너머로 나귀 방울 소리가 들려.' }),
+        step('요셉에게 길이 열렸다고 전하자', 'talk', 'joseph', { line: '이젠 짐을 지고도 지나갈 수 있겠네. 나도 돌아가면 문틀부터 바로 세워야지.' }),
+      ],
+      sides: [
+        side('넘어진 돌표지', step('돌표지를 세우는 사람과 이야기하자', 'talk', 'stonewright', { line: '물이 한번 지나가더니 돌표지가 넘어졌어. 화살표가 고개로 향하게 세워 줄래?' }),
+          step('갈림길에서 돌표지를 세우고 돌아오자', 'follow', 'marker stonewright', { lines: { stonewright: '고개 쪽이 한눈에 보이겠어. 처음 온 사람도 길을 찾겠구나.' } })),
+        side('나귀의 안장 천', step('나귀를 돌보는 아이의 부탁을 듣자', 'talk', 'herder', { line: '안장 아래에 까는 천을 물길에서 떨어뜨렸어. 덧대야 등이 안 쓸려.' }),
+          step('마른 물길에서 안장 천을 찾아 건네자', 'follow', 'saddlecloth herder', {
+            at: { saddlecloth: { give: cloth }, herder: { take: cloth } }, lines: { herder: '모래만 털면 되겠다. 나귀가 이제 편히 짐을 지겠어.' } })),
+        side('바람 고개로 가는 행인', step('광야 어귀의 행인에게 말을 걸자', 'talk', 'traveler', {
+          line: '길은 찾았는데 물통을 두고 왔어. 고개까지 걸어갈 동안 잠깐 쉴 곳이 있으면 좋겠어.' }),
+          step('돌무더기 너머 천막에서 쉴 곳을 물어보자', 'follow', 'cairn tent', { lines: {
+            cairn: '돌무더기 옆으로 마른 풀들이 밟혀 있어. 저쪽에 천막 끝이 보여.',
+            tent: '고개에 오르기 전에 낮은 바위 그늘이 있어. 어귀에서 물통도 챙겨 가렴.',
+          } }),
+          step('물통을 가져와 그늘을 확인하고 고개에서 전하자', 'follow', 'cup shade travelerRest', {
+            at: { cup: { give: waterskin }, travelerRest: { take: waterskin } }, lines: {
+              shade: '바위 뒤에 몸을 기대면 바람이 덜 불어. 여기라면 짐을 내려놓을 수 있겠어.',
+              travelerRest: '물통 덕분에 한 모금 마시고 쉬었어. 이제 고개 너머까지 갈 수 있겠다.',
+            } })),
+      ],
+    },
+    {
+      visual: 'nazareth', ambience: ['모험 장터', '모험 밤길', '모험 우물'],
+      zones: ['해 저문 좌판 거리', '목공소 맞은편 골목', '우물과 무화과 그늘'],
+      crossings: [[10, 7], [-8, -10.8]],
+      spawn: [0, 17], word: [15.1, -18.2], photo: [-10.8, -15.7], secret: [-16.7, -19],
+      stars: [[-18.6, 13.1], [11.3, -16.9], [18.8, -2.8]],
+      starClues: ['문 닫은 좌판들 뒤, 서쪽 돌담 밑.', '우물에서 동쪽 낮은 턱 너머. 양과 넘거나 옆으로 돌아가 봐.', '골목 동쪽 끝에서 담 그림자를 따라가 봐.'],
+      targets: {
+        joseph: person('요셉', -3.4, 11.2), door: at('조용한 목공소 문', 1.9, -3.7, 'door'),
+        neighbor: person('맞은편 이웃', -2.1, -5.8), child: person('골목 아이', 13.4, 17.3),
+        waterNeighbor: person('우물가 이웃', -4.7, -15.7), bench: at('소리가 잦아드는 돌 의자', -13.5, -3.9, 'event'),
+        peddler: person('좌판을 접는 상인', -10.7, 12.1), pin: at('돌담에 꽂힌 좌판 말뚝', 15.1, -5.9),
+        figKeeper: person('무화과를 말리는 이웃', -12.5, -16.5), cat: animal('고양이', '발자국 끝에 웅크린 고양이', 11.6, -2.7),
+        pawPrint: at('골목 먼지에 찍힌 작은 발자국', -13.9, -8.1, 'follow'),
+        dyer: person('천을 물들이는 이웃', 15.4, 12), basin: at('무화과 그늘의 빈 대야', -14.3, -17.2),
+        soap: at('좌판 옆에 둔 잿물 단지', -11.1, 17.35), rinse: at('골목 안쪽의 헹굼터', 11.7, -5.2, 'visit'),
+        line: at('우물 뒤쪽의 빨랫줄', -10.2, -17.3, 'visit'),
+      },
+      steps: [
+        step('좌판 거리에서 요셉을 만나자', 'talk', 'joseph', { line: '마리아가 거짓말할 사람은 아니야. 그건 아는데… 오늘은 손에 일이 안 잡혀.' }),
+        step('목공소 앞에 가서 잠깐 귀를 기울여 보자', 'visit', 'door', { line: '늘 대패 소리가 나던 문 안쪽이 오늘은 조용해.' }),
+        step('같은 저녁을 본 사람 셋의 이야기를 듣자', 'talk', 'neighbor child waterNeighbor', { lines: {
+          neighbor: '해가 아직 남았는데 연장을 들여놓더라. 내가 본 건 그게 다야.',
+          child: '아저씨가 내 옆을 두 번 지나쳤어. 두 번째에는 들고 있던 나무도 없었어.',
+          waterNeighbor: '오늘은 얼굴이 어두워 보였어. 먼저 말할 때까지 기다려 주면 좋겠구나.',
+        } }),
+        step('골목 돌 의자에서 오늘 들은 말을 떠올려 보자', 'scene', 'bench', { line: '셋 다 같은 저녁을 봤어. 기억하는 장면은 조금씩 달랐어.' }),
+        step('요셉에게 돌아가 이번엔 그의 말을 듣자', 'talk', 'joseph', { line: '나는 아직 뭐라고 해야 할지 모르겠어. 이렇게 옆에 앉아 준 것만으로도 좀 낫네.' }),
+      ],
+      sides: [
+        side('좌판의 말뚝', step('좌판을 접는 상인에게 말을 걸자', 'talk', 'peddler', { line: '천막은 접었는데 말뚝 하나를 빼먹었어. 골목 동쪽 돌담에 꽂혀 있단다.' }),
+          step('천막 말뚝을 가져다주자', 'follow', 'pin peddler', {
+            at: { pin: { give: wedge }, peddler: { take: wedge } }, lines: { peddler: '내일 아침엔 이걸 먼저 박아야지. 챙겨 줘서 고맙다.' } })),
+        side('무화과 접시의 발자국', step('무화과를 말리는 이웃의 이야기를 듣자', 'talk', 'figKeeper', { line: '접시 옆에 고양이 발자국이 찍혔어. 어디로 갔나 살펴봐 줄래?' }),
+          step('발자국을 따라가 고양이를 찾아 알려 주자', 'follow', 'pawPrint cat figKeeper', {
+            lines: { figKeeper: '따뜻한 돌 위에서 자고 있었구나. 무화과 접시는 집 안에 들여놔야겠다.' } })),
+        side('물 빠지는 천', step('천을 물들이는 이웃의 이야기를 듣자', 'talk', 'dyer', {
+          line: '푸른 천은 처음 빨 때 물이 빠져. 무화과 그늘에 따로 쓰는 대야가 있어.' }),
+          step('대야와 잿물 단지를 챙겨 천을 헹구자', 'follow', 'basin soap rinse', {
+            at: { basin: { give: washBasin }, soap: { give: cargo('잿물 단지', '🏺') }, rinse: { take: cargo('잿물 단지', '🏺'), give: cloth } },
+            lines: { rinse: '한 번 더 헹구니 물이 제법 맑아졌어. 천만 꺼내 줄에 널면 돼.' },
+          }),
+          step('천을 널고 빈 대야를 돌려주자', 'follow', 'line dyer', {
+            at: { line: { take: cloth }, dyer: { take: washBasin } },
+            lines: { dyer: '햇빛은 내일 아침에 들 거야. 나머지 천에도 푸른 물이 안 들겠네.' },
+          })),
+      ],
+    },
+    {
+      visual: 'workshop', ambience: ['모험 밤길', '작업장', '모험 밤길'],
+      zones: ['작업장 바깥마당', '대팻밥이 쌓인 목공 마당', '작업대와 안쪽 방'],
+      crossings: [[-9, 7], [7.5, -11]],
+      spawn: [0, 17], word: [-15.1, -7.9], photo: [4.6, -17.1], secret: [-5.8, -17.6],
+      stars: [[-20, 10.9], [12.2, -19.4], [19.3, -.5]],
+      starClues: ['바깥마당 서쪽에서 장작이 드문 틈을 살펴봐.', '방 뒤편 낮은 돌턱 너머. 담 옆으로 돌아가도 돼.', '동쪽 마당에서 톱질하던 자리의 그늘을 살펴봐.'],
+      targets: {
+        joseph: person('요셉', -2.8, -16.6), scroll: at('두루마리를 펴 둔 돌상', -12.8, -5.2, 'visit'),
+        shaving: at('대팻밥 안에 묻힌 조각', -14.7, 12),
+        woodpile: at('장작 더미에서 빠진 조각', 13, -.9),
+        fence: at('담장에 걸린 조각', 10.8, -18.4),
+        threshold: at('등잔 곁의 문턱', -10.6, -17.6, 'event'),
+        carrier: person('장작 나르는 일꾼', 10.7, 12.4), strap: at('돌상 옆 장작 끈', -14.2, -7.3),
+        apprentice: person('견습 목수', 13.1, -15.7), hammer: at('바깥마당 선반의 나무 망치', -13.1, 17.45),
+        joiner: person('걸상을 고치는 목수', -10.1, 17.35), stool: at('안쪽 방 곁의 흔들리는 걸상', 9, -15.5, 'visit'),
+        measuringCord: at('어귀 선반에 놓인 치수 줄', 13.4, 17.65),
+        offcut: at('대팻밥 아래 남은 널빤지', -15.4, -5.4),
+        repair: at('걸상의 짧은 다리', 9, -16.1, 'visit'),
+      },
+      steps: [
+        step('안쪽 방에서 요셉을 만나자', 'talk', 'joseph', { line: '밤새 읽어 봤어. 율법을 지키고 싶어. 마리아도 사람들 앞에 세우고 싶지 않아.' }),
+        step('요셉이 읽던 두루마리를 살펴보자', 'visit', 'scroll', { line: '요셉이 오래 읽은 자리야. “의와 화평이 서로 입맞추었으며.”' }),
+        step('마당과 담장에서 흩어진 나무 조각 세 개를 모으자', 'collect', 'shaving woodpile fence', { give: scraps }),
+        step('요셉에게 나무 조각을 건네자', 'deliver', 'joseph', { take: scraps, takeCount: 3, line: '고마워. …이 일은 가만히 끝내기로 했어. 마리아 이야기를 밖에 내놓지 않고.' }),
+        step('문턱에 놓인 등잔 곁까지 걸어가자', 'scene', 'threshold', { line: '요셉이 등을 돌려 불을 끈다. 마당에서 들리던 톱질 소리도 그쳤어.' }),
+      ],
+      sides: [
+        side('풀린 장작 끈', step('장작을 나르는 일꾼의 부탁을 듣자', 'talk', 'carrier', { line: '장작 끈이 풀려서 한 묶음씩만 옮기고 있어. 돌상 옆에 새 끈을 두었어.' }),
+          step('새 끈을 가져다주자', 'follow', 'strap carrier', {
+            at: { strap: { give: rope }, carrier: { take: rope } }, lines: { carrier: '좋아. 두 번 감으면 돌아가는 길에도 안 풀리겠어.' } })),
+        side('나무 망치', step('견습 목수에게 필요한 걸 묻자', 'talk', 'apprentice', { line: '나무 망치를 바깥 선반에 두고 왔어. 철망치로 치면 결이 상하거든.' }),
+          step('선반에서 나무 망치를 찾아 가져다주자', 'follow', 'hammer apprentice', {
+            at: { hammer: { give: cargo('나무 망치', '🔨') }, apprentice: { take: cargo('나무 망치', '🔨') } }, lines: { apprentice: '이거야. 이제 자국 없이 끼워 맞출 수 있겠다.' } })),
+        side('흔들리는 걸상', step('걸상을 고치는 목수의 말을 듣자', 'talk', 'joiner', {
+          line: '안쪽 방 걸상이 자꾸 흔들린대. 어느 쪽 다리가 짧은지 가서 봐 줄래?' }),
+          step('흔들리는 쪽을 보고 맞는 나무를 찾자', 'follow', 'stool measuringCord offcut', {
+            at: { offcut: { give: wedge } }, lines: {
+              stool: '방 쪽 다리가 들어 올려져. 어귀 선반에 치수를 잴 줄이 있어.',
+              measuringCord: '끈에 손톱으로 자국을 냈어. 이 길이만큼 되는 나무를 대팻밥 더미에서 찾아보자.',
+            },
+          }),
+          step('다리에 나무를 대고 목수에게 알려 주자', 'follow', 'repair joiner', {
+            at: { repair: { take: wedge } },
+            lines: { repair: '나무를 받치고 걸상에 앉아 보니 더는 흔들리지 않아.', joiner: '내일은 거기에 앉아서 통나무도 편히 다듬겠어.' },
+          })),
+      ],
+    },
+    {
+      visual: 'workshop', variant: 'dream', ambience: ['모험 밤길', '꿈', '꿈'],
+      zones: ['등잔이 꺼진 바깥마당', '별빛이 내린 목공 마당', '지붕과 새벽 창가'],
+      crossings: [[-9, 7], [7.5, -11]],
+      spawn: [0, 17], word: [-11.2, -16.4], photo: [9.7, -19.3], secret: [0, -19.9],
+      stars: [[-17.1, 10.3], [-7.9, -19.3], [19.7, -2.1]],
+      starClues: ['등잔이 꺼진 서쪽 울타리 밑.', '지붕 서쪽의 낮은 턱 너머. 옆길도 이어져 있어.', '동쪽 장작 더미의 그늘에 빛이 한 점 남아 있어.'],
+      fauna: [['고양이', [-2.7, 12.1]], ['비둘기', [4.1, -17.6]], ['나귀', [16, .5]]],
+      targets: {
+        window: at('등잔이 꺼진 요셉의 창', 1.8, 11.9, 'visit'),
+        glow1: at('마당에 내려온 별빛', -10.3, 4.4, 'follow', { symbol: '✦' }),
+        glow2: at('나뭇결을 타는 별빛', 12.7, -2.4, 'follow', { symbol: '✦', moving: true }),
+        glow3: at('처마로 흐르는 별빛', -4.4, -16.5, 'follow', { symbol: '✦', moving: true }),
+        voice: at('빛이 멈춘 자리', 3.4, -19.5, 'event'),
+        joseph: { ...person('요셉', -1.3, 12.1, '잠에서 깬 요셉'), onlyWhenActive: true },
+        watch: person('골목을 지키는 이웃', 12.6, 11.7), shutter: at('바람에 흔들리는 덧문', -14.7, -5.7, 'door'),
+        keeper: person('장작 더미를 덮는 이웃', 13.9, -14.2), blanket: at('접어 둔 장작 덮개', -13.8, 12.3),
+        lamplighter: person('밤길 등잔을 챙기는 사람', -10.2, 17.4), wind1: at('바람에 꺼진 어귀 등잔', 12.3, 17.5, 'visit'),
+        wind2: at('그을음이 남은 담벼락', -15.8, -6.7, 'visit'), guardJar: at('처마 끝에 쌓아 둔 바람막이', 11.7, -19.6),
+        windLamp: at('문턱을 비출 등잔', 1.8, 12.8, 'visit'),
+      },
+      steps: [
+        step('요셉의 창가에서 등잔이 꺼졌는지 살펴보자', 'visit', 'window', { line: '불이 꺼지자 마당의 나뭇결 위로 작은 빛이 번져.' }),
+        step('꿈속에서 움직이는 별빛을 따라가자', 'follow', 'glow1 glow2 glow3'),
+        step('별빛이 멈춘 자리에 다가가 목소리를 듣자', 'scene', 'voice', {
+          effect: 'star', line: '“다윗의 자손 요셉아. …마리아 데려오기를 무서워하지 말라.”' }),
+        step('새벽의 요셉에게 돌아가자', 'talk', 'joseph', { line: '예수라 하라고 했어. 자기 백성을 죄에서 구원할 아이라고… 아직도 그 말이 들리는 것 같아.' }),
+      ],
+      sides: [
+        side('바람에 흔들리는 덧문', step('골목을 지키는 이웃의 말을 듣자', 'talk', 'watch', { line: '바람만 불면 덧문이 쿵쿵 울려. 골목 건너에서 걸쇠를 밀어 줄래?' }),
+          step('덧문 걸쇠를 밀고 이웃에게 알려 주자', 'follow', 'shutter watch', { lines: { watch: '조용해졌네. 이제 아침까지 눈 붙이는 사람도 있겠다.' } })),
+        side('밤이슬과 장작', step('장작 더미를 덮는 이웃의 부탁을 듣자', 'talk', 'keeper', { line: '장작이 밤이슬을 맞겠어. 바깥마당에 덮개가 있으니 가져다주렴.' }),
+          step('장작 덮개를 가져다주자', 'follow', 'blanket keeper', {
+            at: { blanket: { give: cloth }, keeper: { take: cloth } }, lines: { keeper: '이제 내일 아침에 불을 피울 수 있겠구나.' } })),
+        side('문턱을 비출 불', step('등잔을 챙기는 사람과 이야기하자', 'talk', 'lamplighter', {
+          line: '문턱에서 발을 헛디딜 뻔했어. 어귀 등잔이 왜 꺼졌는지 살펴봐 줄래?' }),
+          step('꺼진 등잔에서 담을 지나 바람의 방향을 살피자', 'follow', 'wind1 wind2', { lines: {
+            wind1: '기름은 남아 있어. 불꽃만 옆으로 길게 누웠던 모양이야.',
+            wind2: '그을음이 담 안쪽에만 묻어 있어. 이 틈에서 불던 바람이 길을 건너갔어.',
+          } }),
+          step('처마의 바람막이를 씌우고 등잔이 켜졌다고 전하자', 'follow', 'guardJar windLamp lamplighter', {
+            at: { guardJar: { give: cargo('등잔 바람막이', '🏺') }, windLamp: { take: cargo('등잔 바람막이', '🏺') } },
+            lines: { windLamp: '가리개 너머로 불꽃이 가만히 서 있어.', lamplighter: '문 앞 돌부리까지 보이네. 잘했어.' },
+          })),
+      ],
+    },
+    {
+      visual: 'galilee', ambience: ['모험 산길', '모험 지붕', '모험 산길'],
+      zones: ['회당에서 오르는 길', '올리브 밭', '호수가 보이는 능선'],
+      crossings: [[-9, 7], [8, -11.5]],
+      spawn: [0, 17], word: [-14.4, -16.6], photo: [3.5, -19], secret: [16.2, -19.3],
+      stars: [[-18.8, 10.7], [-8.7, -19.7], [18.8, -5.1]],
+      starClues: ['오르막 서쪽, 뿌리가 길 위로 드러난 곳.', '능선 서쪽 낮은 턱을 넘어 봐. 턱을 끼고 돌아가도 돼.', '밭의 동쪽 끝에서 가장 키 작은 나무 주변.'],
+      targets: {
+        joseph: person('요셉', -2.9, 13.6), farmer: person('올리브 밭 주인', -8.8, 3),
+        fruit1: at('첫 올리브나무 밑 열매', -8.1, 1.2, 'find', { symbol: '🫒' }),
+        fruit2: at('밭고랑에 떨어진 열매', -4.5, -1.7, 'find', { symbol: '🫒' }),
+        fruit3: at('낮은 가지 밑 열매', -.4, -4.7, 'find', { symbol: '🫒' }),
+        fruit4: at('돌무더기 곁 열매', 3.8, -7.3, 'find', { symbol: '🫒' }),
+        fruit5: at('능선으로 오르는 길의 열매', 8.1, -8.7, 'find', { symbol: '🫒' }),
+        basket: at('열매를 모아 두는 바구니', 12, -7.2, 'visit'),
+        overlook: at('갈릴리 능선의 바위', 5.7, -16.7, 'event'),
+        grower: person('묘목을 심는 이웃', -11.7, 13.1), stake: at('능선에 모아 둔 지주대', -11.2, -17.8),
+        pilgrim: person('회당에서 올라온 어른', 13.8, -15.9), shade: at('바람을 막아 주는 쉼터', 12.4, 3.6, 'visit'),
+        shepherd: person('비탈의 양치기', 10.2, 14.2), bleat: at('울음이 메아리치는 낮은 담', -13.1, -7.1, 'follow'),
+        kid: animal('염소', '능선에 홀로 선 새끼 염소', 12.8, -19),
+        trough: at('밭 아래 돌 여물통', 15.2, .9, 'visit'),
+      },
+      steps: [
+        step('언덕 어귀에서 요셉과 이야기하자', 'talk', 'joseph', { line: '눈을 뜨자 회당에서 들은 말씀이 떠올랐어. 이사야가 뭐라고 했는지 다시 보고 싶어.' }),
+        step('올리브 밭 주인과 이야기를 나누자', 'talk', 'farmer', { line: '나무 아래 떨어진 열매를 잠깐 주워 줄래? 요 앞 고랑부터 능선 아래까지야.' }),
+        step('40초 안에 밭에서 올리브 다섯 알을 주워 보자', 'timed', 'fruit1 fruit2 fruit3 fruit4 fruit5', {
+          start: 'farmer', seconds: 40, title: '올리브 다섯 알', intro: '가까운 나무부터 고랑을 따라 올라가 봐. 40초 동안 떨어진 열매 다섯 알을 주우면 돼.',
+          give: cargo('올리브', '🫒'), giveAtEnd: true, amount: 5,
+        }),
+        step('올리브를 바구니에 담고 능선의 말씀 비석을 읽자', 'follow', 'basket word', {
+          at: { basket: { take: cargo('올리브', '🫒'), takeCount: 5 } },
+          lines: { basket: '다섯 알이 바구니 바닥에 톡톡 떨어져. 말씀 비석은 마른 돌담 너머에 있어.' },
+        }),
+        step('능선을 돌아 내려와 요셉과 말씀을 나누자', 'follow', 'overlook joseph', { lines: {
+          overlook: '발아래 작게 보이는 집들 사이로 아침 연기가 올라와.',
+          joseph: '임마누엘. 하나님이 우리와 함께 계신다는 말이잖아. …나 마리아한테 가 볼게.',
+        } }),
+      ],
+      sides: [
+        side('바람을 맞는 묘목', step('묘목을 심는 이웃의 부탁을 듣자', 'talk', 'grower', { line: '어린 나무가 바람에 자꾸 기울어. 능선에 묶어 둔 막대기 하나 가져와 줄래?' }),
+          step('능선에서 지주대를 가져다주자', 'follow', 'stake grower', {
+            at: { stake: { give: wedge }, grower: { take: wedge } }, lines: { grower: '곁에 받쳐 놓으면 뿌리내릴 때까지 견딜 수 있겠어.' } })),
+        side('바람이 덜 드는 쉼터', step('회당에서 온 어른에게 말을 걸자', 'talk', 'pilgrim', { line: '벌써 여기까지 올라왔구나. 잠깐 쉬었다 갈 만한 자리가 어디 있니?' }),
+          step('바람이 덜 드는 자리를 찾아 알려 드리자', 'follow', 'shade pilgrim', { lines: { pilgrim: '밭 옆 바위 뒤구나. 다리에 힘이 돌아올 때까지 거기 앉아야겠어.' } })),
+        side('능선에 남은 새끼 염소', step('비탈의 양치기에게 무슨 일인지 묻자', 'talk', 'shepherd', {
+          line: '다 데려온 줄 알았는데 한 마리가 안 보여. 밭 위에서 울음이 들려.' }),
+          step('울음소리를 따라 새끼 염소를 찾아 양치기에게 데려가자', 'escort', 'bleat kid trough shepherd', {
+            passenger: 'kid', lines: {
+              bleat: '담 아래에선 소리가 가장 커. 고개를 들자 능선 위에 뿔 하나가 보여.',
+              kid: '풀을 내밀자 새끼 염소가 조심스럽게 가까이 와.',
+              trough: '여물통 옆에서 잠깐 쉬자 새끼 염소가 풀을 한입 뜯었어.',
+              shepherd: '바위에 발이 끼었나 싶었어. 온 길을 그대로 내려와서 다행이다.',
+            },
+          })),
+      ],
+    },
+    {
+      visual: 'nazareth', variant: 'wedding', ambience: ['모험 뜰', '모험 장터', '모험 밤길'],
+      zones: ['혼인 골목 입구', '꽃잎이 흩어진 돌담길', '새집과 뒤뜰'],
+      crossings: [[-9, 7], [7, -11]],
+      spawn: [0, 17], word: [-12.7, -15.4], photo: [5.5, -18.1], secret: [17.2, -19.2],
+      stars: [[-19.3, 10.7], [-9.5, -18.9], [19.4, -1.1]],
+      starClues: ['골목 입구에서 서쪽 담을 따라 걸어 봐.', '새집 서쪽의 낮은 턱 뒤. 담 끝으로도 길이 나 있어.', '꽃잎이 잘 날리지 않는 골목 동쪽 담 아래.'],
+      targets: {
+        joseph: person('요셉', -3.4, 13.8), maria: person('마리아', -12.6, -4.2, '마리아네 문 앞'),
+        lantern1: at('골목 입구 등불', 9.5, 12.1, 'light'),
+        lantern2: at('굽이 돌담 등불', -7.4, 3.3, 'light'),
+        lantern3: at('새집 앞 등불', 2, -15.2, 'light'),
+        petal1: at('돌담 밑의 흰 꽃잎', 14.7, -3.4, 'find', { symbol: '🌸' }),
+        petal2: at('집 앞에 내려앉은 흰 꽃잎', 11.4, -16.2, 'find', { symbol: '🌸' }),
+        door: at('꽃잎을 놓는 새집 문턱', -.2, -18, 'door'),
+        welcome: at('함께 켜는 창가 등잔', -4.2, -17.5, 'event'),
+        baker: person('빵을 굽는 이웃', -11.4, 11.8), breadTable: at('새집 앞 빵 놓을 자리', 13.7, -15.9, 'visit'),
+        helper: person('행렬을 맞는 이웃', 12.6, -15.1), garland: at('골목에 떨어진 꽃줄', -14.1, 5.35),
+        potter: person('토기 잔을 빌려주는 이웃', 12.1, 17.35), blueCup: at('담장에 남은 푸른 잔', -14.3, -5.6),
+        stripedCup: at('새집 옆에 남은 줄무늬 잔', 12.6, -17.8),
+        clayCup: at('서쪽 어귀의 손잡이 없는 잔', -11, 17.3), wash: at('새집 마당 잔 헹구는 자리에 놓기', 9.2, -14.6, 'visit'),
+      },
+      steps: [
+        step('골목 입구에서 요셉과 만나자', 'talk', 'joseph', { line: '사람들이 좀 보고 있어. 그래도 가야지. 마리아네 문은 저 굽이 안쪽이야.' }),
+        step('마리아네 문 앞에 가자', 'talk', 'maria', { line: '요셉이 같이 가자고 했어요. 그 말을 듣고 나니까 문 밖으로 한 걸음이 떼어졌어요.' }),
+        step('행렬이 지나갈 골목의 등불 세 개를 밝히자', 'light', 'lantern1 lantern2 lantern3', { intro: '어귀와 굽이, 새집 앞에 등불이 하나씩 있어. 불을 붙이면 지나갈 길이 보일 거야.' }),
+        step('흰 꽃잎 두 장을 줍고 마리아와 새집으로 가자', 'escort', 'petal1 petal2 maria door', {
+          passenger: 'maria',
+          at: { petal1: { give: flowers }, petal2: { give: flowers }, door: { take: flowers, takeCount: 2 } },
+          lines: { maria: '요셉이 저 앞에서 기다리고 있어요. 같이 새집까지 걸어가요.', door: '마리아가 문턱을 넘어가. 아까 주운 흰 꽃잎을 문 옆에 내려놓았어.' },
+        }),
+        step('새집 창가에서 함께 켠 불을 보자', 'scene', 'welcome', { effect: 'spark', line: '두 사람이 나란히 등잔 옆에 앉아 있어. 곧게 단 문 아래로 불빛 한 줄이 새어 나와.' }),
+      ],
+      sides: [
+        side('이웃이 구운 빵', step('빵을 굽는 이웃에게 빵을 받자', 'get', 'baker', {
+          give: cargo('갓 구운 빵', '🥖'), line: '가는 길이면 빵 한 덩이 좀 가져다주렴. 새집 앞에 놓으면 알아볼 거야.' }),
+          step('새집 앞에 빵을 놓아 두자', 'deliver', 'breadTable', { take: cargo('갓 구운 빵', '🥖'), line: '아직 따뜻한 빵을 문 앞의 바구니에 놓았어.' })),
+        side('풀린 꽃줄', step('행렬을 맞는 이웃의 말을 듣자', 'talk', 'helper', { line: '꽃줄 한 끝이 바람에 날아갔어. 아래쪽 담에 걸렸으면 가져다줄 수 있니?' }),
+          step('꽃줄을 찾아 건네자', 'follow', 'garland helper', {
+            at: { garland: { give: cargo('흰 꽃줄', '🌼') }, helper: { take: cargo('흰 꽃줄', '🌼') } }, lines: { helper: '다시 묶었어. 이제 문을 열어도 꽃이 떨어지지 않겠다.' } })),
+        side('빌려준 토기 잔', step('토기 잔을 빌려주는 이웃의 이야기를 듣자', 'talk', 'potter', {
+          line: '물 마시라고 잔 셋을 꺼냈는데 길 곳곳에 남았어. 그림이 서로 달라서 금방 알아볼 거야.' }),
+          step('골목에서 잔 세 개를 모아 새집 마당에서 헹구자', 'follow', 'blueCup stripedCup clayCup wash', {
+            give: cargo('토기 잔', '🏺'),
+            at: { wash: { give: null } }, lines: { wash: '세 잔을 헹구어 겹쳤어. 토기장이의 물레가 있는 곳으로 가져가자.' },
+          }),
+          step('헹군 토기 잔을 돌려주자', 'deliver', 'potter', { take: cargo('토기 잔', '🏺'), takeCount: 3,
+            line: '셋 다 돌아왔네. 다음에 목마른 사람이 오면 또 내놓아야지.' })),
+      ],
+    },
+    {
+      visual: 'well', carry: fullJug.name, ambience: ['모험 뜰', '모험 우물', '집안'],
+      zones: ['물동이를 모아 둔 마당', '마을 우물', '요셉과 마리아의 집'],
+      crossings: [[-8, 8], [7.5, -10]],
+      spawn: [0, 17], word: [-13.8, -17.55], photo: [3.4, -17.1], secret: [2.7, -2.3],
+      stars: [[-18.1, 10.3], [11.2, -19.3], [19.6, -1.6]],
+      starClues: ['빈 물동이 마당 서쪽의 오래된 담 아래.', '새집 뒤 낮은 턱 건너. 옆길을 걷거나 양과 폴짝 넘어 봐.', '우물에서 물 흘린 자국을 동쪽까지 따라가 봐.'],
+      targets: {
+        joe: person('요셉', 5.2, 12.8), water1: at('우물에서 첫 물동이 채우기', 2.2, .64, 'find', { symbol: '🏺' }),
+        water2: at('우물에서 둘째 물동이 채우기', 2.2, .64, 'find', { symbol: '🏺' }),
+        water3: at('우물에서 셋째 물동이 채우기', 2.2, .64, 'find', { symbol: '🏺' }),
+        basin1: at('집 앞에 첫 물동이 내려놓기', 5.5, -14.4, 'door'),
+        basin2: at('집 앞에 둘째 물동이 내려놓기', 5.5, -14.4, 'door'),
+        basin3: at('집 앞에 셋째 물동이 내려놓기', 5.5, -14.4, 'door'),
+        maria: person('마리아', 2.9, -17.3, '등잔을 켜는 마리아'),
+        potter: person('토기를 빚는 이웃', -12.5, 17.35), lid: at('우물 건너 놓아 둔 토기 뚜껑', 14.2, -5.1),
+        keeper: person('두레박을 살피는 사람', 5.9, -.5), coil: at('마당 선반에 감아 둔 새 줄', 13.9, 17.5),
+        lampNeighbor: person('심지를 꼬는 이웃', -12.1, -15.5), flax: at('빈 물동이 옆의 삼실 꾸러미', -15.7, 13.4),
+        cutting: at('우물 옆 심지를 재는 돌', -12.7, -5.8, 'visit'), oil: at('동쪽 어귀 좌판의 작은 기름병', 12, 17.5),
+        guestLamp: at('새집 창가의 작은 등잔', 7.8, -18, 'visit'),
+      },
+      steps: [
+        step('물동이 마당에서 요셉에게 말을 걸자', 'talk', 'joe', { line: '집에 쓸 물이 모자라. 우물에서 한 동이씩 나르면 세 번이면 되겠다.' }),
+        step('우물에서 집까지 물동이를 세 번 나르자', 'follow', 'water1 basin1 water2 basin2 water3 basin3', {
+          at: { water1: { give: fullJug }, basin1: { take: fullJug }, water2: { give: fullJug }, basin2: { take: fullJug }, water3: { give: fullJug }, basin3: { take: fullJug } },
+          lines: { basin1: '첫 동이를 문 옆에 놓았어. 창가에는 아직 빈 자리가 둘 있어.', basin3: '세 동이가 나란히 놓였어. 문 안에서 등잔 켜는 소리가 나.' },
+        }),
+        step('집에서 등잔을 켜는 마리아를 만나자', 'talk', 'maria', { line: '고마워요. 요셉은 물 길으러 가면서도 그 이름을 작게 불러 봐요. 예수, 하고.' }),
+        step('새집 옆 말씀 비석을 읽자', 'visit', 'word'),
+        step('요셉과 함께 아기의 이름을 불러 보자', 'talk', 'joe', {
+          line: '예수야. …아기가 태어나면 내가 이 이름을 부를 거야. 오늘은 이렇게 한 번 더 불러 보고.',
+        }),
+      ],
+      sides: [
+        side('토기 뚜껑 짝 맞추기', step('토기를 빚는 이웃의 부탁을 듣자', 'talk', 'potter', { line: '큰 항아리엔 그 넓적한 뚜껑이 꼭 맞아. 우물 건너 돌 위에 놓아 뒀단다.' }),
+          step('토기 뚜껑을 찾아 가져다주자', 'follow', 'lid potter', {
+            at: { lid: { give: cargo('토기 뚜껑', '🟤') }, potter: { take: cargo('토기 뚜껑', '🟤') } }, lines: { potter: '잘 맞는다. 이제 물에 먼지가 안 들어가겠어.' } })),
+        side('두레박의 해진 줄', step('두레박을 살피는 사람의 말을 듣자', 'talk', 'keeper', { line: '밧줄 끝이 헤졌어. 마당 선반에 새 줄을 감아 뒀으니 가져다주렴.' }),
+          step('새 두레박 줄을 가져다주자', 'follow', 'coil keeper', {
+            at: { coil: { give: rope }, keeper: { take: rope } }, lines: { keeper: '고맙다. 매듭 두 번이면 다음 사람도 안전하게 물을 긷겠어.' } })),
+        side('밝혀 두는 창가 등잔', step('심지를 꼬는 이웃을 만나자', 'talk', 'lampNeighbor', {
+          line: '새집 창가에 등잔 하나를 더 두기로 했어. 빈 물동이 옆의 삼실을 찾아 와 줄래?' }),
+          step('삼실을 찾아 우물 옆 돌에서 길이를 재자', 'follow', 'flax cutting', {
+            at: { flax: { give: cargo('삼실', '🧵') }, cutting: { take: cargo('삼실', '🧵'), give: cargo('심지', '🧵') } },
+            lines: { cutting: '삼실 두 가닥을 꼬아서 등잔 심지를 만들었어. 등잔에는 기름도 필요해.' },
+          }),
+          step('기름까지 챙겨 새집 창가 등잔을 준비하자', 'follow', 'oil guestLamp lampNeighbor', {
+            at: { oil: { give: oilJar }, guestLamp: { take: oilJar }, lampNeighbor: { take: cargo('심지', '🧵') } },
+            lines: { guestLamp: '등잔에 기름을 부었어. 이제 심지를 끼우면 돼.', lampNeighbor: '이제 창가에 불을 밝혀 둘 수 있겠네. 늦게 오는 이웃도 보라고.' },
+          })),
+      ],
+    },
+  ];
+
+  const adventures = [...days.map((day, index) => ['1-' + index, day]), ...peaceDays.map((day, index) => ['2-' + index, day])];
+  for (const [id, adventure] of adventures) {
+    const index = +id.at(-1), hope = id.startsWith('1-');
+    const area = window.EXPLORE[id], { targets, visual, word, photo, secret, stars, time, variant } = adventure;
     const inherited = area.markers.filter(m => ['verse', 'secret', 'photo'].includes(m.type));
     const uphill = visual === 'temple' || visual === 'sanctuary';
-    const cart = index === 5 ? [-6.55, 6.6] : [16.8, 2.5];
+    const cart = !hope ? [17.5, 5.65] : index === 5 ? [-6.55, 6.6] : [16.8, 2.5];
     const jump = [stars[1][0], stars[1][1] + 1.55];
-    const shine = index === 5 ? [-11.8, -16.15] : [secret[0] + (secret[0] > 17 ? -2.65 : 2.9), Math.max(-20, secret[1] + 1.65)];
+    const shine = hope && index === 5 ? [-11.8, -16.15] : [secret[0] + (secret[0] > 17 ? -2.65 : 2.9), Math.max(-20, secret[1] + 1.65)];
     for (const marker of inherited) {
       const pos = { word, photo, secret, 'extra-word': [10.95, -12.3] }[marker.id];
       targets[marker.id] = { ...marker, pos, title: marker.id === 'photo' ? '여정 사진 찍기' : marker.title };
@@ -723,17 +1079,22 @@
     Object.assign(targets, {
       'star-1': at('성벽 틈의 별 조각', ...stars[0], 'fragment', { hidden: true, clue: uphill ? '바깥뜰 서쪽의 긴 성벽을 따라 걸어 봐.' : '마을 왼쪽 돌담 밑에 작은 틈이 있어.' }),
       'star-2': at('높은 턱 너머 별 조각', ...stars[1], 'fragment', { hidden: true, clue: '북쪽 높은 턱은 옆길로 돌아가도 돼. 어린 양이면 낮은 턱을 뛸 수 있어.' }),
-      'star-3': at(index === 0 ? '우물 뒤 별 조각' : '그늘의 별 조각', ...stars[2], 'fragment',
+      'star-3': at(hope && index === 0 ? '우물 뒤 별 조각' : '그늘의 별 조각', ...stars[2], 'fragment',
         { hidden: true, clue: index === 0 ? '우물에서 물 소리가 가장 또렷한 쪽을 살펴봐.' : '동쪽의 인적 드문 그늘을 살펴봐.' }),
       jump: at('낮은 담', ...jump, 'ability', { feature: 'jump' }),
-      push: at(index === 5 ? '짐이 실린 나귀 수레' : '길을 막은 수레', ...cart, 'ability', { feature: 'push' }),
+      push: at(hope && index === 5 ? '짐이 실린 나귀 수레' : '길을 막은 수레', ...cart, 'ability', { feature: 'push' }),
       shine: at('빛이 닿지 않는 틈', ...shine, 'ability', { feature: 'shine' }),
       'cart-cache': at('수레 뒤에 남은 기름', cart[0] - 1.05, cart[1] - 1.15, 'cache', { hidden: true }),
       'light-cache': at('빛이 비친 작은 기름병', shine[0] - .93, shine[1] + 1.18, 'cache', { hidden: true }),
     });
+    if (!hope) for (const [i, clue] of adventure.starClues.entries()) {
+      const star = targets['star-' + (i + 1)];
+      star.title = ['담 아래 별 조각', '낮은 턱 너머 별 조각', '그늘에 숨은 별 조각'][i];
+      star.clue = clue;
+    }
     if (time) area.layout.time = time;
     if (variant) area.layout.adventureVariant = variant;
-    adventure.crossings = [[[-11, 11.25], [10, -11.85]], [[-11, 6.8], [5.1, -10.9]],
+    adventure.crossings ||= [[[-11, 11.25], [10, -11.85]], [[-11, 6.8], [5.1, -10.9]],
       [[10.5, 8.2], [-12.8, -11.85]], [[-11.2, 6.8], [10.2, -11.85]],
       [[10.5, 7.25], [-9.75, -12.0]], [[-10.6, 7.9], [11.15, -11.9]],
       [[10.5, 6.8], [-5.2, -10.8]]][index];

@@ -43,7 +43,7 @@
     const markers = window.EXPLORE[id].markers.filter(marker => !marker.extra);
     return { n: markers.filter(marker => log.found[foundKey(id, marker.id)]).length, max: markers.length };
   }
-  const complete = id => window.EXPLORE[id]?.adventure ? !!adventureLog(id)?.done : !!Core.data.field?.explore?.found?.[foundKey(id, 'activity')];
+  const complete = id => !!(adventureLog(id)?.done || Core.data.field?.explore?.found?.[foundKey(id, 'activity')]);
   function counts() {
     const log = Core.data.field?.explore;
     const ids = epList().map(ep => ep.id);
@@ -240,19 +240,19 @@
     soundZone(0);
     function finish(track) {
       if (track === main) {
+        const first = !complete(id) && log.quests[id] !== 'done';
         state.done = true;
         mark(log, id, 'activity');
         log.quests[id] = 'done';
         const exclusive = id === '1-2' && area.activity.exclusive;
-        const reward = { oil: 1, wool: 1, item: exclusive };
-        grant(reward);
-        const heart = Field.adventureHeart(record, day);
+        const item = grant({ oil: first ? 1 : 0, wool: first ? 1 : 0, item: exclusive });
+        const heart = first && Field.adventureHeart(record, day);
         feedback('오늘의 모험을 마쳤어.');
         Sound.sfx('star');
         return card(id === '1-6' ? '첫째 주 모험 완료' : '오늘의 모험 완료', id === '1-6'
           ? '일곱 날 동안 기다림의 길을 걸었어. 지도에서 걸어온 길을 볼 수 있어.'
           : '지도에 오늘 걸은 길을 기록했어. 별 조각과 마을의 부탁도 더 찾아볼 수 있어.', {
-          detail: ['털 +1', '기름 +1', heart && '오늘의 하트 +1', exclusive && ('옷장 · ' + exclusive)].filter(Boolean).join(' · '),
+          detail: [first && '털 +1', first && '기름 +1', heart && '오늘의 하트 +1', item && ('옷장 · ' + item)].filter(Boolean).join(' · '),
           button: '마을 더 둘러보기'
         });
       }
@@ -307,7 +307,7 @@
         if (mode === 'wait') advance(track, key);
         else {
           track.run.hits = [];
-          Core.save(); feedback('시간이 다 됐어. 기다리던 사람에게 다시 말을 걸면 재도전할 수 있어.'); refresh();
+          Core.save(); feedback('시간이 다 됐어. ' + targets[key].title + '에게 다시 말을 걸면 재도전할 수 있어.'); refresh();
         }
       }, 100);
       refresh();
@@ -327,7 +327,8 @@
         if (key === passenger) view?.setEscort(key);
         if (key === step.nodes.at(-1)) view?.setEscort(null);
       }
-      if (step.type === 'light' && targets[key].type === 'light') { Sound.sfx('ignite'); view?.react(key, 'spark'); }
+      if (step.type === 'clear') { Sound.sfx('thump'); view?.react(key, 'spark'); }
+      else if (step.type === 'light' && targets[key].type === 'light') { Sound.sfx('ignite'); view?.react(key, 'spark'); }
       else if (step.type === 'order') {
         Sound.sfx('exploreBell', count(track.run) - 1);
         view?.react(key, 'note');
@@ -368,7 +369,7 @@
       }
       if (step.type === 'timed' && key === step.start) {
         const begin = () => startClock(track, key, 'timed', step.seconds);
-        return card('아이 셋 찾기', step.intro, { who: targets[key].actor, button: '30초 도전 시작', action: begin });
+        return card(step.title || '아이 셋 찾기', step.intro, { who: targets[key].actor, button: step.seconds + '초 도전 시작', action: begin });
       }
       if (step.type === 'wait' && key === (step.waitAt || step.nodes[0])) {
         if (clock) return;
@@ -383,7 +384,13 @@
         return;
       }
       if (clock?.mode === 'timed' && performance.now() - clock.start >= clock.seconds * 1000) return;
-      const target = targets[key], line = step.lines?.[key] || (step.type === 'wait' ? '' : step.line);
+      const target = targets[key];
+      if (step.type === 'clear') {
+        getView()?.react(key, 'rustle');
+        Sound.sfx('tap');
+        return card(target.title, '돌이 조금 움직였어.', { button: '길 가장자리로 밀기', action: () => advance(track, key) });
+      }
+      const line = step.lines?.[key] || (step.type === 'wait' ? '' : step.line);
       if (key === 'word' || key === 'secret') {
         mark(log, id, key); statusChanged();
         return card(target.title, target.text || '', { word: target.ref, button: '계속', action: () => advance(track, key) });
@@ -507,10 +514,11 @@
           view.setEscort(step.passenger || step.nodes[0]);
         }
       }
+      if (adventure.carry) view?.setCarry(state.bag[adventure.carry] ? '🏺' : '');
       const score = stars(id, log);
       root.querySelector('[data-score]').textContent = `✦ 별 ${score.n}/3 · 부탁 ${sideCount(area, state)}/${sides.length} · 비밀 ${done('secret') ? '✓' : '◇'}`;
       bagButton.querySelector('small').textContent = slotCount() + '/6';
-      next.hidden = !state.done;
+      next.hidden = !complete(id);
       const markers = new Map();
       const add = (key, extra = {}) => {
         const target = targets[key];
@@ -532,6 +540,9 @@
       const lights = steps.findIndex(step => step.type === 'light');
       if (lights >= 0 && state.main.step >= lights) {
         for (const key of steps[lights].nodes) if (targets[key].type === 'light' && (state.main.step > lights || state.main.hits.includes(key))) add(key, { lit: true });
+      }
+      for (const [key, target] of Object.entries(targets)) {
+        if (target.onlyWhenActive) view?.showResident(key, markers.has(key) || state.done);
       }
       if (id === '1-4') for (const key of ['sign1', 'sign2', 'sign3', 'zach']) view?.showResident?.(key, markers.has(key));
       if (id === '1-5') for (const key of ['start', 'bendSouth', 'bend', 'gate']) view?.showResident?.(key, markers.has(key));
@@ -584,6 +595,7 @@
     const npc = area.markers.find(marker => marker.id === 'person');
     const currentLine = marker => marker.lines.findLast(([seen]) => !seen || Core.data.done[seen]);
     const sameDay = event?.ep === id;
+    const giftLink = act.gift ? `<button class="link" type="button" data-gift-go hidden>🎁 ${esc(act.gift[1])}${record.woolGifts[act.gift[0]] ? ' ✓' : ''}</button>` : '';
     const list = openList();
     const index = list.findIndex(ep => ep.id === id);
     const exits = [list[index - 1], list[index + 1]].map((ep, i) => ep && ({
@@ -608,8 +620,9 @@
         <button type="button" data-hints><i>☷</i> 마을 일지</button></footer>` : `<footer class="explore-foot"><button class="link explore-activity-link" type="button" data-activity-link>⭐ 오늘의 활동</button><button class="link" type="button" data-hints>이 장소에서 할 일</button>
       ${act.sequence ? '<button class="link" type="button" data-melody hidden>🔔 힌트 다시 듣기</button>' : ''}
       ${act.manger ? '<button class="link" type="button" data-final-album hidden>여정 앨범 열기</button>' : ''}
-      ${act.gift ? `<button class="link" type="button" data-gift-go hidden>🎁 ${esc(act.gift[1])}${record.woolGifts[act.gift[0]] ? ' ✓' : ''}</button>` : ''}
+      ${giftLink}
       ${!Core.data.done[id] ? '<span>이야기를 더 보면 새 대화가 열려.</span>' : ''}</footer>`}
+      ${enhanced ? giftLink : ''}
       <button class="btn" type="button" data-field-next hidden>🐑 내 양 돌보러 가기</button>`, 'explore-location' + (enhanced ? ' adventure-location' : ''));
     const stage = root.querySelector('.explore-stage'), status = root.querySelector('.explore-status');
     const fallback = root.querySelector('.explore-flat'), timer = root.querySelector('[data-timer]');
@@ -647,6 +660,7 @@
           title: event.title, hidden: !!event.wool || event.title === '아이들의 숨바꼭질' });
         shown = withSymbols(markers);
         view?.setMarkers(shown);
+        if (gift) gift.hidden = !complete(id);
         if (flat) renderAdventureFlat();
         return;
       }

@@ -756,8 +756,9 @@
     const tuft = [], tn = L.bigTuft ? 7 : 4, tk = L.bigTuft ? 1.45 : 1;
     for (let i = 0; i < tn; i++) tuft.push(place(ico, (i - (tn - 1) / 2) * 0.08, 0.22 * hs + (i % 2) * 0.04 * tk, -0.02 + (i % 2) * 0.06, 0.12 * tk, 0.1 * tk, 0.12 * tk, i, i * 2, 0));
     const tuftMesh = merged(tuft, woolMat); head.add(tuftMesh);
+    const ears = [];
     for (const sx of [-1, 1]) {   // 귀
-      const ear = new T.Group(); ear.position.set(sx * 0.24 * hs, 0.08, 0.02); ear.rotation.set(0.2, 0, sx * -0.9);
+      const ear = new T.Group(); ears.push(ear); ear.position.set(sx * 0.24 * hs, 0.08, 0.02); ear.rotation.set(0.2, 0, sx * -0.9);
       ear.add(new T.Mesh(place(oct, sx * 0.12, 0, 0, 0.16, 0.05, 0.09), mat(L.face)));
       ear.add(new T.Mesh(place(oct, sx * 0.13, 0.012, 0.01, 0.11, 0.03, 0.055), mat(L.ear)));
       head.add(ear);
@@ -802,7 +803,7 @@
     const scale = [0.74, 0.86, 1, 1.04][st] * (L.size || 1);
     root.scale.setScalar(scale);
     const wl = clamp(woolLen ?? 1, 0, 1);
-    Object.assign(root.userData, { body, head, legs, glows, species, level, wear, wearKey: wearKey(outfit),
+    Object.assign(root.userData, { body, head, legs, ears, glows, species, level, wear, wearKey: wearKey(outfit),
       st, scale, woolG, tuftMesh, anim, garments, wool: wl, woolShown: wl, woolColor });
     applyWool(root);
     return root;
@@ -2544,30 +2545,36 @@
         [cube, linen, -.18, 1.43, -.026, .102, .39, .18, 0, 0, -.24],
         [cube, linen, .18, 1.44, -.035, .105, .36, .18, 0, 0, .21]
       ];
+      // 가까이서 보는 인물(detailed)은 발·두 팔을 따로 만들어 걸음에 맞춰 움직인다(gaitPerson)
       for (const side of [-1, 1]) {
         body.push([cube, ink, side * .071, 1.696, .224, .024, .026, .017]);
-        body.push([cube, sandals, side * .127, .10, .048, .16, .13, .32]);
+        if (!detailed) body.push([cube, sandals, side * .127, .10, .048, .16, .13, .32]);
       }
       if (prop === 'staff') body.push([cube, sandals, -.39, .75, .16, .046, 1.49, .05, .06, 0, -.12]);
       if (prop === 'jar') body.push([ball, '#ae6d53', -.42, .79, .17, .24, .28, .22], [robe, '#c98960', -.42, 1.02, .17, .115, .099, .12]);
       if (prop === 'basket') body.push([robe, '#af8551', -.41, .60, .22, .23, .25, .21, 0, 0, Math.PI]);
       if (prop === 'lantern') body.push([robe, '#ac754b', -.4, .59, .14, .15, .18, .15], [taper, '#ffd181', -.4, .77, .14, .075, .22, .075]);
-      const actor = new T.Group();
+      const actor = new T.Group(), rig = new T.Group();
+      actor.add(rig);
       let arm;
-      const staticArms = [];
+      const staticArms = [], arms = [], feet = [];
       for (const side of [-1, 1]) {
         const parts = [[robe, cloth, side * .042, -.19, .026, .11, .42, .11, 0, 0, side * .12],
           [ball, skin, side * .064, -.41, .049, .077, .077, .069]];
-        if (side === 1 && detailed) {
-          arm = mesh(parts); arm.position.set(.265, 1.24, 0); actor.add(arm);
+        if (detailed) {
+          const a = mesh(parts); a.position.set(side * .265, 1.24, 0); rig.add(a); arms.push(a);
+          if (side === 1) arm = a;
+          const f = mesh([[cube, sandals, 0, 0, .048, .16, .13, .32]]); f.position.set(side * .127, .10, 0); actor.add(f); feet.push(f);
         } else for (const [shape, color, x, y, z, ...rest] of parts) staticArms.push([shape, color, side * .265 + x, 1.24 + y, z, ...rest]);
       }
-      actor.add(mesh([...body, ...staticArms]));
+      rig.add(mesh([...body, ...staticArms]));
       if (detailed) {
         const face = faceFor(name);
-        if (face) actor.add(face);
+        if (face) rig.add(face);
       }
       actor.scale.setScalar(size);
+      // 걸음 상태: phase는 걸은 거리로만 늘어난다(발이 미끄러지지 않게)
+      actor.userData.gait = { rig, arms, feet, phase: Math.random() * 6, amt: 0, seed: Math.random() * 9, holds: prop === 'staff' || prop === 'jar' || prop === 'basket' || prop === 'lantern', wave: 0 };
       return { actor, arm };
     }
     function animal(kind) {
@@ -2609,6 +2616,8 @@
     const rand = seeded(seed), { visual, zones } = adventure;
     const temple = visual === 'temple' || visual === 'sanctuary';
     const roof = visual === 'house' || visual === 'roofs';
+    const desert = visual === 'desert', galilee = visual === 'galilee', workshop = visual === 'workshop';
+    const openCountry = desert || galilee;
     const night = layout.time === 'night', dawn = layout.time === 'dawn', day = layout.time === 'day';
     const predawn = layout.time === 'predawn', variant = layout.adventureVariant;
     const tone = night ? '#3b3a63' : day ? '#98b6c3' : dawn ? '#c99e8e' : predawn ? '#786989' : '#bb8c77';
@@ -2663,11 +2672,11 @@
       const star = glowSprite(night || predawn ? '#ffe3a7' : '#ffe2bd', night || predawn ? 3.1 : 6.7, .85);
       star.position.set(predawn ? -3 : 8, night ? 16 : 10, -40); scene.add(star);
     }
-    const routeX = z => visual === 'hills' ? 5 * Math.sin((z + 7) * .10) : 0;
+    const routeX = z => (visual === 'hills' || openCountry) ? 5 * Math.sin((z + 7) * .10) : 0;
     const groundGeo = new T.PlaneGeometry(70, 68, 52, 54).rotateX(-Math.PI / 2).toNonIndexed();
     const groundPos = groundGeo.attributes.position, colors = [];
-    const groundColor = new T.Color(temple ? '#7f7684' : roof ? '#927975' : '#706e5c');
-    const roadColor = new T.Color(temple ? '#a69ba0' : visual === 'hills' ? '#aa926f' : '#ac927e'), tint = new T.Color();
+    const groundColor = new T.Color(desert ? '#a68262' : galilee ? '#697e54' : temple ? '#7f7684' : roof ? '#927975' : '#706e5c');
+    const roadColor = new T.Color(desert ? '#c1a179' : temple ? '#a69ba0' : visual === 'hills' ? '#aa926f' : '#ac927e'), tint = new T.Color();
     for (let i = 0; i < groundPos.count; i += 3) {
       const x = (groundPos.getX(i) + groundPos.getX(i + 1) + groundPos.getX(i + 2)) / 3, z = groundPos.getZ(i);
       const dirt = Math.abs(x - routeX(z)) < 3 || Math.abs(z - 11) < 2 || Math.abs(z + 4) < 2 || Math.abs(z + 16) < 1.4;
@@ -2765,17 +2774,19 @@
       jar(x + 1.53, z + .54, 1.27);
       stop(x, z, .83);
     }
-    function well(x, z) {
+    function well(x, z, dry = false) {
       const y = height(x, z);
       round('#535a68', x, y + .28, z, 1.02, .55, 1.02);
-      round('#527d86', x, y + .565, z, .79, .021, .79);
+      round(dry ? '#9b7d60' : '#527d86', x, y + .565, z, .79, .021, .79);
       for (let i = 0; i < 11; i++) {
         const a = i / 11 * 2 * Math.PI;
         box(cap, x + Math.cos(a) * .94, y + .69, z + Math.sin(a) * .94, .33, .29, .55, 0, -a);
       }
-      for (const side of [-1, 1]) box(wood, x + side * .99, y + 1.38, z, .129, 2.75, .16);
-      box(wood, x, y + 2.68, z, 2.35, .19, .20);
-      box(ochre, x, y + 1.85, z, .041, 1.61, .042);
+      if (!dry) {
+        for (const side of [-1, 1]) box(wood, x + side * .99, y + 1.38, z, .129, 2.75, .16);
+        box(wood, x, y + 2.68, z, 2.35, .19, .20);
+        box(ochre, x, y + 1.85, z, .041, 1.61, .042);
+      }
       stop(x, z, 1.03);
     }
     function laundry(x, z) {
@@ -2841,6 +2852,38 @@
         box(cap, 0, elevation(-18, 1.03), -18, 1.17, .12, .91);
         stop(0, -18, .67); lamp(0, -18, 1.18, true, true);
       } else lamp(-4.7, 6, 1.1, true, true);
+    } else if (openCountry) {
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 27; i++) {
+          const x = side * (5.6 + rand() * 16), z = -21 + rand() * 42;
+          const color = desert ? (i % 2 ? '#a77960' : cap) : (i % 2 ? '#827962' : '#91a16a');
+          rock(color, x, height(x, z) + .15, z, .35 + rand() * 1.3, .4 + rand() * .95, .38 + rand(), 0, i);
+        }
+      }
+      if (desert) {
+        well(-16.3, -18.35, true);
+        for (const [x, z] of [[-10, 15], [11, 2], [6, -17]]) {
+          round(wood, x, height(x, z) + .58, z, .09, 1.16, .09);
+          box(cap, x, height(x, z) + 1.12, z, .82, .24, .2, 0, .47);
+        }
+        for (const [x, z, size] of [[-16, 5, 2.6], [15, -2, 3], [-9, -20, 2.5]]) {
+          rock('#916f64', x, height(x, z) + size * .64, z, size, size * 1.38, size * .77, 0, .5);
+          stop(x, z, size * .55);
+        }
+      } else {
+        for (const [x, z] of [[-15, 12], [-10.1, .4], [-6.1, -2], [-2.6, -4.8], [2.2, -7.5], [7.3, -6.2], [14, -4], [17.2, -6.5], [11.8, -15]]) {
+          olive(x, z, .95 + rand() * .48);
+        }
+        basket(12.6, -7.2, 1.5);
+        const lake = new T.Mesh(new T.CircleGeometry(26, 36), mat('#678c98', { roughness: .5 }));
+        lake.rotation.x = -Math.PI / 2;
+        lake.scale.y = .38;
+        lake.position.set(15, 3.72, -37);
+        scene.add(lake);
+        for (let i = 0; i < 13; i++) {
+          box(i % 2 ? '#93acb0' : '#b6bdb3', -3 + rand() * 38, 3.74, -31 - rand() * 11, .55 + rand() * 3, .006, .036);
+        }
+      }
     } else {
       for (const side of [-1, 1]) {
         for (const [i, z] of [15, 3, -15].entries()) {
@@ -2856,7 +2899,43 @@
           rock(i % 2 ? '#8d8275' : '#6c795b', x, height(x, z) + .08, z, .12 + rand() * .45, .19 + rand() * .26, .28 + rand() * .30, 0, i);
         }
       }
-      well(5.9, 10.8); laundry(-7.5, 9.4); olive(10.4, -5.7, 1.5);
+      if (visual === 'well') well(2.7, -1.05);
+      else if (!workshop) well(5.9, 10.8);
+      laundry(-7.5, 9.4); olive(10.4, -5.7, 1.5);
+      if (workshop) {
+        home(.4, -22, 9.3, '#967c79');
+        for (const [x, z] of [[-5.8, -19], [13, -2.4], [-14.7, 13.2]]) {
+          const y = height(x, z);
+          for (const side of [-1, 1]) box(wood, x + side * .91, y + .44, z, .24, .88, .71);
+          box(ochre, x, y + .91, z, 2.53, .23, .88);
+          for (let i = 0; i < 4; i++) box(i % 2 ? cap : wood, x - .65 + i * .43, y + 1.1, z, .21, .15, .71, 0, (i - 1) * .17);
+          stop(x, z, .61);
+          if (variant !== 'dream') lamp(x + 1.1, z, 1.05);
+        }
+        const z = variant === 'dream' ? -20.8 : -18.9;
+        for (let x = -3; x <= 4; x += 1) {
+          box(variant === 'dream' ? roofLine : wood, x, height(x, z) + .13, z, 1, .26, 1.46);
+        }
+      }
+      if (visual === 'nazareth') {
+        olive(-17.3, -20.35, 1.7);
+        if (variant === 'wedding') {
+          home(0, -21, 7.2, '#c49a83');
+          for (const x of [-3, 3]) {
+            box(wood, x, height(x, -17.1) + 1.25, -17.1, .14, 2.5, .15);
+            jar(x + .42, -16.95, 1.12);
+          }
+          for (let i = 0; i < 13; i++) {
+            const x = (i - 6) * .5;
+            box('#d6bcab', x, height(x, -17.1) + 2.22 + .31 * Math.abs(x) / 3, -17.1, .54, .16, .12, 0, 0, x * .048);
+            rock(i % 2 ? '#fff1d9' : '#dda498', x, height(x, -17.1) + 2.07 + .32 * Math.abs(x) / 3, -17.05, .22, .15, .13);
+          }
+        } else home(1.9, -5.7, 4.8, '#997c74');
+      }
+      if (visual === 'well') {
+        home(4.7, -20.3, 7.1, '#bc947f');
+        for (const [x, z] of [[-2.7, 14.7], [-1.8, 14], [3.5, -15.6], [5.3, -15.8], [6.4, -15.5]]) jar(x, z, 1.6);
+      }
       if (visual === 'house') {
         home(-7.2, 4.7, 3.4, '#b38b72'); home(7.8, -2.2, 3.9, '#af8979');
         jar(-5.36, 6.6, 1.14); basket(-5.89, 6.48);
@@ -2885,8 +2964,8 @@
       }
     }
     for (let i = 0; i < 18; i++) {
-      const x = (rand() - .5) * 65, z = -29 - rand() * 6;
-      rock(night ? '#494568' : '#777d80', x, 1, z, 3.7 + rand() * 6, 4 + rand() * 8, 6, 0, i);
+      const x = (rand() - .5) * 65, z = -29 - rand() * 6 - (galilee ? 21 : 0);
+      rock(desert ? '#a78177' : night ? '#494568' : '#777d80', x, 1, z, 3.7 + rand() * 6, 4 + rand() * 8, 6, 0, i);
     }
     for (const [index, [opening, z]] of adventure.crossings.entries()) {
       for (let x = -23.25; x <= 23.4; x += 1.5) {
@@ -2953,12 +3032,13 @@
     }
     const streets = temple ? [[-4.5, 13], [4.4, 10.8], [-3.6, 2.5], [5.7, -3.5], [-8.9, -10], [3.8, -12.8], [-11.7, 6.7], [10.3, 3.3]] :
       [[-4.6, 13.2], [3.8, 11.5], [-8, 4.7], [5.3, 3.7], [-3.7, -6.7], [4.5, -11], [-14.3, -.8], [12.3, -7.9]];
-    streets.forEach((pos, i) => {
+    const pedestrians = desert || variant === 'dream' ? [] : galilee ? streets.slice(0, 4) : streets;
+    pedestrians.forEach((pos, i) => {
       const { actor, arm } = models.person(i === 2 ? '마을 아이' : '마을 사람', i, i < 4);
       addActor(actor, pos, i % 3 !== 1 ? 1.1 + (i % 3) * .55 : 0, arm);
     });
-    for (const [i, pair] of (temple ? [['비둘기', [-2.4, 10]], ['비둘기', [-3, 8]], ['비둘기', [4.9, -8]], ['고양이', [2.6, 13.1]], ['나귀', [7.1, 11.5]], ['닭', [11.6, 5.4]]] :
-      [['닭', [-2.5, 12]], ['닭', [-4.7, 10]], ['염소', [3.1, 9.5]], ['나귀', [-6.6, 14]], ['고양이', [3.4, -10]], ['비둘기', [-5.2, -12]]]).entries()) {
+    for (const [i, pair] of (adventure.fauna || (temple ? [['비둘기', [-2.4, 10]], ['비둘기', [-3, 8]], ['비둘기', [4.9, -8]], ['고양이', [2.6, 13.1]], ['나귀', [7.1, 11.5]], ['닭', [11.6, 5.4]]] :
+      [['닭', [-2.5, 12]], ['닭', [-4.7, 10]], ['염소', [3.1, 9.5]], ['나귀', [-6.6, 14]], ['고양이', [3.4, -10]], ['비둘기', [-5.2, -12]]])).entries()) {
       const [kind, pos] = pair;
       addActor(models.animal(kind), pos, .92 + (i % 3) * .31);
     }
@@ -3090,6 +3170,8 @@
     let abilityEffect, waypoint, escort, joystick, displayedZone = -1, ceremony;
     const celebrationActors = [];
     let followTimer = 0, greeted = '', lastGreeting = -Infinity;
+    let sheepSpeed = 0, leaderSpeed = 0, footIndex = 0;
+    const leaderVel = new T.Vector2();
     let travel = 0, walking = false, nextStepSound = 0;
     const onGround = (x, z) => [x, world.height(x, z), z];
     const walkPosition = () => (leader || player).position;
@@ -3457,22 +3539,29 @@
       const dx = at.x - s.x, dz = at.z - s.z;
       const distance = Math.hypot(dx, dz), near = Math.hypot(p.x - s.x, p.z - s.z);
       let trotting = false;
-      if ((near > 1.36 || trail.length > 3) && distance > .38) {
-        const step = Math.min(distance, delta * (near > 3.9 ? 5.5 : 2.95));
+      // 멀수록 빨리, 가까워지면 천천히 — 속도를 부드럽게 올리고 내린다(갑자기 서거나 튀지 않게)
+      const chase = (near > 1.36 || trail.length > 3) && distance > .38 ? clamp((near - 1.1) * 1.6, .9, 5.2) : 0;
+      sheepSpeed += (chase - sheepSpeed) * Math.min(1, delta * (chase > sheepSpeed ? 4.5 : 6.5));
+      if (sheepSpeed > .04 && distance > .05) {
+        const step = Math.min(distance, delta * sheepSpeed);
         const x = s.x + dx / distance * step, z = s.z + dz / distance * step;
         if (open(x, z)) {
           s.x = x; s.z = z; s.y = world.height(x, z); trotting = true; followTimer = 0;
           const yaw = Math.atan2(dx, dz) - player.rotation.y;
-          player.rotation.y += Math.atan2(Math.sin(yaw), Math.cos(yaw)) * Math.min(1, delta * 9);
-        } else followTimer += delta;
+          player.rotation.y += Math.atan2(Math.sin(yaw), Math.cos(yaw)) * Math.min(1, delta * 6);
+        } else { followTimer += delta; sheepSpeed *= .5; }
+      } else if (near < 2.6) {
+        // 멈춰 있을 땐 천천히 주인 쪽을 돌아본다
+        const yaw = Math.atan2(p.x - s.x, p.z - s.z) - player.rotation.y;
+        player.rotation.y += Math.atan2(Math.sin(yaw), Math.cos(yaw)) * Math.min(1, delta * 1.6);
       }
-      if (near > 6 || followTimer > 1.7) {
+      if (near > 7 || followTimer > 1.7) {
         const candidates = [trail.find(point => open(point.x, point.z)), p];
         const point = candidates.find(Boolean);
         s.copy(point); trail.splice(0, Math.max(0, trail.indexOf(point))); followTimer = 0;
       }
       if (escort) {
-        const e = escort.actor;
+        const e = escort.actor, ex = e.position.x, ez = e.position.z;
         const point = trail.find(node => node.distanceToSquared(e.position) > 1.5) || p;
         const dx = point.x - e.position.x, dz = point.z - e.position.z;
         const length = Math.hypot(dx, dz);
@@ -3480,22 +3569,28 @@
           const m = Math.min(length, 3.05 * delta) / length;
           const x = e.position.x + dx * m, z = e.position.z + dz * m;
           if (open(x, z)) {
-            e.position.set(x, world.height(x, z) + (reduced ? 0 : .05 * Math.abs(Math.sin(t * 11))), z);
-            e.rotation.y = Math.atan2(dx, dz);
+            e.position.set(x, world.height(x, z), z);
+            const turn = Math.atan2(dx, dz) - e.rotation.y;
+            e.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, delta * 8);
           }
           if (Math.hypot(p.x - e.position.x, p.z - e.position.z) > 6.5 && open(at.x, at.z)) e.position.copy(at);
         }
+        gaitPerson(e, Math.min(Math.hypot(e.position.x - ex, e.position.z - ez), delta * 6), delta, t, reduced);
       }
       return trotting;
     }
-    function animateVillage(p, t, now) {
+    function animateVillage(p, t, now, delta = 1 / 60) {
       for (const resident of world.actors) {
         const { actor, pos, move, arm, key, yaw, phase } = resident;
         if (resident.hidden || escort === resident) { actor.visible = !resident.hidden; continue; }
+        const g = actor.userData.gait, ox = actor.position.x, oz = actor.position.z;
         if (resident.travel) {
           const { start, from, to, lift } = resident.travel, phase = Math.min(1, (now - start) / 1900);
-          actor.position.lerpVectors(from, to, phase);
-          actor.position.y += lift ? Math.sin(phase * Math.PI) * lift : Math.abs(Math.sin(t * 9)) * .075;
+          const eased = lift ? phase : phase * phase * (3 - 2 * phase);
+          actor.position.lerpVectors(from, to, eased);
+          if (lift) actor.position.y += Math.sin(phase * Math.PI) * lift;
+          else if (g) gaitPerson(actor, Math.hypot(actor.position.x - ox, actor.position.z - oz), delta, t, reduced);
+          else actor.position.y += Math.abs(Math.sin(t * 9)) * .075;
           actor.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
           if (phase === 1) {
             resident.pos = [to.x, to.z]; resident.travel = null;
@@ -3507,27 +3602,34 @@
         actor.visible = d < 25;
         if (!actor.visible) continue;
         const close = d < 10.5;
-        if (arm) {
-          arm.visible = close;
-          if (!reduced && close) arm.rotation.x = move ? .34 * Math.sin(t * 5 + phase) : d < 4.4 ? -.64 + Math.sin(t * 3 + phase) * .31 : -.20;
+        if (g) {
+          g.arms.forEach(a => { a.visible = close; });
+          g.wave = key && key === greeted && now - lastGreeting < 2600 ? 1 : 0;
         }
         if (!reduced && move) {
-          const angle = t * (key ? .75 : .48) + phase;
+          // 타원 길을 걷되, 길 끝에서 잠깐 서서 쉬었다 간다(사람마다 박자가 다름)
+          const cycle = (t * (key ? .75 : .48) + phase) % (Math.PI * 2 + 1.4);
+          const angle = Math.floor((t * (key ? .75 : .48) + phase) / (Math.PI * 2 + 1.4)) * Math.PI * 2 + Math.min(cycle, Math.PI * 2);
           const x = pos[0] + Math.sin(angle) * move, z = pos[1] + Math.cos(angle) * move * .6;
-          if (!open(x, z)) continue;
-          actor.position.set(x, world.height(x, z) + Math.abs(Math.sin(t * 9 + phase)) * .073, z);
-          actor.rotation.y = Math.atan2(Math.cos(angle), -Math.sin(angle) * .6);
+          if (!open(x, z)) { if (g) gaitPerson(actor, 0, delta, t, reduced); continue; }
+          const moved = Math.hypot(x - ox, z - oz);
+          actor.position.set(x, world.height(x, z) + (g ? 0 : Math.abs(Math.sin(t * 9 + phase)) * .073), z);
+          if (moved > .0005) {
+            const turn = Math.atan2(x - ox, z - oz) - actor.rotation.y;
+            actor.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, delta * 7);
+          }
+          if (g) gaitPerson(actor, moved, delta, t, reduced);
         } else {
           const turn = key && d < 3.1 ? Math.atan2(p.x - actor.position.x, p.z - actor.position.z) : yaw;
           const difference = turn - actor.rotation.y;
-          actor.rotation.y += Math.atan2(Math.sin(difference), Math.cos(difference)) * .085;
+          actor.rotation.y += Math.atan2(Math.sin(difference), Math.cos(difference)) * Math.min(1, delta * 5);
+          if (g) gaitPerson(actor, 0, delta, t, reduced);
         }
         if (key && d < 3.2 && arm && key !== greeted && now - lastGreeting > 9500 && !talking && handlers.canInteract?.() !== false && handlers.companionLine) {
           greeted = key; lastGreeting = now;
           say('sheep', handlers.companionLine);
         }
       }
-      if (guide.arm && !reduced) guide.arm.rotation.x = walking ? Math.sin(t * 10) * .43 - .26 : -.30;
       if (abilityEffect) {
         const { kind, start, to, from, feature, featureX } = abilityEffect;
         const age = now - start;
@@ -3568,37 +3670,61 @@
       const requested = waitForTarget;
       const allowed = handlers.canInteract?.() !== false;
       const step = allowed ? route[0] : null;
-      const stride = (adventure ? 2.55 : 3.45) * delta;
-      if (step) {
+      // 이동: 원하는 속도로 부드럽게 가속·감속(0.1초 남짓), 방향도 천천히 돈다
+      const maxSpeed = adventure ? 2.55 : 3.45;
+      let wantX = 0, wantZ = 0;
+      const sheepX = player.position.x, sheepZ = player.position.z;
+      const stickOn = joystick && Math.hypot(joystick.x, joystick.y) > .14 && allowed;
+      if (stickOn && route.length) { route.length = 0; waitForTarget = null; goal.visible = false; }
+      if (step && !stickOn) {
         const dx = step[0] - p.x, dz = step[1] - p.z, dist = Math.hypot(dx, dz);
-        if (dist <= stride) { p.x = step[0]; p.z = step[1]; route.shift(); }
-        else { p.x += dx / dist * stride; p.z += dz / dist * stride; }
-        const diff = Math.atan2(dx, dz) - mover.rotation.y;
-        mover.rotation.y += Math.atan2(Math.sin(diff), Math.cos(diff)) * Math.min(delta * 10, 1);
-      } else if (allowed) { waitForTarget = null; goal.visible = false; }
-      if (joystick && Math.hypot(joystick.x, joystick.y) > .14 && allowed) {
-        const dx = (Math.cos(az) * joystick.x + Math.sin(az) * joystick.y) * stride;
-        const dz = (Math.cos(az) * joystick.y - Math.sin(az) * joystick.x) * stride;
-        if (open(p.x + dx, p.z + dz)) { p.x += dx; p.z += dz; }
-        else if (open(p.x + dx, p.z)) p.x += dx;
-        else if (open(p.x, p.z + dz)) p.z += dz;
-        const turn = Math.atan2(dx, dz) - mover.rotation.y;
-        mover.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(delta * 10, 1);
+        const reach = Math.max(.05, leaderVel.length() * delta * 1.05);
+        if (dist <= reach) { p.x = step[0]; p.z = step[1]; route.shift(); if (!route.length) leaderVel.multiplyScalar(.35); }
+        else {
+          const ease = route.length === 1 ? clamp(dist / .7, .3, 1) : 1;
+          wantX = dx / dist * maxSpeed * ease; wantZ = dz / dist * maxSpeed * ease;
+        }
+      } else if (allowed && !step) { waitForTarget = null; goal.visible = false; }
+      if (stickOn) {
+        wantX = (Math.cos(az) * joystick.x + Math.sin(az) * joystick.y) * maxSpeed;
+        wantZ = (Math.cos(az) * joystick.y - Math.sin(az) * joystick.x) * maxSpeed;
+      }
+      if (!allowed) wantX = wantZ = 0;
+      const speeding = Math.hypot(wantX, wantZ) > leaderVel.length();
+      const accel = Math.min(1, delta * (speeding ? 8 : 15));
+      leaderVel.x += (wantX - leaderVel.x) * accel; leaderVel.y += (wantZ - leaderVel.y) * accel;
+      if (leaderVel.lengthSq() < .0009 && !wantX && !wantZ) leaderVel.set(0, 0);
+      const mx = leaderVel.x * delta, mz = leaderVel.y * delta;
+      if (mx || mz) {
+        if (step && !stickOn) { p.x += mx; p.z += mz; }
+        else if (open(p.x + mx, p.z + mz)) { p.x += mx; p.z += mz; }
+        else if (open(p.x + mx, p.z)) { p.x += mx; leaderVel.y *= .4; }
+        else if (open(p.x, p.z + mz)) { p.z += mz; leaderVel.x *= .4; }
+        else leaderVel.multiplyScalar(.2);
+      }
+      leaderSpeed = leaderVel.length();
+      if (leaderSpeed > .08) {
+        const turn = Math.atan2(leaderVel.x, leaderVel.y) - mover.rotation.y;
+        mover.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(delta * (leaderSpeed > 1 ? 9 : 5), 1);
       }
       const walked = Math.hypot(p.x - fromX, p.z - fromZ);
-      walking = walked > .0008; travel += walked;
+      walking = leaderSpeed > .12 && walked > .0008; travel += walked;
       p.y = world.height(p.x, p.z);
       const sheepWalking = adventure ? followLeader(p, t, now, delta) : !!step;
       if (adventure) {
-        animateVillage(p, t, now);
+        animateVillage(p, t, now, delta);
         const zone = moveInfo().zone;
         if (zone !== displayedZone) { displayedZone = zone; handlers.onZone?.(); }
         if (ceremony && now - ceremony > 6000) {
           ceremony = null;
           celebrationActors.splice(0).forEach(actor => { actor.removeFromParent(); disposeFigure(actor); });
         }
-        if (walking && now > nextStepSound) { handlers.onFootstep?.(); nextStepSound = now + 460; }
-        if (walking && !reduced) p.y += .037 * Math.abs(Math.sin(t * 12));
+        if (leader) {
+          gaitPerson(leader, Math.min(walked, delta * 6), delta, t, reduced);
+          // 발이 땅에 닿는 순간에 발소리
+          const foot = Math.floor(leader.userData.gait.phase / Math.PI + .5);
+          if (foot !== footIndex) { footIndex = foot; if (walking && now > nextStepSound) { handlers.onFootstep?.(); nextStepSound = now + 240; } }
+        }
       }
       if (step && requested !== 'photo' && requested !== 'activity') kneeling = false;
       const sleep = kneeling;
@@ -3621,9 +3747,10 @@
         glow.material.opacity = .55 * fireStrength;
       }
       const bounce = !reduced && reaction?.kind === 'spark' ? Math.max(0, 1 - (now - reaction.start) / 700) * .28 : 0;
-      u.body.position.y = lerp(u.body.position.y, sleep ? -.33 : (sheepWalking && !reduced ? Math.sin(t * 20) * .05 : 0) + bounce, .22);
-      legSwingExplore(u.legs, t, !reduced && sheepWalking ? 1 : 0, sleep);
-      u.head.rotation.x = lerp(u.head.rotation.x, sleep ? .17 : 0, .19);
+      const sheepMoved = Math.min(Math.hypot(player.position.x - sheepX, player.position.z - sheepZ), delta * 6);
+      const gs = sheepGait(player, sheepMoved, delta, t, sleep, reduced);
+      u.body.position.y = lerp(u.body.position.y, sleep ? -.33 : gs.bob + bounce, .3);
+      u.head.rotation.x = lerp(u.head.rotation.x, sleep ? .17 : gs.nod, .25);
       if (!reduced) animateWings(player, t);
       const gazing = reaction?.kind === 'star' && now - reaction.start < 2800;
       const cameraYaw = az;
@@ -3668,6 +3795,7 @@
           v.near = true;
           waitForTarget = null;
           route = []; goal.visible = false;
+          leaderVel.set(0, 0);
           if (marker.moving) followOrigin = obj.position.clone();
           if (marker.type === 'exit') handlers.onExit?.(marker.place);
           else handlers.onReach?.(marker.id);
@@ -3756,6 +3884,88 @@
       const marker = elements.get(id)?.marker;
       if (marker) moveTo(...marker.pos, id);
     }, destroy, metrics: () => ({ ...metrics }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors } };
+  }
+
+  // ---------- 걸음새 (Claude) ----------
+  // 사람: 걸은 거리만큼 phase가 늘고(한 걸음 STEP), 발은 앞으로 갈 때만 들리고, 팔은 반대 발과 함께,
+  // 몸은 두 발이 모일 때 가장 높고 벌어질 때 낮다. 멈추면 두 발 모은 자세로 부드럽게 돌아온다.
+  const STEP = .62;
+  function gaitPerson(actor, moved, dt, t, reduced) {
+    const g = actor.userData.gait; if (!g) return 0;
+    dt = Math.max(dt, 1 / 240);
+    const want = reduced ? 0 : Math.min(1, moved / dt / 2.1);
+    g.amt += (want - g.amt) * Math.min(1, dt * (want > g.amt ? 9 : 6));
+    g.phase += moved / (STEP * (actor.scale.x || 1)) * Math.PI;
+    if (want < .05) {
+      const rest = Math.round(g.phase / Math.PI) * Math.PI;
+      g.phase += (rest - g.phase) * Math.min(1, dt * 7);
+    }
+    const a = g.amt, ph = g.phase, sw = Math.sin(ph), cw = Math.cos(ph), idle = 1 - a;
+    g.feet.forEach((f, i) => {
+      const k = i ? -1 : 1, lift = Math.max(0, cw * k);
+      f.position.z = sw * k * .2 * a;
+      f.position.y = .10 + lift * .085 * a;
+      f.rotation.x = -lift * .35 * a + Math.max(0, -cw * k) * .12 * a;
+    });
+    g.waveAmt = (g.waveAmt || 0) + ((g.wave || 0) - (g.waveAmt || 0)) * Math.min(1, dt * 5);
+    g.arms.forEach((arm, i) => {
+      const k = i ? -1 : 1, held = g.holds && i === 0;
+      let x = sw * k * (held ? .1 : .5) * a + (held ? -.18 : -.05) - Math.sin(t * 1.7 + g.seed) * .03 * idle;
+      let z = (i ? 1 : -1) * (.04 + .05 * a);
+      if (i === 1 && g.waveAmt > .01 && !reduced) {
+        x = lerp(x, -2.35 + Math.sin(t * 2.2 + g.seed) * .1, g.waveAmt);
+        z = lerp(z, .25 + Math.sin(t * 8 + g.seed) * .32, g.waveAmt);
+      }
+      arm.rotation.x = x; arm.rotation.z = z;
+    });
+    const r = g.rig;
+    r.position.y = (.5 + .5 * Math.cos(2 * ph)) * .05 * a - .025 * a;
+    r.rotation.x = .075 * a + (reduced ? 0 : Math.sin(t * .8 + g.seed) * .012 * idle);
+    r.rotation.z = sw * .035 * a + (reduced ? 0 : Math.sin(t * .63 + g.seed * 2) * .018 * idle);
+    r.rotation.y = sw * .07 * a;
+    r.scale.y = 1 + (reduced ? 0 : Math.sin(t * 1.7 + g.seed) * .008 * idle);
+    return a;
+  }
+  // 양: 대각선 두 다리씩(트롯). 다리는 앞으로 나갈 때 살짝 접히고, 몸은 한 걸음마다 한 번 들썩·끄덕.
+  // 멈추면 고개를 이리저리 돌려 구경하고 가끔 귀를 턴다.
+  function sheepGait(o, moved, dt, t, rest, reduced) {
+    const u = o.userData;
+    const g = u.gait || (u.gait = { phase: 0, amt: 0, look: 0, lookTo: 0, next: 0, flick: -9, ear: 0 });
+    dt = Math.max(dt, 1 / 240);
+    const want = rest || reduced ? 0 : Math.min(1, moved / dt / 2.4);
+    g.amt += (want - g.amt) * Math.min(1, dt * (want > g.amt ? 10 : 6));
+    g.phase += moved / (1.05 * (u.scale || 1)) * Math.PI * 2;
+    if (want < .04) {
+      const restPh = Math.round(g.phase / Math.PI) * Math.PI;
+      g.phase += (restPh - g.phase) * Math.min(1, dt * 8);
+    }
+    const a = g.amt, ph = g.phase, sw = Math.sin(ph), cw = Math.cos(ph);
+    const reach = .28 + .34 * a;
+    u.legs.forEach((leg, i) => {
+      const k = i === 0 || i === 3 ? 1 : -1, lift = Math.max(0, cw * k);
+      leg.rotation.x = -sw * k * reach * a;
+      leg.scale.y = lerp(leg.scale.y, rest ? .31 : 1 - lift * .2 * a, .35);
+    });
+    if (!rest && !reduced && a < .15 && t > g.next) {
+      g.lookTo = Math.random() < .3 ? 0 : (Math.random() - .5) * 1.3;
+      g.next = t + 1.6 + Math.random() * 3.2;
+      if (Math.random() < .45) g.flick = t;
+    }
+    if (a > .15) g.lookTo = 0;
+    g.look += (g.lookTo - g.look) * Math.min(1, dt * 3.2);
+    if (u.head) u.head.rotation.y = g.look;
+    if (u.ears) {
+      const f = t - g.flick, flick = f >= 0 && f < .35 ? Math.sin(f / .35 * Math.PI) * .55 : 0;
+      u.ears.forEach((ear, i) => { ear.rotation.x = .2 + (i ? flick : flick * .4) - a * .25 * (.5 + .5 * Math.cos(2 * ph)); });
+    }
+    if (u.body) {
+      u.body.rotation.x = Math.sin(2 * ph) * .045 * a;
+      u.body.rotation.z = (reduced ? 0 : Math.sin(t * 1.4) * .012) * (1 - a);
+    }
+    return {
+      bob: (.5 + .5 * Math.cos(2 * ph)) * .07 * a + (reduced ? 0 : Math.sin(t * 1.9) * .006 * (1 - a)),
+      nod: -Math.cos(2 * ph) * .07 * a + (rest ? 0 : Math.max(0, Math.sin(t * .37 + 1.3) - .86) * 1.6 * (1 - a))
+    };
   }
 
   function legSwingExplore(legs, t, strength, rest) {
