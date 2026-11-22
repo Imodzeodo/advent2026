@@ -681,5 +681,68 @@
     return cv;
   }
 
-  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawPatrol, drawGift, drawGrowth, drawWardrobe, drawExploreChallenge, drawJourney, share, toBlob, fileName, STYLE, cardNo };
+  async function drawDiscoverNote(item, sheep, thumbUrl, sheepLine = '') {
+    const W = 1080, H = 1350, x = W / 2;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.ch1.frame, 1225);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd991'; ctx.font = `700 36px ${SANS}`;
+    ctx.fillText('그 밤을 향하여 · 오늘 알게 된 것', x, 124);
+    ctx.fillStyle = '#fff5dc'; ctx.font = `700 72px ${SERIF}`;
+    ctx.fillText(item.title, x, 224, 920);
+    // 3D 스냅숏 또는 아이콘 프레임
+    ctx.save();
+    rr(ctx, 170, 272, 740, 440, 28);
+    ctx.fillStyle = '#242342'; ctx.fill();
+    ctx.strokeStyle = '#f2cc8499'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.clip();
+    const snap = thumbUrl ? await loadImg(thumbUrl).catch(() => null) : null;
+    if (snap) {
+      const ratio = Math.max(740 / snap.width, 440 / snap.height);
+      const dw = snap.width * ratio, dh = snap.height * ratio;
+      ctx.drawImage(snap, 170 + (740 - dw) / 2, 272 + (440 - dh) / 2, dw, dh);
+    } else {
+      ctx.font = `700 180px ${SANS}`; ctx.fillStyle = '#ffe5a8';
+      ctx.fillText(item.icon || '✦', x, 550);
+    }
+    ctx.restore();
+    // 2줄 사실 설명
+    ctx.fillStyle = '#f8ecd4'; ctx.font = `500 38px ${SANS}`;
+    const factLines = wrap(ctx, item.fact, 880).slice(0, 4);
+    factLines.forEach((line, i) => ctx.fillText(line, x, 790 + i * 58));
+    let y = 790 + factLines.length * 58 + 26;
+    if (item.ref) {
+      const vs = window.Bible?.verses(item.ref) || [];
+      ctx.fillStyle = '#ffe09e'; ctx.font = `700 32px ${SERIF}`;
+      ctx.fillText(Bible.full(item.ref), x, y, 880);
+      if (vs[0]?.text) {
+        ctx.fillStyle = '#dfd2ea'; ctx.font = `400 28px ${SERIF}`;
+        const vLines = wrap(ctx, '“' + vs[0].text + '”', 860).slice(0, 2);
+        vLines.forEach((line, i) => ctx.fillText(line, x, y + 44 + i * 42));
+      }
+    }
+    // 내 양의 한마디
+    const portrait = sheep && await portraitImg(sheep.species, sheep);
+    ctx.save();
+    rr(ctx, 110, 1085, 860, 138, 22);
+    ctx.fillStyle = '#2d2848cc'; ctx.fill();
+    ctx.strokeStyle = '#f0cc8544'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+    if (portrait) ctx.drawImage(portrait, 130, 1097, 114, 114);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ffd991'; ctx.font = `700 27px ${SANS}`;
+    ctx.fillText((sheep?.name || '내 양') + '의 한마디', 264, 1138);
+    ctx.fillStyle = '#f6e9d5'; ctx.font = `500 29px ${SANS}`;
+    const sLines = wrap(ctx, sheepLine || item.sheep || '', 670).slice(0, 2);
+    sLines.forEach((line, i) => ctx.fillText(line, 264, 1178 + i * 38));
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#dfc6a4'; ctx.font = `500 28px ${SANS}`;
+    ctx.fillText([Core.data.nickname || '친구', sheep?.name].filter(Boolean).join(' · '), x, 1295, 900);
+    return cv;
+  }
+
+  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawDiscoverNote, drawPatrol, drawGift, drawGrowth, drawWardrobe, drawExploreChallenge, drawJourney, share, toBlob, fileName, STYLE, cardNo };
 })();

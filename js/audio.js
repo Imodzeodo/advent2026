@@ -367,6 +367,19 @@
     fire: t => { for (let i = 0; i < 9; i++) noise(t + Math.random() * 1.4, 0.05, 0.05, 2500, 1200); noise(t, 1.5, 0.03, 300, 500); },
     hammer: t => { thud(t, 220, 0.25, 0.06); bell(76, t, 0.03); },
     plane: t => noise(t, 0.45, 0.09, 2600, 900),
+    grind: t => { noise(t, 0.2, 0.055, 620, 420); thud(t, 92, 0.06, 0.14); },
+    trumpet: t => {
+      [62, 69, 74].forEach((m, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+        o.type = 'sawtooth'; o.frequency.setValueAtTime(midi(m), t + i * 0.09);
+        f.type = 'lowpass'; f.frequency.setValueAtTime(1650, t + i * 0.09);
+        g.gain.setValueAtTime(0, t + i * 0.09);
+        g.gain.linearRampToValueAtTime(0.055, t + i * 0.09 + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0008, t + i * 0.09 + 0.42);
+        o.connect(f); f.connect(g); g.connect(out(sfxBus, 1, 0.35));
+        o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.45);
+      });
+    },
     match: t => { noise(t, 0.16, 0.14, 3000, 1600); noise(t + 0.18, 0.27, 0.075, 1800, 1050); },
     sheep: bleat,
     fieldGreet: t => { musicBox(69, t, 0.045, sfxBus); musicBox(76, t + 0.11, 0.032, sfxBus); },
