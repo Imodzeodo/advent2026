@@ -201,6 +201,8 @@
     const place = episode || (scheduled && Explore.isOpen(scheduled) ? scheduled : linkedEpisode);
     const title = Explore.title(place?.id);
     const longAdventure = !!window.EXPLORE[place?.id]?.adventure;
+    const discoverNew = place ? (Explore.newCount?.(place.id) || 0) : 0;
+    const hasDiscover = !!window.EXPLORE[place?.id]?.discover;
     const explored = !!place && Explore.complete(place.id);
     const exploreNext = !episode && fieldOpen && !!title && !explored && Explore.isOpen(place);
     const fieldNext = !episode && !exploreNext && fieldOpen && !fieldDone;
@@ -213,8 +215,11 @@
     const openHour = later?.openHour ?? (Core.TEST_DATE && window.EXPLORE[later?.id]?.openHour);
     const storyLine = episode ? `${episode.date === today ? '' : esc(Core.dateLabel(episode.date)) + ' '}「${esc(episode.title)}」` :
       later ? `${storyDone ? watched + ' · ' : ''}다음 이야기 ${esc(Core.dateLabel(later.date))}${openHour == null ? '' : ' ' + esc(Core.hourLabel(openHour))}에 열려` : watched;
+    const exploreSub = !title ? '이야기가 열리면 함께 가자' : hasDiscover
+      ? `${esc(title)}${discoverNew ? ` · 새 발견 ${discoverNew}개` : ' · 둘러보기'}`
+      : `${esc(title)}${longAdventure ? ' · 약 6분' : ''}`;
     const nextButton = introducing ? '' : episode ? `<button type="button" class="btn tonight-next" data-step="story" data-id="${episode.id}">📖 오늘 이야기 보기</button>` :
-      exploreNext ? `<button type="button" class="btn tonight-next" data-step="explore" data-id="${place.id}">🧭 ${esc(title)}에 가 보자${longAdventure ? ' <small>약 6분</small>' : ''}</button>` :
+      exploreNext ? `<button type="button" class="btn tonight-next" data-step="explore" data-id="${place.id}">🧭 ${esc(title)}에 가 보자${hasDiscover && discoverNew ? ` <small>새 발견 ${discoverNew}개</small>` : !hasDiscover && longAdventure ? ' <small>약 6분</small>' : ''}</button>` :
       fieldNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${place?.id || ''}">${lost?.lostFromVisit ? '🔦 잃은 양 찾기' : '🐑 ' + esc(care.sheep.name) + ' 돌보기'}</button>` : '';
     return `<section class="tonight" aria-labelledby="tonight-title">
       <header><h2 id="tonight-title">🌙 오늘 밤 할 일</h2><span>${esc(christmasLabel(today))}</span></header>
@@ -222,7 +227,7 @@
         <li class="tonight-step${episode ? ' is-next' : ''}" data-tonight="story"${storyDone ? ' data-done="true"' : ''}>
           <span aria-hidden="true">📖</span><div><b>오늘 이야기</b><p>${storyLine}</p></div>${tonightMark(storyDone)}</li>
         <li class="tonight-step${exploreNext ? ' is-next' : ''}" data-tonight="explore"${explored ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">🧭</span><div><b>오늘의 모험</b><p>${title ? esc(title) + (longAdventure ? ' · 약 6분' : '') : '이야기가 열리면 함께 가자'}</p></div>${tonightMark(explored)}</li>
+          <span aria-hidden="true">🧭</span><div><b>${hasDiscover ? `오늘의 장소${discoverNew ? ` · 새 발견 ${discoverNew}개` : ''}` : '오늘의 장소'}</b><p>${exploreSub}</p></div>${tonightMark(explored)}</li>
         <li class="tonight-step${fieldNext ? ' is-next' : ''}" data-tonight="field"${fieldDone ? ' data-done="true"' : ''}>
           <span aria-hidden="true">🐑</span><div><b>${care ? esc(care.sheep.name) + ' 돌보기' : '내 양 돌보기'}
           ${care ? `<span class="tonight-hearts" aria-label="하트 ${care.hearts}/3">${Field.heartMarks(care.hearts)}</span>` : ''}</b>

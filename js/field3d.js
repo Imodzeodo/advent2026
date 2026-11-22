@@ -2071,7 +2071,7 @@
 
   /* ---------- 성탄 길 탐험 ---------- */
   const EXPLORE_EDGE = 8;
-  const EXPLORE_COLORS = { photo: '#b9e8bd', guard: '#e4a7a7', light: '#eeb77c', person: '#ffd17e', quest: '#ff9fcc', verse: '#fff8e9', exit: '#cbdda3', secret: '#af97ff' };
+  const EXPLORE_COLORS = { photo: '#b9e8bd', guard: '#e4a7a7', light: '#eeb77c', person: '#ffd17e', quest: '#ff9fcc', verse: '#fff8e9', exit: '#cbdda3', secret: '#af97ff', look: '#8ee0ff', touch: '#ffcf86', try: '#ff9fcc', discoverDone: '#9ddbb2' };
 
   function exploreWorld(scene, kit, seed, layout) {
     const rand = seeded(hashStr(seed));
@@ -3084,6 +3084,151 @@
     return result;
   }
 
+  function buildDiscoverProp(prop, material, models) {
+    if (prop === 'donkey' && models) return models.animal('나귀');
+    if (prop === 'doves' && models) {
+      const g = new T.Group();
+      for (const [dx, dz, rot] of [[-.22, .08, .4], [.22, -.06, -.6]]) {
+        const b = models.animal('비둘기');
+        b.position.set(dx, 0, dz); b.rotation.y = rot; g.add(b);
+      }
+      return g;
+    }
+    const cube = new T.BoxGeometry(), cyl = new T.CylinderGeometry(.5, .5, 1, 8), ball = new T.IcosahedronGeometry(.5, 0);
+    const parts = [];
+    const add = (shape, color, ...tf) => {
+      const geo = place(shape, ...tf), rgb = new T.Color(color);
+      const colors = new Float32Array(geo.attributes.position.count * 3);
+      for (let i = 0; i < colors.length; i += 3) colors.set([rgb.r, rgb.g, rgb.b], i);
+      geo.setAttribute('color', new T.BufferAttribute(colors, 3));
+      parts.push(geo);
+    };
+    if (prop === 'millstone') {
+      add(cyl, '#8f8786', 0, .14, 0, .92, .26, .92);
+      add(cyl, '#aba29c', 0, .38, 0, .86, .22, .86);
+      add(cyl, '#7d563c', .26, .58, .08, .09, .28, .09);
+      add(cyl, '#52494a', 0, .5, 0, .2, .04, .2);
+    } else if (prop === 'oven') {
+      add(cyl, '#b57856', 0, .34, 0, .94, .68, .94);
+      add(ball, '#c48660', 0, .64, 0, .92, .48, .92);
+      add(cube, '#352226', 0, .28, .42, .34, .34, .18);
+      add(ball, '#ffaa44', 0, .22, .39, .24, .18, .16);
+    } else if (prop === 'lamp') {
+      add(cyl, '#8c664a', 0, .28, 0, .22, .56, .22);
+      add(cyl, '#c4865a', 0, .58, 0, .48, .12, .42);
+      add(ball, '#ffd670', .12, .72, 0, .18, .28, .18);
+    } else if (prop === 'incense') {
+      add(cube, '#b58d52', 0, .45, 0, .68, .9, .68);
+      add(cube, '#e3be72', 0, .92, 0, .78, .1, .78);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(cube, '#f0cc7a', sx * .34, 1.04, sz * .34, .1, .18, .1);
+      add(ball, '#ff9a3d', 0, 1.0, 0, .34, .14, .34);
+    } else if (prop === 'menorah') {
+      add(cyl, '#d9ab50', 0, .12, 0, .54, .16, .54);
+      add(cyl, '#f2c86b', 0, .72, 0, .1, 1.15, .1);
+      for (const sx of [-1, 1]) {
+        add(cube, '#f2c86b', sx * .22, .68, 0, .44, .06, .06);
+        add(cube, '#f2c86b', sx * .42, .94, 0, .06, .52, .06);
+        add(cube, '#f2c86b', sx * .28, .98, 0, .06, .42, .06);
+        add(cube, '#f2c86b', sx * .15, 1.04, 0, .06, .3, .06);
+      }
+      for (const x of [-.42, -.28, -.15, 0, .15, .28, .42]) add(ball, '#ffea94', x, 1.28, 0, .09, .16, .09);
+    } else if (prop === 'trumpet') {
+      add(cube, '#7b5842', 0, .34, 0, .46, .68, .34);
+      add(cyl, '#e8c468', 0, .78, 0, .1, .84, .1, 0, 0, 1.28);
+      add(cyl, '#f7d982', .38, .9, 0, .28, .22, .28, 0, 0, 1.28);
+    } else if (prop === 'cradle') {
+      add(cube, '#8b5e40', 0, .28, 0, .92, .34, .54);
+      add(cube, '#e8dac2', 0, .44, 0, .78, .08, .42);
+      for (const sx of [-.34, .34]) add(cube, '#6b452d', sx, .08, 0, .08, .12, .66);
+    } else if (prop === 'tablet') {
+      add(cube, '#7a523b', 0, .38, 0, .54, .74, .22);
+      add(cube, '#9e6d4b', 0, .78, .06, .52, .42, .08, -.32);
+      add(cube, '#e8d7a8', 0, .78, .1, .4, .3, .04, -.32);
+      add(cyl, '#4a3228', .24, .82, .12, .04, .34, .04, 0, 0, .35);
+    } else if (prop === 'jar' || prop === 'water') {
+      add(ball, '#b56e50', 0, .38, 0, .56, .68, .56);
+      add(cyl, '#c97e5c', 0, .76, 0, .26, .22, .26);
+      add(cyl, '#528090', 0, .86, 0, .2, .04, .2);
+    } else if (prop === 'well') {
+      add(cyl, '#7d6c64', 0, .26, 0, .74, .5, .74);
+      add(cyl, '#548594', 0, .52, 0, .56, .04, .56);
+      add(cyl, '#8c5e3c', .05, .74, 0, .3, .32, .3);
+      add(cyl, '#d9bf8c', .05, 1.02, 0, .05, .36, .05);
+    } else if (prop === 'winepress') {
+      add(cube, '#8f847c', 0, .2, 0, 1.15, .4, 1.15);
+      add(cube, '#5c2d5e', 0, .38, 0, .88, .12, .88);
+      for (const [dx, dz] of [[-.2, -.15], [.18, .12], [0, .22], [-.15, .18]]) add(ball, '#78347c', dx, .48, dz, .22, .18, .22);
+    } else if (prop === 'olivepress') {
+      add(cyl, '#9c9288', 0, .22, 0, 1.12, .44, 1.12);
+      add(cyl, '#6f7354', 0, .44, 0, .84, .08, .84);
+      add(cyl, '#b5aba0', .04, .66, 0, .54, .22, .54, Math.PI / 2);
+      add(cube, '#7b553a', 0, .88, 0, 1.15, .1, .1);
+    } else if (prop === 'carpenter') {
+      for (const sx of [-.38, .38]) add(cube, '#724c34', sx, .32, 0, .14, .64, .46);
+      add(cube, '#b58454', 0, .68, 0, 1.05, .12, .56);
+      add(cube, '#d9b583', -.08, .79, 0, .72, .08, .24);
+      add(cube, '#6b4228', .18, .88, 0, .24, .12, .14);
+    } else if (prop === 'loom') {
+      for (const sx of [-.42, .42]) add(cube, '#7b5338', sx, .65, 0, .1, 1.3, .1);
+      add(cube, '#7b5338', 0, 1.24, 0, .96, .1, .1);
+      add(cube, '#7b5338', 0, .22, 0, .96, .1, .1);
+      add(cube, '#e3d0ad', 0, .72, 0, .68, .78, .05);
+      add(cube, '#b55f5c', 0, .62, .03, .68, .18, .04);
+    } else if (prop === 'swaddle') {
+      add(cube, '#7b553b', 0, .28, 0, .82, .56, .54);
+      add(ball, '#f2e6cf', 0, .64, 0, .62, .28, .38);
+      add(cube, '#d9b88c', 0, .65, 0, .22, .3, .42);
+    } else if (prop === 'flowers') {
+      add(cyl, '#5c7c48', 0, .06, 0, .9, .12, .9);
+      for (const [dx, dz, s] of [[-.24, .1, .22], [.22, -.12, .25], [0, .22, .2], [-.1, -.22, .21], [.16, .18, .19]]) {
+        add(cyl, '#4d7340', dx, .22, dz, .04, .32, .04);
+        add(ball, '#db4848', dx, .4, dz, s, s * .8, s);
+      }
+    } else if (prop === 'fig') {
+      add(cyl, '#6e4c36', 0, .55, 0, .2, 1.1, .2);
+      for (const [dx, dy, dz, s] of [[0, 1.15, 0, .95], [-.35, .95, .2, .68], [.36, 1.0, -.15, .72]]) add(ball, '#547a44', dx, dy, dz, s, s * .72, s);
+    } else if (prop === 'milestone') {
+      add(cube, '#9c9288', 0, .14, 0, .68, .28, .68);
+      add(cyl, '#b5aba0', 0, .74, 0, .44, 1.0, .44);
+      add(cube, '#695e56', 0, .86, .22, .26, .24, .03);
+    } else if (prop === 'pack') {
+      add(ball, '#8c563a', -.16, .24, 0, .44, .34, .32);
+      add(cyl, '#b08b64', .22, .2, .08, .34, .38, .34, 0, 0, Math.PI / 2);
+      add(cyl, '#6b4730', -.08, .66, -.12, .06, 1.3, .06, .12, 0, -.25);
+    } else if (prop === 'linen') {
+      add(cube, '#7b553b', 0, .36, 0, .72, .72, .48);
+      add(cube, '#f7f3ea', 0, .78, 0, .6, .18, .38);
+      add(cube, '#dfd7c5', 0, .88, 0, .44, .06, .34);
+    } else if (prop === 'scroll') {
+      add(cube, '#7b553b', 0, .4, 0, .58, .8, .44);
+      add(cube, '#f0dfc0', 0, .86, .04, .54, .36, .06, -.45);
+      for (const sx of [-.28, .28]) add(cyl, '#a87846', sx, .86, .04, .09, .42, .09, -.45);
+    } else if (prop === 'coins') {
+      add(cube, '#7b553b', 0, .38, 0, .92, .76, .58);
+      for (const [dx, dz, h] of [[-.22, .06, .18], [0, -.04, .24], [.22, .08, .14]]) add(cyl, '#d7dde6', dx, .76 + h / 2, dz, .18, h, .18);
+    } else if (prop === 'mikveh') {
+      add(cube, '#b0a498', 0, .16, 0, 1.25, .32, 1.15);
+      add(cube, '#4d92a6', 0, .28, 0, .96, .12, .86);
+      add(cube, '#c9bfb0', -.38, .28, .26, .28, .14, .42);
+    } else if (prop === 'steps' || prop === 'terrace' || prop === 'brick' || prop === 'roof') {
+      const c1 = prop === 'brick' ? '#b88563' : '#ada296';
+      const c2 = prop === 'brick' ? '#9e6f52' : '#c7bcb0';
+      add(cube, c1, 0, .14, .18, 1.0, .28, .42);
+      add(cube, c2, 0, .38, -.06, 1.0, .28, .42);
+      add(cube, c1, 0, .62, -.28, 1.0, .28, .42);
+    } else {
+      add(cube, '#baa898', 0, .16, 0, .74, .32, .74);
+      add(cyl, '#cfc1b2', 0, .72, 0, .42, .86, .42);
+      add(cube, '#e3d5c3', 0, 1.18, 0, .64, .16, .64);
+    }
+    const obj = merged(parts, material);
+    parts.forEach(g => g.dispose());
+    cube.dispose(); cyl.dispose(); ball.dispose();
+    const wrap = new T.Group();
+    wrap.add(obj);
+    return wrap;
+  }
+
   async function mountExplore(container, options, handlers = {}) {
     await load();
     const { sheep, layout = {}, adventure } = options;
@@ -3122,6 +3267,9 @@
     const camPosition = new T.Vector3(), aim = new T.Vector3(), spot = new T.Vector3();
     const elementPos = new T.Vector3(), raycaster = new T.Raycaster(), pointerPos = new T.Vector2();
     const elements = new Map(), effectSprites = new Set();
+    const discoverPropMat = new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .85 });
+    const propAnims = new Map();
+    let inspectState = null, sheepMood = null, lastNearbyId = '';
     const groundRing = new T.RingGeometry(.55, .66, 24).rotateX(-Math.PI / 2);
     const crystal = new T.OctahedronGeometry(.24);
     const lantern = glowSprite('#ffe1aa', 3, .65);
@@ -3228,13 +3376,16 @@
       const [x, z] = marker.pos;
       const y = world.height(x, z);
       const obj = new T.Group(); obj.position.set(x, y + .06, z);
-      const color = EXPLORE_COLORS[marker.type] || '#9ce4ff';
-      const light = mat(color, { basic: true, transparent: true, opacity: .8 });
+      const color = marker.discovered ? EXPLORE_COLORS.discoverDone : (EXPLORE_COLORS[marker.type] || '#9ce4ff');
+      const light = mat(color, { basic: true, transparent: true, opacity: marker.discovered ? .45 : .8 });
       const ring = new T.Mesh(groundRing, light);
       obj.add(ring);
       let item, sign;
       if (adventure && (world.residents.has(marker.id) || marker.feature || marker.quiet)) {
         // 마을 사람과 동물은 퀘스트 단계가 바뀌어도 같은 자리에 남는다.
+      } else if (marker.prop) {
+        sign = buildDiscoverProp(marker.prop, discoverPropMat, world.models);
+        obj.add(sign);
       } else if (marker.type === 'exit') {
         sign = new T.Group();
         sign.add(new T.Mesh(place(new T.BoxGeometry(), 0, .52, 0, .11, 1.04, .12), mat('#895e47')));
@@ -3310,6 +3461,8 @@
         label.dataset.action = marker.id;
         label.dataset.kind = marker.type;
         label.dataset.priority = marker.priority || 'optional';
+        if (marker.discovered) label.dataset.discovered = 'true';
+        if (marker.isNew) label.dataset.isNew = 'true';
       }
       const sigil = document.createElement('i'); sigil.textContent = marker.symbol;
       const caption = document.createElement('span'); caption.textContent = marker.title;
@@ -3424,7 +3577,10 @@
     function say(id, line) {
       talking?.label.remove();
       const label = document.createElement('span'); label.className = 'f3d-explore-speech'; label.textContent = line;
-      hud.append(label); talking = { id, label, until: performance.now() + 2500 };
+      hud.append(label);
+      const half = Math.min(markerWidth * .44 || 135, Math.max(76, (label.offsetWidth || 180) / 2 + 6));
+      label.style.setProperty('--label-half', half.toFixed(0) + 'px');
+      talking = { id, label, until: performance.now() + 2800 };
     }
     function react(id, kind = 'spark') {
       if (kind === 'doves') {
@@ -3659,6 +3815,116 @@
     }
     function moveInfo() { return { walking, travel, zone: adventure ? adventure.crossings.filter(([, z]) => walkPosition().z < z).length : 0 }; }
 
+    function inspect(id) {
+      const entry = elements.get(id);
+      const resident = world.residents?.get(id);
+      const source = entry?.obj?.position || resident?.actor?.position;
+      if (!source) return;
+      route = []; waitForTarget = null; goal.visible = false;
+      // 카메라를 물건의 옆쪽(여행자와 비껴 선 쪽)에 둬서 여행자 등이 화면을 가리지 않게
+      const w = walkPosition(), side = Math.atan2(w.x - source.x, w.z - source.z);
+      const turn = Math.atan2(Math.sin(side + 1.3 - az), Math.cos(side + 1.3 - az)), turn2 = Math.atan2(Math.sin(side - 1.3 - az), Math.cos(side - 1.3 - az));
+      inspectState = { id, pos: source.clone(), start: performance.now(), baseAz: az + (Math.abs(turn) < Math.abs(turn2) ? turn : turn2) };
+    }
+    function endInspect() { inspectState = null; }
+    function touchProp(id, anim = 'spark') {
+      const now = performance.now();
+      propAnims.set(id, { kind: anim, start: now });
+      if (anim === 'doves') react(id, 'doves');
+      else react(id, anim === 'sway' ? 'rustle' : 'spark');
+    }
+    function sheepReact(mood = 'spark', line = '') {
+      sheepMood = { kind: mood, start: performance.now() };
+      if (line) say('sheep', line);
+    }
+    function applyDiscoverFrame(u, t, now) {
+      if (sheepMood) {
+        const age = (now - sheepMood.start) / 1000;
+        if (age > 2.2) sheepMood = null;
+        else if (!reduced) {
+          const fade = Math.max(0, 1 - age / 2.2);
+          if (sheepMood.kind === 'sniff') {
+            u.head.rotation.x += .22 * fade;
+            u.head.rotation.y = Math.sin(age * 16) * .18 * fade;
+          } else if (sheepMood.kind === 'startle') {
+            u.body.position.y += Math.abs(Math.sin(Math.min(age * 7, Math.PI))) * .22 * fade;
+          } else if (sheepMood.kind === 'splash') {
+            u.body.position.y += Math.abs(Math.sin(age * 11)) * .2 * fade;
+          } else if (sheepMood.kind === 'cozy') {
+            u.head.rotation.x += (.14 + Math.sin(age * 3.5) * .08) * fade;
+          } else {
+            u.body.position.y += Math.abs(Math.sin(age * 9)) * .16 * fade;
+          }
+        }
+      }
+      for (const [id, anim] of propAnims) {
+        const age = (now - anim.start) / 1000;
+        const entry = elements.get(id);
+        const obj = entry?.sign || entry?.obj || world.residents?.get(id)?.actor;
+        if (!obj || age > 2.2) {
+          if (obj) { obj.rotation.z = 0; }
+          propAnims.delete(id);
+          continue;
+        }
+        if (reduced) continue;
+        const fade = 1 - age / 2.2;
+        if (anim.kind === 'spin') obj.rotation.y += .12 * fade;
+        else if (anim.kind === 'sway') obj.rotation.z = Math.sin(age * 7) * .22 * fade;
+        else if (anim.kind === 'donkey' || anim.kind === 'balance') obj.rotation.z = Math.sin(age * 10) * .12 * fade;
+        else if (anim.kind === 'trumpet' || anim.kind === 'pray') obj.scale.setScalar(1 + Math.sin(age * 9) * .08 * fade);
+      }
+    }
+    function applyInspectCamera(now, delta) {
+      if (!inspectState) return false;
+      const age = (now - inspectState.start) / 1000;
+      const orbit = inspectState.baseAz + (reduced ? 0 : Math.sin(age * .45) * .42);
+      const focus = inspectState.pos;
+      spot.set(focus.x, focus.y + .72, focus.z);
+      target.lerp(spot, reduced ? 1 : Math.min(1, delta * 5));
+      camPosition.set(target.x + Math.sin(orbit) * 4.3, target.y + 1.7, target.z + Math.cos(orbit) * 4.3);
+      camera.position.lerp(camPosition, reduced ? 1 : Math.min(1, delta * 5));
+      aim.copy(target);
+      camera.lookAt(aim); camera.updateMatrixWorld();
+      return true;
+    }
+    function checkNearbyDiscover(p) {
+      if (!handlers.onNearbyDiscover) return;
+      let nearest = null, best = 6.2;
+      for (const { marker } of elements.values()) {
+        if (!marker.discoverId || marker.discovered || marker.hidden) continue;
+        const d = Math.hypot(marker.pos[0] - p.x, marker.pos[1] - p.z);
+        if (d < best) { best = d; nearest = marker; }
+      }
+      const nextId = nearest?.discoverId || '';
+      if (nextId !== lastNearbyId) {
+        lastNearbyId = nextId;
+        handlers.onNearbyDiscover(nearest);
+      }
+    }
+    function snapProp(id) {
+      const entry = elements.get(id);
+      const resident = world.residents?.get(id);
+      const focus = entry?.obj?.position || resident?.actor?.position;
+      if (!focus) return null;
+      const oldPos = camera.position.clone(), oldQuat = camera.quaternion.clone();
+      const hiddenObjs = [[player, player.visible]];
+      player.visible = false;
+      if (leader) { hiddenObjs.push([leader, leader.visible]); leader.visible = false; }
+      for (const { ring } of elements.values()) { hiddenObjs.push([ring, ring.visible]); ring.visible = false; }
+      camera.position.set(focus.x + 1.45, focus.y + 1.32, focus.z + 2.05);
+      camera.lookAt(focus.x, focus.y + .48, focus.z);
+      renderer.render(scene, camera);
+      const out = document.createElement('canvas');
+      out.width = 220; out.height = 150;
+      const cropW = Math.min(canvas.width, canvas.height * out.width / out.height);
+      const cropH = cropW * out.height / out.width;
+      out.getContext('2d').drawImage(canvas, (canvas.width - cropW) / 2, (canvas.height - cropH) / 2, cropW, cropH, 0, 0, out.width, out.height);
+      camera.position.copy(oldPos); camera.quaternion.copy(oldQuat);
+      for (const [obj, vis] of hiddenObjs) obj.visible = vis;
+      renderer.render(scene, camera);
+      return out.toDataURL('image/jpeg', .78);
+    }
+
     function frame(now) {
       if (stopped) return;
       raf = requestAnimationFrame(frame);
@@ -3752,16 +4018,19 @@
       u.body.position.y = lerp(u.body.position.y, sleep ? -.33 : gs.bob + bounce, .3);
       u.head.rotation.x = lerp(u.head.rotation.x, sleep ? .17 : gs.nod, .25);
       if (!reduced) animateWings(player, t);
-      const gazing = reaction?.kind === 'star' && now - reaction.start < 2800;
-      const cameraYaw = az;
-      spot.set(p.x - (adventure ? Math.sin(cameraYaw) : 0) * 1.8, p.y + (gazing ? 3.55 : adventure ? 1.58 : 1.28),
-        p.z - (adventure ? Math.cos(cameraYaw) * 1.8 : 1.36));
-      target.lerp(spot, firstFrame || reduced ? 1 : Math.min(1, delta * 3.6));
-      az = lerp(az, azWant, Math.min(1, delta * 7));
-      camPosition.set(target.x + Math.sin(az) * (adventure ? 9.6 : 8), target.y + (gazing ? 2.1 : adventure ? 4.45 : 3.85), target.z + Math.cos(az) * (adventure ? 9.6 : 8));
-      camera.position.copy(camPosition);
-      aim.copy(target);
-      camera.lookAt(aim); camera.updateMatrixWorld();
+      applyDiscoverFrame(u, t, now);
+      if (!applyInspectCamera(now, delta)) {
+        const gazing = reaction?.kind === 'star' && now - reaction.start < 2800;
+        const cameraYaw = az;
+        spot.set(p.x - (adventure ? Math.sin(cameraYaw) : 0) * 1.8, p.y + (gazing ? 3.55 : adventure ? 1.58 : 1.28),
+          p.z - (adventure ? Math.cos(cameraYaw) * 1.8 : 1.36));
+        target.lerp(spot, firstFrame || reduced ? 1 : Math.min(1, delta * 3.6));
+        az = lerp(az, azWant, Math.min(1, delta * 7));
+        camPosition.set(target.x + Math.sin(az) * (adventure ? 9.6 : 8), target.y + (gazing ? 2.1 : adventure ? 4.45 : 3.85), target.z + Math.cos(az) * (adventure ? 9.6 : 8));
+        camera.position.copy(camPosition);
+        aim.copy(target);
+        camera.lookAt(aim); camera.updateMatrixWorld();
+      }
       firstFrame = false;
       for (const v of elements.values()) {
         const { marker, obj, label, item, ring } = v;
@@ -3772,7 +4041,7 @@
           obj.position.x += dx * step; obj.position.z += dz * step;
           obj.position.y = world.height(obj.position.x, obj.position.z) + .10;
         }
-        const visible = (!adventure || distance < (marker.priority === 'main' ? 16 : marker.priority === 'side' ? 7.7 : 5.6)) && (!(marker.type === 'secret' || marker.hidden) || distance < (adventure ? 2.65 : 1.85));
+        const visible = (!adventure || distance < (marker.priority === 'main' ? 16 : marker.priority === 'side' ? 7.7 : marker.discoverId ? (marker.discovered ? 3.2 : 6.6) : 5.6)) && (!(marker.type === 'secret' || marker.hidden) || distance < (adventure ? 2.65 : 1.85));
         if (marker.type === 'follow' && item && !reduced) {
           item.position.x = Math.sin(t * 2.1) * .36;
           item.position.z = Math.sin(t * 1.39) * .49;
@@ -3787,7 +4056,7 @@
           obj.rotation.z = Math.sin((now - reaction.start) * .046) * .16 * Math.max(0, 1 - (now - reaction.start) / 460);
         }
         const resident = world.residents?.get(marker.id);
-        label.hidden = !visible || marker.lit || !project(label, obj.position, resident ? (marker.actor ? 2.05 * resident.actor.scale.y : .62) : v.sign ? 1.45 : .76);
+        label.hidden = !!inspectState || !visible || marker.lit || !project(label, obj.position, resident ? (marker.actor ? 2.05 * resident.actor.scale.y : .62) : v.sign ? 1.45 : .76);
         ring.scale.setScalar(reduced ? 1 : 1 + Math.sin(t * 2.8 + obj.position.x) * .084);
         if (item && !reduced && marker.type !== 'reflection') { item.rotation.y = t * 1.6; item.position.y = .35 + Math.sin(t * 2.8) * .11; }
         if (distance >= enterDistance + .3) v.near = false;
@@ -3803,6 +4072,7 @@
           break;
         }
       }
+      checkNearbyDiscover(p);
       if (waypoint) {
         const [x, z] = bearingTarget(p);
         const dx = x - p.x, dz = z - p.z;
@@ -3848,12 +4118,13 @@
       if (stopped) return;
       stopped = true; cancelAnimationFrame(raf); observer.disconnect();
       for (const id of elements.keys()) removeMarker(id);
-      groundRing.dispose(); crystal.dispose();
+      groundRing.dispose(); crystal.dispose(); discoverPropMat.dispose();
       disposeFigure(scene); world.models?.dispose(); world.ground.material.dispose(); world.dome.material.dispose();
       scene.traverse(obj => { if (obj.isPoints || world.fx.some(f => f.cloud === obj)) obj.material.dispose(); });
       renderer.dispose(); renderer.forceContextLoss(); wrap.remove();
     };
     return { setMarkers, spawnPickup, react, say, setCarry, kneel, setWaypoint, setEscort, revealAbility, restoreAbility, moveAnimal, moveInfo,
+      inspect, endInspect, touchProp, sheepReact, snapProp,
       showResident(id, visible) { const resident = world.residents?.get(id); if (resident) resident.hidden = !visible; }, position: () => [walkPosition().x, walkPosition().z], tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo() {
       const old = camera.position.clone();
       const oldQuaternion = camera.quaternion.clone();

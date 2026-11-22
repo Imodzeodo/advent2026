@@ -2,7 +2,7 @@
 (function () {
   const regions = ['예루살렘', '유대 산골', '나사렛·갈릴리', '베들레헴'];
   const icons = { person: '●', quest: '♥', verse: '▤', secret: '⚿', photo: '◎', find: '✦', exit: '➜', event: '★', follow: '◇',
-    light: '♨', clear: '◆', guard: '✶', fragment: '✦', ability: '🐾', cache: '✧', door: '▣' };
+    light: '♨', clear: '◆', guard: '✶', fragment: '✦', ability: '🐾', cache: '✧', door: '▣', look: '👀', touch: '✋', try: '🛠' };
   const mapPoints = [
     [72, 131], [239, 178], [88, 164], [61, 199], [114, 219], [259, 224], [306, 184],
     [290, 100], [237, 61], [265, 49], [294, 65], [316, 40], [329, 86], [241, 104],
@@ -31,19 +31,38 @@
     const field = Field.ensure();
     if (!field.explore || Array.isArray(field.explore) || typeof field.explore !== 'object') field.explore = {};
     const log = field.explore;
-    for (const key of ['found', 'quests', 'rewards', 'photos', 'adventures']) {
+    for (const key of ['found', 'quests', 'rewards', 'photos', 'adventures', 'discoveries', 'discoverBag', 'discoverUnlock', 'themeRewards']) {
       if (!log[key] || Array.isArray(log[key]) || typeof log[key] !== 'object') log[key] = {};
     }
+    if (!log.discoverOil || typeof log.discoverOil !== 'object') log.discoverOil = { date: '', count: 0 };
     return log;
   }
   const foundKey = (id, marker) => id + '/' + marker;
+  function discoverCount(id, log = Core.data.field?.explore) {
+    const spec = window.EXPLORE[id]?.discover;
+    if (!spec) return { n: 0, max: 0, newLeft: 0 };
+    const seen = log?.discoveries || {};
+    const n = spec.items.filter(entry => seen[entry.id]).length;
+    const newLeft = spec.newIds.filter(did => !seen[did]).length;
+    return { n, max: spec.items.length, newLeft };
+  }
+  function newCount(id, log = Core.data.field?.explore) { return discoverCount(id, log).newLeft; }
   function stars(id, log = Core.data.field?.explore) {
+    if (window.EXPLORE[id]?.discover) {
+      const dc = discoverCount(id, log);
+      return { n: dc.n, max: dc.max };
+    }
     if (window.EXPLORE[id]?.adventure) return { n: [1, 2, 3].filter(n => log?.found?.[foundKey(id, 'star-' + n)]).length, max: 3 };
     if (!log?.found || !window.EXPLORE[id]) return { n: 0, max: 5 };
     const markers = window.EXPLORE[id].markers.filter(marker => !marker.extra);
     return { n: markers.filter(marker => log.found[foundKey(id, marker.id)]).length, max: markers.length };
   }
-  const complete = id => !!(adventureLog(id)?.done || Core.data.field?.explore?.found?.[foundKey(id, 'activity')]);
+  function complete(id) {
+    if (adventureLog(id)?.done || Core.data.field?.explore?.found?.[foundKey(id, 'activity')]) return true;
+    const spec = window.EXPLORE[id]?.discover;
+    if (!spec) return false;
+    return discoverCount(id).n >= Math.min(2, spec.newIds.length || 2);
+  }
   function counts() {
     const log = Core.data.field?.explore;
     const ids = epList().map(ep => ep.id);
@@ -91,7 +110,12 @@
     const list = openList(), log = progress(), latest = list.at(-1), tally = counts();
     const event = todayEvent();
     const placeStatus = ep => {
-      const area = window.EXPLORE[ep.id], score = stars(ep.id, log);
+      const area = window.EXPLORE[ep.id];
+      if (area.discover) {
+        const dc = discoverCount(ep.id, log);
+        return `발견 ${dc.n}/${dc.max}${dc.newLeft ? ` · 새 발견 ${dc.newLeft}` : ''}`;
+      }
+      const score = stars(ep.id, log);
       return area.adventure ? `별 ${score.n}/3 · 부탁 ${sideCount(area, adventureLog(ep.id, log))}/${area.adventure.sides.length} · 비밀 ${log.found[foundKey(ep.id, 'secret')] ? '✓' : '◇'}` : '';
     };
     const ball = (ep, i) => {
@@ -106,7 +130,9 @@
     const route = list.map((_, i) => mapPoints[i].join(',')).join(' ');
     const traveled = list.at(-1)?.id;
     const first = list.find(ep => ep.date === date()) || latest;
-    const root = replace(`<header class="explore-head">${backButton('들판으로')}<div><h1>성탄 길 지도</h1><p>내 양과 걸어온 길</p></div><button class="explore-sub" type="button" data-album>사진 ${tally.photos}/27</button></header>
+    const discoveredCount = Object.keys(log.discoveries || {}).length;
+    const totalDiscoveries = Object.keys(window.DISCOVERIES || {}).length;
+    const root = replace(`<header class="explore-head">${backButton('들판으로')}<div><h1>성탄 길 지도</h1><p>내 양과 걸어온 길</p></div><div class="explore-head-btns"><button class="explore-sub" type="button" data-notebook>📓 ${discoveredCount}/${totalDiscoveries}</button><button class="explore-sub" type="button" data-album>사진 ${tally.photos}/27</button></div></header>
       <div class="explore-parchment">
         <svg viewBox="0 0 370 370" aria-hidden="true">
           <defs>
@@ -136,6 +162,7 @@
       }).join('')}</div>
       ${traveled ? '<button type="button" class="btn ghost explore-challenge">탐험 도전장 저장·공유</button>' : ''}`, 'explore-map');
     root.querySelector('.explore-back').onclick = () => Field.page();
+    root.querySelector('[data-notebook]')?.addEventListener('click', () => openNotebook(root, Field.mainCare()?.sheep));
     root.querySelector('[data-album]').onclick = album;
     root.querySelector('.explore-challenge')?.addEventListener('click', () =>
       Field.showCard(root, '탐험 도전장', () => Card.drawExploreChallenge(tally), 'EXPLORE', '탐험 도전장', `내 탐험 기록은 ★ ${tally.stars}곳. 이길 수 있어?`));
@@ -350,7 +377,7 @@
       focusId = null;
       if (!stepFor(track)) finish(track);
       else {
-        objectives.animate?.([{ opacity: .65 }, { opacity: 1 }], { duration: 360 });
+        objectives?.animate?.([{ opacity: .65 }, { opacity: 1 }], { duration: 360 });
         Sound.sfx('exploreBell', 2);
         const upcoming = stepFor(track);
         feedback(upcoming.intro || '한 단계 마쳤어.');
@@ -496,12 +523,14 @@
       const nearest = currentNodes.reduce((best, key) => !best || Math.hypot(targets[key].pos[0] - p[0], targets[key].pos[1] - p[1])
         < Math.hypot(targets[best].pos[0] - p[0], targets[best].pos[1] - p[1]) ? key : best, null);
       focusId = currentNodes.includes(focusId) ? focusId : step?.type === 'order' ? currentNodes[0] : nearest;
-      objectives.querySelector('[data-act-step]').textContent = step ? `모험 ${state.main.step + 1}/${steps.length}` : '모험 완료';
-      objectives.querySelector('[data-act-goal]').textContent = step?.goal || '별 조각과 마을의 부탁을 더 찾아보자';
-      const small = objectives.querySelector('[data-act-count]');
-      small.textContent = step && counted(step).length > 1 ? progressLine(step, main.run) : '';
-      bearing.hidden = !focusId || !!clock && clock.mode === 'wait';
-      view?.setWaypoint(focusId ? targets[focusId].pos : null);
+      if (objectives) {
+        objectives.querySelector('[data-act-step]').textContent = step ? `모험 ${state.main.step + 1}/${steps.length}` : '모험 완료';
+        objectives.querySelector('[data-act-goal]').textContent = step?.goal || '별 조각과 마을의 부탁을 더 찾아보자';
+        const small = objectives.querySelector('[data-act-count]');
+        small.textContent = step && counted(step).length > 1 ? progressLine(step, main.run) : '';
+      }
+      if (bearing) bearing.hidden = !focusId || !!clock && clock.mode === 'wait';
+      view?.setWaypoint(bearing && focusId ? targets[focusId].pos : null);
       if (view && !restored) {
         restored = true;
         for (const kind of ['jump', 'push']) if (state.unlocked[kind]) view.restoreAbility(kind);
@@ -552,8 +581,9 @@
     }
     bagButton.onclick = () => card('모험 가방', '', { extra: bagMarkup(), button: '가방 닫기' });
     root.querySelector('[data-abilities]').onclick = () => abilitySheet();
+    root.querySelector('[data-notebook]')?.addEventListener('click', () => openNotebook(root, sheep, id));
     root.querySelector('[data-hints]').onclick = ledger;
-    bearing.onclick = () => locate(focusId);
+    if (bearing) bearing.onclick = () => locate(focusId);
     root.querySelector('[data-quest-map]').onclick = () => {
       const nodes = active(main);
       const mapDialog = card('이 장소의 길', '', { extra: `<ol class="adventure-zones">${zones.map((name, i) => `<li>${i === zone ? '●' : '○'} ${esc(name)}</li>`).join('')}</ol>
@@ -567,6 +597,7 @@
       render, dispose: stopClock, onBearing(radians, meters) {
         const info = getView()?.moveInfo();
         if (info) soundZone(info.zone);
+        if (!bearing) return;
         bearing.querySelector('i').style.transform = `rotate(${radians.toFixed(2)}rad)`;
         const value = meters + ' m';
         if (bearing.querySelector('small').textContent !== value) bearing.querySelector('small').textContent = value;
@@ -582,6 +613,695 @@
     };
   }
 
+  /* ---------- 발견 탐험 엔진 · 손가락 체험 8종 · 발견 노트 ---------- */
+  const KIND_META = {
+    look: { icon: '👀', label: '살펴보기' },
+    touch: { icon: '✋', label: '만져 보기' },
+    try: { icon: '🛠', label: '해 보기' }
+  };
+  const CUE_MOOD = { food: 'sniff', water: 'splash', fire: 'cozy', animal: 'startle', wool: 'sniff', worship: 'spark', craft: 'spark', road: 'spark', baby: 'cozy', quiet: 'cozy' };
+  const SPECIES_CUE = {
+    glutton: { food: '킁킁! 맛있는 냄새야! 한 입만 주면 안 돼?', water: '물 마시면 또 배고파지는데.' },
+    sleepy: { fire: '따뜻하니까 눈이 스르르… 꾸벅.', baby: '포근한 요람 보니까 나도 졸려…', quiet: '조용해서 잠깐 눈 붙여도 되겠다.' },
+    splash: { water: '첨벙! 물만 보면 발부터 담그고 싶어.' },
+    curly: { water: '물 튀면 내 곱슬털이 두 배로 부푸는데!' },
+    fire: { fire: '따뜻해… 불 옆이 제일 좋아.' },
+    shy: { animal: '움찔! 생각보다 크네… 네 뒤에 잠깐 숨을래.' },
+    jumper: { animal: '나도 저렇게 폴짝 뛰어 볼까!', road: '저 앞까지 단숨에 뛰어갈 수 있어!' },
+    flower: { road: '꽃잎이 보여! 내 털에도 한 송이 꽂아 줘.' },
+    olive: { road: '그늘 시원하다. 여기서 잠깐 쉬었다 갈래?' },
+    lantern: { fire: '내 털끝 빛이랑 불빛이 닮았지?' },
+    stargazer: { worship: '불빛이 별처럼 반짝여. 오래 보고 싶어.' },
+    cotton: { wool: '어? 저 실, 내 털처럼 폭신해 보여!' },
+    brown: { food: '어, 내 털 색이랑 똑같은 구운 빵 냄새야! 킁킁.' },
+    david: { worship: '♪ 소리 들으니까 하프가 생각나.' },
+    manger: { baby: '조용히… 아기가 자고 있을 것만 같아.' },
+    fleece: { water: '물방울이 이슬처럼 반짝여.' },
+    camper: { road: '짐 보니까 당장 길 떠나고 싶어졌어!' },
+    tiny: { animal: '나보다 훨씬 크네! 그래도 안 무서워.' },
+    chatty: { worship: '우와, 이거 나한테도 자세히 설명해 줘!' }
+  };
+  function sheepReaction(item, sheep) {
+    const mood = CUE_MOOD[item.cue] || 'spark';
+    const custom = sheep && SPECIES_CUE[sheep.species]?.[item.cue];
+    return { mood, line: custom || item.sheep || '신기한 걸 찾았네! 같이 더 보자.' };
+  }
+  function fallbackThumbSVG(item) {
+    const colors = { temple: ['#3c2e56', '#76577f'], home: ['#4a323e', '#865b4c'], work: ['#36384e', '#6f6254'], road: ['#2e3e44', '#5d765a'], field: ['#2b3450', '#5a6380'], christmas: ['#1f2347', '#5c4b7d'] };
+    const [a, b] = colors[item.theme] || ['#31294b', '#655178'];
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 150"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="220" height="150" rx="14" fill="url(#g)"/><circle cx="110" cy="74" r="44" fill="#fff2cc22"/><text x="110" y="92" text-anchor="middle" font-size="54">${item.icon || '✦'}</text></svg>`;
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+  async function discoverThumbURL(itemId) {
+    const item = window.DISCOVERIES?.[itemId];
+    const saved = await photoFile('discover', itemId);
+    return saved || (item ? fallbackThumbSVG(item) : '');
+  }
+  function openNotebook(root, sheep, placeId = null) {
+    const log = progress(), seen = log.discoveries || {}, day = date();
+    const all = window.DISCOVERIES || {}, themes = window.DISCOVER_THEMES || [];
+    const total = Object.keys(all).length, found = Object.keys(seen).filter(k => all[k]).length;
+    const oilUsed = log.discoverOil?.date === day ? log.discoverOil.count : 0;
+    const hasPlace = !!(placeId && window.EXPLORE[placeId]?.discover);
+    let tab = hasPlace ? 'place' : 'themes';
+
+    function cardHTML(itemId) {
+      const item = all[itemId];
+      if (!item) return '';
+      if (!seen[itemId]) {
+        const meta = KIND_META[item.kind] || KIND_META.look;
+        return `<article class="notebook-card locked">🔒 아직 만나지 못한 발견 · ${meta.icon} ${meta.label}</article>`;
+      }
+      const meta = KIND_META[item.kind] || KIND_META.look;
+      const react = sheepReaction(item, sheep);
+      return `<article class="notebook-card" data-note-item="${esc(itemId)}">
+        <img class="notebook-thumb" data-note-thumb="${esc(itemId)}" src="${esc(fallbackThumbSVG(item))}" alt="${esc(item.title)}">
+        <div class="notebook-body">
+          <h4>${meta.icon} ${esc(item.title)}</h4>
+          <p>${esc(item.fact)}</p>
+          ${item.ref ? `<div class="notebook-verse">📖 ${esc(Bible.full(item.ref))}</div>` : ''}
+          <div class="notebook-sheep">🐑 <b>${esc(sheep?.name || '내 양')}</b>: ${esc(react.line)}</div>
+          <button type="button" class="notebook-share-btn" data-share-note="${esc(itemId)}">📤 오늘 알게 된 것 카드</button>
+        </div>
+      </article>`;
+    }
+
+    function bodyHTML() {
+      if (tab === 'place' && hasPlace) {
+        const spec = window.EXPLORE[placeId].discover;
+        const dc = discoverCount(placeId, log);
+        return `<section class="notebook-theme">
+          <div class="notebook-theme-head"><h3>🧭 ${esc(window.EXPLORE[placeId].title)}</h3><span>${dc.n}/${dc.max}</span></div>
+          <div class="notebook-grid">${spec.items.map(entry => cardHTML(entry.id)).join('')}</div>
+        </section>`;
+      }
+      return themes.map(theme => {
+        const ids = Object.keys(all).filter(k => all[k].theme === theme.id);
+        const got = ids.filter(k => seen[k]).length;
+        const done = got >= ids.length && ids.length > 0;
+        return `<section class="notebook-theme">
+          <div class="notebook-theme-head"><h3>${theme.icon} ${esc(theme.name)}</h3><span>${got}/${ids.length}</span></div>
+          <p class="notebook-theme-reward${done ? ' done' : ''}">${done ? `✓ 칭호 획득: ${esc(theme.badge)} · 🎁 ${esc(theme.item)}` : `다 모으면 칭호 「${esc(theme.badge)}」 · 🎁 ${esc(theme.item)}`}</p>
+          <div class="notebook-grid">${ids.map(cardHTML).join('')}</div>
+        </section>`;
+      }).join('');
+    }
+
+    const dialog = Field.showSheet(root, '📓 발견 노트', `<div class="notebook-head-bar">
+      <span>모은 발견 <b>${found}/${total}</b></span>
+      <span>오늘 발견 기름 ${Math.min(5, oilUsed)}/5</span>
+    </div>
+    ${hasPlace ? `<div class="notebook-tabs"><button type="button" data-nb-tab="place" class="active">이 장소</button><button type="button" data-nb-tab="themes">주제별 (6)</button></div>` : ''}
+    <div data-nb-content>${bodyHTML()}</div>
+    <button type="button" class="btn" data-continue>닫기</button>`, 'discover-notebook-dialog');
+
+    function hydrate() {
+      dialog.querySelectorAll('img[data-note-thumb]').forEach(img => {
+        const key = img.dataset.noteThumb;
+        discoverThumbURL(key).then(url => { if (img.isConnected && url) img.src = url; });
+      });
+      dialog.querySelectorAll('[data-share-note]').forEach(btn => btn.onclick = async () => {
+        const key = btn.dataset.shareNote, item = all[key];
+        const thumb = await discoverThumbURL(key);
+        const react = sheepReaction(item, sheep);
+        dialog.close(); dialog.remove();
+        Field.showCard(root, '오늘 알게 된 것', () => Card.drawDiscoverNote(item, sheep, thumb, react.line),
+          'DISCOVER-' + key, item.title, `오늘 알게 된 것 · ${item.title}: ${item.fact}`);
+      });
+    }
+    hydrate();
+    dialog.querySelectorAll('[data-nb-tab]').forEach(btn => btn.onclick = () => {
+      tab = btn.dataset.nbTab;
+      dialog.querySelectorAll('[data-nb-tab]').forEach(b => b.classList.toggle('active', b === btn));
+      dialog.querySelector('[data-nb-content]').innerHTML = bodyHTML();
+      hydrate();
+    });
+    dialog.querySelector('[data-continue]').onclick = () => { dialog.close(); dialog.remove(); };
+    return dialog;
+  }
+
+  function runTryExperience({ root, item, sheep, flat, onComplete, onClose }) {
+    const mode = item.tryMode || 'spin';
+    const react = sheepReaction(item, sheep);
+    let pct = 0, finished = false, holdRaf = 0, holding = false, lastHold = 0;
+
+    function stageMarkup() {
+      if (mode === 'spin') {
+        const cls = item.prop === 'olivepress' ? ' is-olive' : item.prop === 'loom' ? ' is-loom' : '';
+        return `<div class="try-wheel${cls}" data-wheel><div class="try-wheel-core"></div><div class="try-wheel-knob"></div></div>`;
+      }
+      if (mode === 'pull') {
+        return `<div class="try-pull-well" data-pull><div class="try-rope"></div><div class="try-bucket" data-bucket>🪣</div></div>`;
+      }
+      if (mode === 'rub') {
+        return `<div class="try-plank" data-rub><div class="try-plane-tool" data-plane>🪵</div><span>나무 위를 좌우로 문질러 봐</span></div>`;
+      }
+      if (mode === 'hold') {
+        return `<button type="button" class="try-hold-btn" data-hold><i>🌿</i><span>길게 누르기</span></button>`;
+      }
+      if (mode === 'tap') {
+        return `<div class="try-oven-wrap"><button type="button" class="try-dough" data-dough>반죽 톡톡</button></div>`;
+      }
+      if (mode === 'wrap') {
+        return `<div class="try-wrap-pad" data-wrap><div class="try-wrap-bundle" data-bundle>강보 감기</div></div>`;
+      }
+      if (mode === 'order') {
+        return `<div class="try-order-row">
+          <button type="button" class="try-order-btn" data-ord="0"><i>🫒</i><span>1. 기름 붓기</span></button>
+          <button type="button" class="try-order-btn" data-ord="1"><i>🧵</i><span>2. 심지 놓기</span></button>
+          <button type="button" class="try-order-btn" data-ord="2"><i>🔥</i><span>3. 불 붙이기</span></button>
+        </div>`;
+      }
+      return `<div class="try-stomp-row">
+        <button type="button" class="try-foot-btn next" data-foot="0"><i>🦶</i><span>왼발</span></button>
+        <button type="button" class="try-foot-btn" data-foot="1"><i>🦶</i><span>오른발</span></button>
+      </div>`;
+    }
+
+    const dialog = Field.showSheet(root, `🛠 ${item.title}`, `<div class="discover-try-body" data-try-body>
+      <p class="try-hint" data-try-hint>${esc(item.tryPrompt || '손가락으로 체험해 봐!')}</p>
+      <div class="try-meter"><i data-try-bar></i></div>
+      <div class="try-stage" data-try-stage>${stageMarkup()}</div>
+      <div class="discover-sheep-box"><i>🐑</i><span><b>${esc(sheep.name)}</b>${esc(react.line)}</span></div>
+      <button type="button" class="btn ghost try-fallback-btn" data-try-step>${esc(item.tryBtn || '체험 진행하기')}</button>
+      <button type="button" class="link" data-try-cancel style="display:block;margin:6px auto 0">그만하기</button>
+    </div>`, 'discover-try-dialog', () => { cancelAnimationFrame(holdRaf); onClose?.(); });
+
+    const body = dialog.querySelector('[data-try-body]');
+    const bar = dialog.querySelector('[data-try-bar]');
+    const hint = dialog.querySelector('[data-try-hint]');
+
+    function setProgress(next, sfx = 'tap') {
+      if (finished) return;
+      pct = Math.min(100, Math.max(0, next));
+      if (bar) bar.style.width = pct + '%';
+      if (sfx) Sound.sfx(sfx);
+      if (pct >= 100) {
+        finished = true;
+        cancelAnimationFrame(holdRaf);
+        const res = onComplete?.() || {};
+        body.innerHTML = `
+          ${item.bag ? `<div class="try-bag-reward"><i>${item.bag.icon}</i><span>가방에 담았어 · ${esc(item.bag.name)}</span></div>` : ''}
+          ${res.isFirst ? `<span class="discover-pill is-new">✨ 처음 발견${res.oilBonus ? ' · 기름 +1' : ''}</span>` : ''}
+          <p class="discover-fact">${esc(item.fact)}</p>
+          ${item.ref ? Field.wordMarkup(item.ref) : ''}
+          <div class="discover-sheep-box"><i>🐑</i><span><b>${esc(sheep.name)}</b>${esc(react.line)}</span></div>
+          <button type="button" class="btn" data-continue>가방에 담고 돌아가기</button>`;
+        body.querySelector('[data-continue]').onclick = () => { dialog.close(); dialog.remove(); onClose?.(); };
+      }
+    }
+
+    dialog.querySelector('[data-try-cancel]').onclick = () => { dialog.close(); dialog.remove(); onClose?.(); };
+
+    // 1) 돌리기 (spin)
+    if (mode === 'spin') {
+      const wheel = dialog.querySelector('[data-wheel]');
+      let angle = 0, lastAngle = null, drag = false, tickAcc = 0;
+      const getAng = e => {
+        const r = wheel.getBoundingClientRect();
+        return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2));
+      };
+      wheel.onpointerdown = e => { wheel.setPointerCapture?.(e.pointerId); drag = true; lastAngle = getAng(e); };
+      wheel.onpointermove = e => {
+        if (!drag || finished) return;
+        const a = getAng(e);
+        let d = a - lastAngle;
+        if (d > Math.PI) d -= Math.PI * 2;
+        if (d < -Math.PI) d += Math.PI * 2;
+        lastAngle = a;
+        angle += d;
+        wheel.style.transform = `rotate(${(angle * 180 / Math.PI).toFixed(1)}deg)`;
+        tickAcc += Math.abs(d);
+        const step = Math.abs(d) * 5.2;
+        if (tickAcc > 1.35) { tickAcc = 0; setProgress(pct + step, 'grind'); }
+        else setProgress(pct + step, null);
+      };
+      wheel.onpointerup = wheel.onpointercancel = () => { drag = false; };
+      dialog.querySelector('[data-try-step]').onclick = () => {
+        angle += Math.PI * 0.65;
+        wheel.style.transform = `rotate(${(angle * 180 / Math.PI).toFixed(1)}deg)`;
+        setProgress(pct + 25, 'grind');
+      };
+    }
+
+    // 2) 당기기 (pull)
+    if (mode === 'pull') {
+      const pad = dialog.querySelector('[data-pull]'), bucket = dialog.querySelector('[data-bucket]');
+      let startY = null;
+      const updateBucket = p => { bucket.style.bottom = (16 + p * 1.25) + 'px'; };
+      pad.onpointerdown = e => { pad.setPointerCapture?.(e.pointerId); startY = e.clientY; };
+      pad.onpointermove = e => {
+        if (startY == null || finished) return;
+        const dy = e.clientY - startY;
+        if (dy >= 42) {
+          startY = e.clientY;
+          updateBucket(Math.min(100, pct + 20));
+          setProgress(pct + 20, 'oil');
+        }
+      };
+      pad.onpointerup = pad.onpointercancel = () => { startY = null; };
+      dialog.querySelector('[data-try-step]').onclick = () => {
+        updateBucket(Math.min(100, pct + 25));
+        setProgress(pct + 25, 'oil');
+      };
+    }
+
+    // 3) 문지르기 (rub)
+    if (mode === 'rub') {
+      const plank = dialog.querySelector('[data-rub]'), plane = dialog.querySelector('[data-plane]');
+      let lastX = null, acc = 0;
+      plank.onpointerdown = e => { plank.setPointerCapture?.(e.pointerId); lastX = e.clientX; };
+      plank.onpointermove = e => {
+        if (lastX == null || finished) return;
+        const r = plank.getBoundingClientRect();
+        const xPct = Math.max(4, Math.min(78, ((e.clientX - r.left) / r.width) * 82));
+        plane.style.left = xPct + '%';
+        const dx = Math.abs(e.clientX - lastX);
+        lastX = e.clientX;
+        acc += dx;
+        if (acc >= 38) { acc = 0; setProgress(pct + 12.5, 'plane'); }
+      };
+      plank.onpointerup = plank.onpointercancel = () => { lastX = null; };
+      dialog.querySelector('[data-try-step]').onclick = () => {
+        plane.style.left = ((pct % 50) + 18) + '%';
+        setProgress(pct + 25, 'plane');
+      };
+    }
+
+    // 4) 길게 누르기 (hold)
+    if (mode === 'hold') {
+      const btn = dialog.querySelector('[data-hold]');
+      const loop = now => {
+        if (!holding || finished) return;
+        const dt = Math.min(80, now - lastHold);
+        lastHold = now;
+        setProgress(pct + dt * 0.036, null);
+        if (!finished) holdRaf = requestAnimationFrame(loop);
+      };
+      btn.onpointerdown = e => {
+        btn.setPointerCapture?.(e.pointerId);
+        holding = true; lastHold = performance.now();
+        btn.classList.add('holding');
+        Sound.sfx('ignite');
+        holdRaf = requestAnimationFrame(loop);
+      };
+      btn.onpointerup = btn.onpointercancel = () => { holding = false; btn.classList.remove('holding'); cancelAnimationFrame(holdRaf); };
+      dialog.querySelector('[data-try-step]').onclick = () => setProgress(pct + 25, 'ignite');
+    }
+
+    // 5) 톡톡 (tap)
+    if (mode === 'tap') {
+      const dough = dialog.querySelector('[data-dough]');
+      let taps = 0;
+      const labels = ['반죽 펴기 톡!', '납작하게 톡!', '화덕 벽에 착!', '익는 중… 톡!', '노릇하게 뒤집기!', '완성!'];
+      const doTap = () => {
+        taps++;
+        dough.textContent = labels[Math.min(taps, labels.length - 1)];
+        dough.style.transform = `scale(${1 + Math.min(taps, 3) * 0.08}, ${1 - Math.min(taps, 2) * 0.04})`;
+        if (taps >= 3) dough.classList.add('baked');
+        setProgress(taps * 20, taps >= 3 ? 'ignite' : 'pop');
+      };
+      dough.onclick = doTap;
+      dialog.querySelector('[data-try-step]').onclick = doTap;
+    }
+
+    // 6) 감기 (wrap)
+    if (mode === 'wrap') {
+      const pad = dialog.querySelector('[data-wrap]'), bundle = dialog.querySelector('[data-bundle]');
+      let startX = null, wraps = 0;
+      const doWrap = () => {
+        wraps++;
+        bundle.style.transform = `rotate(${wraps % 2 ? -5 : 5}deg) scale(${1 + wraps * 0.03})`;
+        bundle.textContent = wraps >= 4 ? '단단히 감김!' : `천 감기 ${wraps}/4`;
+        setProgress(wraps * 25, 'knit');
+      };
+      pad.onpointerdown = e => { pad.setPointerCapture?.(e.pointerId); startX = e.clientX; };
+      pad.onpointermove = e => {
+        if (startX == null || finished) return;
+        if (Math.abs(e.clientX - startX) >= 48) { startX = e.clientX; doWrap(); }
+      };
+      pad.onpointerup = pad.onpointercancel = () => { startX = null; };
+      dialog.querySelector('[data-try-step]').onclick = doWrap;
+    }
+
+    // 7) 순서 누르기 (order)
+    if (mode === 'order') {
+      let stepIdx = 0;
+      const btns = [...dialog.querySelectorAll('[data-ord]')];
+      const hints = ['먼저 올리브기름부터 부어 볼까?', '이제 심지를 끼워 봐!', '마지막으로 불을 붙여 봐!'];
+      const press = i => {
+        if (finished) return;
+        if (i !== stepIdx) { Sound.sfx('boop'); hint.textContent = hints[stepIdx]; return; }
+        btns[i].classList.add('done');
+        stepIdx++;
+        if (stepIdx < hints.length) hint.textContent = hints[stepIdx];
+        setProgress(Math.round(stepIdx / 3 * 100), stepIdx === 3 ? 'ignite' : 'oil');
+      };
+      btns.forEach((b, i) => b.onclick = () => press(i));
+      dialog.querySelector('[data-try-step]').onclick = () => press(stepIdx);
+    }
+
+    // 8) 밟기 (stomp)
+    if (mode === 'stomp') {
+      let expect = 0, stomps = 0;
+      const feet = [...dialog.querySelectorAll('[data-foot]')];
+      const pressFoot = side => {
+        if (finished) return;
+        if (side !== expect) { Sound.sfx('tap'); return; }
+        stomps++;
+        expect = 1 - expect;
+        feet.forEach((f, idx) => f.classList.toggle('next', idx === expect));
+        setProgress(stomps * 12.5, 'thump');
+      };
+      feet.forEach((f, idx) => f.onclick = () => pressFoot(idx));
+      dialog.querySelector('[data-try-step]').onclick = () => pressFoot(expect);
+    }
+    return dialog;
+  }
+
+  function createDiscovery(context) {
+    const { id, area, day, log, root, sheep, record, card, feedback, grant, refresh, getView, isFlat, currentLine, say } = context;
+    const spec = area.discover, adv = area.adventure, catalog = window.DISCOVERIES || {};
+    const { zones } = adv;
+    const zoneText = root.querySelector('[data-zone]');
+    const countEl = root.querySelector('[data-discover-count]');
+    const newEl = root.querySelector('[data-discover-new]');
+    const nearbyBtn = root.querySelector('[data-nearby]');
+    const inspectBox = root.querySelector('[data-inspect]');
+    const bagButton = root.querySelector('[data-bag]');
+    const nbButton = root.querySelector('[data-notebook]');
+    const next = root.querySelector('[data-field-next]');
+    let zone = -1, restored = false, activeInspectId = null, nearbyMarker = null;
+
+    const here = () => getView()?.position() || adv.spawn;
+    const proximity = pos => Math.hypot(here()[0] - pos[0], here()[1] - pos[1]);
+    const isUnlocked = kind => !!log.discoverUnlock[id + '/' + kind];
+    const doneFound = key => log.found[foundKey(id, key)];
+
+    function soundZone(index) {
+      if (index === zone) return;
+      zone = index;
+      if (zoneText) zoneText.textContent = zones[zone];
+      Sound.ambience(adv.ambience[zone]);
+    }
+    soundZone(0);
+
+    function closeInspect() {
+      if (!activeInspectId && inspectBox.hidden) return;
+      activeInspectId = null;
+      inspectBox.hidden = true;
+      inspectBox.innerHTML = '';
+      root.classList.remove('is-inspecting');
+      getView()?.endInspect?.();
+    }
+
+    function recordDiscovery(itemId, markerId) {
+      const item = catalog[itemId];
+      if (!item) return { isFirst: false };
+      const isFirst = !log.discoveries[itemId];
+      let oilBonus = false, themeReward = null;
+      if (isFirst) {
+        let shot = null;
+        try { shot = getView()?.snapProp?.(markerId); } catch { /* 2D 또는 스냅숏 생략 */ }
+        if (shot) void photoFile('discover', itemId, shot);
+        log.discoveries[itemId] = { date: day, place: id, thumb: !!shot };
+        if (log.discoverOil.date !== day) log.discoverOil = { date: day, count: 0 };
+        if (log.discoverOil.count < 5) {
+          log.discoverOil.count++;
+          grant({ oil: 1 });
+          oilBonus = true;
+        }
+        const dc = discoverCount(id, log);
+        if (dc.n >= Math.min(2, spec.newIds.length || 2)) {
+          Field.adventureHeart(record, day);
+        }
+        // 주제 완성 확인
+        const theme = (window.DISCOVER_THEMES || []).find(t => t.id === item.theme);
+        if (theme && !log.themeRewards[theme.id]) {
+          const themeIds = Object.keys(catalog).filter(k => catalog[k].theme === theme.id);
+          if (themeIds.length && themeIds.every(k => log.discoveries[k])) {
+            log.themeRewards[theme.id] = day;
+            const gotItem = grant({ item: theme.item });
+            themeReward = { theme, gotItem };
+          }
+        }
+        statusChanged();
+        refresh();
+      }
+      return { isFirst, oilBonus, themeReward };
+    }
+
+    function maybeShowThemeReward(res) {
+      if (!res?.themeReward) return;
+      const { theme, gotItem } = res.themeReward;
+      Sound.sfx('badge');
+      card(`${theme.icon} 「${theme.name}」 주제 완성!`, `칭호 「${theme.badge}」를 얻었어!`, {
+        detail: gotItem ? `옷장 · ${gotItem}` : `칭호 · ${theme.badge}`,
+        button: '좋아!'
+      });
+    }
+
+    function openLookOrTouch(entry, item, markerId) {
+      const react = sheepReaction(item, sheep);
+      const view = getView();
+      if (item.kind === 'look') {
+        view?.inspect?.(markerId);
+        Sound.sfx('verse');
+      } else {
+        view?.touchProp?.(markerId, item.anim || 'spark');
+        const sfxMap = { trumpet: 'trumpet', sway: 'exploreBell', scribe: 'plane', balance: 'oil', donkey: 'thump', doves: 'pop', pray: 'verse' };
+        Sound.sfx(sfxMap[item.anim] || 'pop');
+      }
+      view?.sheepReact?.(react.mood, react.line);
+      const res = recordDiscovery(entry.id, markerId);
+      if (res.isFirst) Sound.sfx('star');
+      activeInspectId = markerId;
+      const meta = KIND_META[item.kind] || KIND_META.look;
+      root.classList.add('is-inspecting');
+      inspectBox.hidden = false;
+      inspectBox.innerHTML = `<div class="discover-inspect-head">
+          <h2>${meta.icon} ${esc(item.title)}</h2>
+          <span class="discover-pill${res.isFirst ? ' is-new' : ''}">${res.isFirst ? `✨ 처음 발견${res.oilBonus ? ' · 기름 +1' : ''}` : meta.label}</span>
+        </div>
+        ${item.touchLine ? `<p class="discover-touch-line">${esc(item.touchLine)}</p>` : ''}
+        <p class="discover-fact">${esc(item.fact)}</p>
+        ${item.ref ? Field.wordMarkup(item.ref) : ''}
+        <div class="discover-sheep-box"><i>🐑</i><span><b>${esc(sheep.name)}</b>${esc(react.line)}</span></div>
+        <div class="discover-inspect-actions">
+          ${item.kind === 'touch' ? '<button type="button" class="btn ghost" data-retouch>한 번 더 만져 보기</button>' : '<button type="button" class="btn ghost" data-open-nb>📓 발견 노트</button>'}
+          <button type="button" class="btn" data-close-inspect>계속 둘러보기</button>
+        </div>`;
+      inspectBox.querySelector('[data-close-inspect]').onclick = () => { closeInspect(); maybeShowThemeReward(res); };
+      inspectBox.querySelector('[data-open-nb]')?.addEventListener('click', () => { closeInspect(); openNotebook(root, sheep, id); });
+      inspectBox.querySelector('[data-retouch]')?.addEventListener('click', () => {
+        view?.touchProp?.(markerId, item.anim || 'spark');
+        const sfxMap = { trumpet: 'trumpet', sway: 'exploreBell', scribe: 'plane', balance: 'oil', donkey: 'thump', doves: 'pop', pray: 'verse' };
+        Sound.sfx(sfxMap[item.anim] || 'pop');
+        view?.sheepReact?.(react.mood, react.line);
+      });
+      feedback(`${sheep.name}: ${react.line}`);
+      window.scrollTo(0, 0);
+    }
+
+    function openTry(entry, item, markerId) {
+      closeInspect();
+      const view = getView();
+      view?.inspect?.(markerId);
+      let res = null;
+      runTryExperience({
+        root, item, sheep, flat: isFlat(),
+        onComplete() {
+          if (item.bag) {
+            const slot = log.discoverBag[item.bag.name] ||= { ...item.bag, count: 0 };
+            slot.count++;
+          }
+          const react = sheepReaction(item, sheep);
+          view?.touchProp?.(markerId, item.tryMode === 'spin' ? 'spin' : 'spark');
+          view?.sheepReact?.(react.mood, react.line);
+          Sound.sfx('mission');
+          res = recordDiscovery(entry.id, markerId);
+          statusChanged(); refresh();
+          feedback(`${sheep.name}: ${react.line}`);
+          return res;
+        },
+        onClose() {
+          view?.endInspect?.();
+          if (res) maybeShowThemeReward(res);
+        }
+      });
+    }
+
+    function applyAbility(kind) {
+      const view = getView();
+      if (kind === 'smell') {
+        const hiddenFirst = spec.items.filter(e => !log.discoveries[e.id])
+          .sort((a, b) => Number(!!b.hidden) - Number(!!a.hidden) || proximity(a.pos) - proximity(b.pos));
+        const pick = hiddenFirst[0];
+        if (!pick) return feedback('이 장소의 발견을 다 찾아냈어! 발견 노트를 펼쳐 봐.');
+        if (pick.hidden) log.discoverUnlock[id + '/smell-' + pick.id] = true;
+        view?.revealAbility?.('smell', pick.pos);
+        view?.sheepReact?.('sniff', '킁킁, 저쪽에서 반짝이는 냄새가 나!');
+        Sound.sfx('sheep');
+        statusChanged(); refresh();
+        feedback(`킁킁! ${catalog[pick.id]?.title || '숨은 발견'} 쪽으로 발자국이 반짝여.`);
+        return;
+      }
+      if (isUnlocked(kind)) return feedback('이 장소에서 이미 사용했어.');
+      const featTarget = adv.targets[kind];
+      if (featTarget && !isFlat() && proximity(featTarget.pos) > 3.2) {
+        view?.focus?.(kind);
+        return feedback(featTarget.title + ' 쪽으로 다가간 뒤 다시 써 보자.');
+      }
+      log.discoverUnlock[id + '/' + kind] = true;
+      const gated = spec.items.find(e => e.ability === kind);
+      view?.revealAbility?.(kind, kind === 'jump' && gated ? gated.pos : null);
+      Sound.sfx(kind === 'push' ? 'thump' : 'gem');
+      feedback({ jump: '낮은 담을 폴짝 넘었어! 지붕 끝을 살펴봐.', push: '수레를 밀어 길을 열었어! 안쪽을 살펴봐.', shine: '양의 빛이 어두운 틈을 환하게 비췄어.' }[kind]);
+      statusChanged(); refresh();
+    }
+
+    function abilitySheet(kind) {
+      const abilities = kind ? ABILITIES.filter(a => a.id === kind) : ABILITIES;
+      const dialog = card('양 능력', '', {
+        extra: `<div class="adventure-abilities">${abilities.map(ability => {
+          const ready = Field.mainCare()?.sheep.level >= ability.level || ability.id === 'shine' && day >= '2026-12-20';
+          return `<button type="button" data-ability="${ability.id}" ${ready ? '' : 'disabled'}><i>${ability.icon}</i><b>${ability.title}</b><small>${ready ? ability.detail : ability.stage + '부터 쓸 수 있어.'}</small></button>`;
+        }).join('')}</div>`, button: '돌아가기'
+      });
+      dialog?.querySelectorAll('[data-ability]').forEach(button => button.onclick = () => {
+        dialog.querySelector('[data-continue]').click();
+        applyAbility(button.dataset.ability);
+      });
+    }
+
+    function bagMarkup() {
+      const entries = Object.values(log.discoverBag || {});
+      if (!entries.length) return '<p class="discover-fact" style="text-align:center">아직 만든 물건이 없어. <b>🛠 해 보기</b>로 빵·물동이·밀가루를 만들어 담아 봐!</p>';
+      return '<ul class="adventure-bag">' + entries.map(item =>
+        `<li><i>${item.icon}</i><b>${esc(item.name)}</b><small>×${item.count}</small></li>`).join('') + '</ul>';
+    }
+
+    function render() {
+      const view = getView();
+      if (view && !restored) {
+        restored = true;
+        for (const kind of ['jump', 'push']) if (isUnlocked(kind)) view.restoreAbility(kind);
+      }
+      const dc = discoverCount(id, log);
+      if (countEl) countEl.textContent = `발견 ${dc.n}/${dc.max}`;
+      if (newEl) {
+        newEl.hidden = dc.newLeft === 0;
+        newEl.textContent = `오늘 새 발견 ${dc.newLeft}개`;
+      }
+      const totalGot = Object.keys(log.discoveries || {}).filter(k => catalog[k]).length;
+      if (nbButton) nbButton.querySelector('small').textContent = totalGot;
+      const bagTotal = Object.values(log.discoverBag || {}).reduce((s, x) => s + (x.count || 0), 0);
+      if (bagButton) bagButton.querySelector('small').textContent = bagTotal;
+      if (next) next.hidden = dc.n < 1;
+
+      const markers = [];
+      for (const entry of spec.items) {
+        const item = catalog[entry.id];
+        if (!item) continue;
+        const seen = !!log.discoveries[entry.id];
+        const isNew = spec.newIds.includes(entry.id);
+        const hidden = !!entry.hidden && !seen && !log.discoverUnlock[id + '/smell-' + entry.id];
+        const markerId = entry.residentKey || ('disc/' + entry.id);
+        markers.push({
+          id: markerId, discoverId: entry.id, type: item.kind, prop: entry.residentKey ? null : item.prop,
+          pos: entry.pos, title: (seen ? '✓ ' : '') + item.title, symbol: KIND_META[item.kind].icon,
+          discovered: seen, isNew, hidden, ability: entry.ability
+        });
+      }
+      for (const npc of spec.storyPeople || []) {
+        markers.push({ id: npc.id, type: 'person', actor: npc.actor, pos: npc.pos, title: npc.actor, symbol: '💬', storyNpc: npc });
+      }
+      for (const key of ['word', 'photo', 'secret']) {
+        if (adv.targets[key]) markers.push({ ...adv.targets[key], id: key });
+      }
+      for (const kind of ['jump', 'push']) {
+        if (spec.items.some(e => e.ability === kind) && !isUnlocked(kind) && adv.targets[kind]) {
+          markers.push({ ...adv.targets[kind], id: kind });
+        }
+      }
+      return markers;
+    }
+
+    function renderFlat(fallback, shown, reachFn) {
+      const btn = m => `<button type="button" data-mark="${esc(m.id)}" class="${m.discovered ? 'is-done' : ''}${m.isNew && !m.discovered ? ' is-new' : ''}"><i>${m.symbol}</i><b>${esc(m.title)}</b></button>`;
+      const newItems = shown.filter(m => m.discoverId && m.isNew && !m.hidden);
+      const otherItems = shown.filter(m => m.discoverId && !m.isNew && !m.hidden);
+      const people = shown.filter(m => m.storyNpc);
+      const extras = shown.filter(m => !m.discoverId && !m.storyNpc && !m.hidden);
+      const hidden = shown.filter(m => m.hidden);
+      fallback.innerHTML = `
+        ${newItems.length ? `<div class="discover-flat-section"><h3>✨ 오늘의 새 발견</h3><div class="explore-flat-markers">${newItems.map(btn).join('')}</div></div>` : ''}
+        ${otherItems.length ? `<div class="discover-flat-section"><h3>🧭 이 장소에서 만나는 것</h3><div class="explore-flat-markers">${otherItems.map(btn).join('')}</div></div>` : ''}
+        ${people.length ? `<div class="discover-flat-section"><h3>💬 만날 수 있는 사람</h3><div class="explore-flat-markers">${people.map(btn).join('')}</div></div>` : ''}
+        ${extras.length ? `<div class="discover-flat-section"><h3>📜 말씀 · 사진 · 길</h3><div class="explore-flat-markers">${extras.map(btn).join('')}</div></div>` : ''}
+        ${hidden.length ? `<details class="explore-nooks"><summary>🐽 숨은 발견 (${hidden.length})</summary><div>${hidden.map(btn).join('')}</div></details>` : ''}`;
+      fallback.querySelectorAll('[data-mark]').forEach(el => el.onclick = () => reachFn(el.dataset.mark));
+    }
+
+    bagButton.onclick = () => card('탐험 가방', '', { extra: bagMarkup(), button: '가방 닫기' });
+    root.querySelector('[data-abilities]').onclick = () => abilitySheet();
+    nbButton.onclick = () => { closeInspect(); openNotebook(root, sheep, id); };
+    root.querySelector('[data-quest-map]')?.addEventListener('click', () => {
+      const unfound = spec.items.filter(e => !log.discoveries[e.id] && !e.hidden);
+      const dlg = card('이 장소 둘러보기', '', {
+        extra: `<ol class="adventure-zones">${zones.map((name, i) => `<li>${i === zone ? '●' : '○'} ${esc(name)}</li>`).join('')}</ol>
+          ${unfound.length ? `<ul class="adventure-checks">${unfound.slice(0, 5).map(e => `<li><button type="button" data-loc="${esc(e.residentKey || 'disc/' + e.id)}">${KIND_META[catalog[e.id].kind].icon} ${esc(catalog[e.id].title)}</button></li>`).join('')}</ul>` : '<p class="discover-fact">이 장소의 보이는 발견을 모두 살펴봤어!</p>'}`,
+        button: '돌아가기'
+      });
+      dlg?.querySelectorAll('[data-loc]').forEach(b => b.onclick = () => {
+        dlg.querySelector('[data-continue]').click();
+        getView()?.focus?.(b.dataset.loc);
+      });
+    });
+    nearbyBtn?.addEventListener('click', () => {
+      if (nearbyMarker) getView()?.focus?.(nearbyMarker.id);
+    });
+
+    return {
+      render, renderFlat,
+      dispose: closeInspect,
+      zoneChanged() { const info = getView()?.moveInfo(); if (info) soundZone(info.zone); },
+      onNearby(marker) {
+        nearbyMarker = marker;
+        if (!nearbyBtn) return;
+        if (!marker) { nearbyBtn.hidden = true; return; }
+        nearbyBtn.hidden = false;
+        nearbyBtn.querySelector('span').textContent = marker.title.replace(/^✓\s*/, '');
+      },
+      reach(key) {
+        const entry = spec.items.find(e => (e.residentKey || ('disc/' + e.id)) === key);
+        if (entry) {
+          const item = catalog[entry.id];
+          if (entry.ability && entry.ability !== 'smell' && !isUnlocked(entry.ability)) {
+            const ab = ABILITIES.find(a => a.id === entry.ability);
+            const ready = Field.mainCare()?.sheep.level >= ab.level;
+            card(item.title, `${ab.icon} ${ab.title} 능력이 있으면 여기까지 닿을 수 있어.${ready ? '' : ` (${ab.stage}부터 가능)`}`, {
+              button: ready ? `${ab.icon} 양 능력 쓰기` : '알겠어',
+              action: ready ? () => applyAbility(entry.ability) : undefined
+            });
+            return true;
+          }
+          if (item.kind === 'try') openTry(entry, item, key);
+          else openLookOrTouch(entry, item, key);
+          return true;
+        }
+        const npc = (spec.storyPeople || []).find(p => p.id === key);
+        if (npc) {
+          const line = currentLine(npc);
+          say({ id: key, title: npc.actor }, line?.[1] || '', line?.[2] || npc.actor);
+          return true;
+        }
+        if (adv.targets[key]?.feature) { abilitySheet(adv.targets[key].feature); return true; }
+        return false;
+      }
+    };
+  }
+
   async function enter(id) {
     const ep = Core.epById(id), area = window.EXPLORE[id], care = Field.mainCare();
     if (!area || !isOpen(ep) || !care?.sheep) return map();
@@ -589,6 +1309,7 @@
     const log = progress(), record = Field.ensure();
     const sheep = { ...care.sheep, wool: care.sheep.shornOn === date() ? 0 : 1 };
     const day = date(), event = todayEvent(), act = area.activity, wool = Field.spec(sheep.species).wool || 'white';
+    const hasDiscover = !!area.discover;
     const enhanced = !!area.adventure;
     const christmas = id === 'end', eve = id === '4-4';
     const hasBlanket = !!record.woolGifts?.blanket;
@@ -605,19 +1326,24 @@
     Sound.music('night');
     if (!enhanced) Sound.ambience('나의 들판');
     const root = replace(`<header class="explore-head">${backButton('지도로')}<div><h1>${esc(area.title)}</h1><p>${esc(Core.dateLabel(ep.date))} · ${esc(regions[area.region])}</p></div><button class="explore-sub" type="button" data-field-return>들판</button></header>
-      ${enhanced ? `<section class="adventure-objective" aria-label="현재 모험 목표">
-        <div><small data-act-step></small><span data-act-count></span><strong data-act-goal aria-live="polite"></strong></div>
-        <button type="button" data-bearing aria-label="현재 목표로 걸어가기"><i>↑</i><small>길 찾기</small></button>
+      ${hasDiscover ? `<section class="discover-bar" aria-label="발견 현황">
+        <div class="discover-bar-left"><span class="discover-count" data-discover-count>발견 0/0</span><span class="discover-new-badge" data-discover-new hidden></span></div>
+        <button type="button" class="discover-nearby" data-nearby hidden>✨ <span></span></button>
       </section>` : ''}
       <div class="explore-location-main"><div class="explore-stage" aria-label="${esc(area.title)}" data-kit="${area.kit}"><p class="explore-loading">장소를 불러오는 중…</p>
       ${enhanced ? '<button type="button" data-quest-map class="adventure-zone"><i aria-hidden="true">◇</i> <span data-zone></span></button>' : ''}</div>
-      <p class="explore-status" role="status">${enhanced ? '조이스틱이나 바닥을 톡 눌러 이동해. 오른쪽 화면을 밀면 둘러볼 수 있어.' : `바닥을 톡 누르면 ${esc(Core.josa(sheep.name, '이가'))} 걸어가.`}</p>
-      <p class="explore-task-line"><span data-score></span><strong data-timer hidden></strong></p></div>
+      ${hasDiscover ? '<section class="discover-inspect" data-inspect hidden aria-live="polite"></section>' : ''}
+      <p class="explore-status" role="status">${hasDiscover ? `조이스틱이나 바닥을 톡 눌러 ${esc(Core.josa(sheep.name, '이랑'))} 천천히 둘러봐.` : enhanced ? '조이스틱이나 바닥을 톡 눌러 이동해. 오른쪽 화면을 밀면 둘러볼 수 있어.' : `바닥을 톡 누르면 ${esc(Core.josa(sheep.name, '이가'))} 걸어가.`}</p>
+      ${hasDiscover ? '' : '<p class="explore-task-line"><span data-score></span><strong data-timer hidden></strong></p>'}</div>
       <div class="explore-flat" hidden></div>
-      ${enhanced ? `<footer class="adventure-actions">
+      ${hasDiscover ? `<footer class="adventure-actions">
         <button type="button" data-abilities><i>🐑</i> 양 능력</button>
+        <button type="button" data-notebook><i>📓</i> 발견 노트 <small>0</small></button>
+        <button type="button" data-bag><i>🎒</i> 가방 <small>0</small></button></footer>` : enhanced ? `<footer class="adventure-actions four-col">
+        <button type="button" data-abilities><i>🐑</i> 양 능력</button>
+        <button type="button" data-notebook><i>📓</i> 노트</button>
         <button type="button" data-bag><i>🎒</i> 가방 <small>0/6</small></button>
-        <button type="button" data-hints><i>☷</i> 마을 일지</button></footer>` : `<footer class="explore-foot"><button class="link explore-activity-link" type="button" data-activity-link>⭐ 오늘의 활동</button><button class="link" type="button" data-hints>이 장소에서 할 일</button>
+        <button type="button" data-hints><i>☷</i> 일지</button></footer>` : `<footer class="explore-foot"><button class="link explore-activity-link" type="button" data-activity-link>⭐ 오늘의 활동</button><button class="link" type="button" data-hints>이 장소에서 할 일</button>
       ${act.sequence ? '<button class="link" type="button" data-melody hidden>🔔 힌트 다시 듣기</button>' : ''}
       ${act.manger ? '<button class="link" type="button" data-final-album hidden>여정 앨범 열기</button>' : ''}
       ${giftLink}
@@ -640,13 +1366,17 @@
     if (finalAlbum) finalAlbum.onclick = album;
     const gift = root.querySelector('[data-gift-go]');
     if (gift) gift.onclick = () => Field.page({ tonight: id, gift: act.gift[0] });
-    root.querySelector('[data-hints]').onclick = showGuide;
+    const hintsBtn = root.querySelector('[data-hints]');
+    if (hintsBtn) hintsBtn.onclick = showGuide;
     if (!enhanced) root.querySelector('[data-activity-link]').onclick = () => view ? view.focus('activity') : startActivity();
-    const adventure = enhanced ? createAdventure({ id, area, day, log, root, sheep, record, card, grant, feedback,
+    const discovery = hasDiscover ? createDiscovery({ id, area, day, log, root, sheep, record, card, grant, feedback,
+      refresh, getView: () => view, isFlat: () => flat, currentLine, say }) : null;
+    const adventure = enhanced && !hasDiscover ? createAdventure({ id, area, day, log, root, sheep, record, card, grant, feedback,
       refresh, getView: () => view, isFlat: () => flat }) : null;
     function dispose() {
       if (dead) return;
       dead = true; observer.disconnect(); clearInterval(interval); hintTimers.forEach(clearTimeout);
+      discovery?.dispose();
       adventure?.dispose();
       view?.destroy(); view = null;
     }
@@ -654,6 +1384,16 @@
     function feedback(text) { status.textContent = cueText(text, sheep); }
     function withSymbols(markers) { return markers.map(marker => ({ ...marker, symbol: marker.symbol || icons[marker.type] || '✦' })); }
     function refresh() {
+      if (discovery) {
+        const markers = discovery.render();
+        if (sameDay) markers.push({ id: event.id, type: 'event', pos: [-5.25, 20.4],
+          title: event.title, hidden: !!event.wool || event.title === '아이들의 숨바꼭질' });
+        shown = withSymbols(markers);
+        view?.setMarkers(shown);
+        if (gift) gift.hidden = !complete(id);
+        if (flat) discovery.renderFlat(fallback, shown, reach);
+        return;
+      }
       if (adventure) {
         const markers = adventure.render();
         if (sameDay) markers.push({ id: event.id, type: 'event', pos: [-5.25, 20.4],
@@ -983,6 +1723,7 @@
       if (dead || curtain?.open) return;
       const marker = shown.find(m => m.id === markerId);
       if (!marker) return;
+      if (discovery?.reach(markerId)) return;
       if (adventure?.reach(markerId)) return;
       if (marker.type === 'exit') return enter(marker.place);
       if (marker.id.startsWith('piece/')) return pickPiece(Number(marker.id.split('/')[1]));
@@ -1025,8 +1766,9 @@
         progress: log.quests, found: log.found, sheep, markers: shown, adventure: area.adventure }, {
         companionLine: enhanced ? Field.exploreReaction(sheep) : null,
         onFootstep: enhanced ? () => Sound.sfx('walkExplore') : null,
-        onBearing: adventure?.onBearing, onZone: adventure?.zoneChanged,
-        canInteract: () => !curtain?.open, onReach: reach, onExit: place => { if (!curtain?.open) enter(place); }, onUnavailable: no3D });
+        onBearing: adventure?.onBearing, onZone: discovery?.zoneChanged || adventure?.zoneChanged,
+        onNearbyDiscover: discovery?.onNearby,
+        canInteract: () => !curtain?.open && (!hasDiscover || root.querySelector('[data-inspect]')?.hidden !== false), onReach: reach, onExit: place => { if (!curtain?.open) enter(place); }, onUnavailable: no3D });
       if (dead || flat) { engine.destroy(); return; }
       view = engine;
       stage.querySelector('.explore-loading')?.remove();
@@ -1044,7 +1786,8 @@
       .map(marker => ({ title: window.EXPLORE[ep.id].title, ref: marker.ref })));
   }
   window.Explore = {
-    map, enter, isOpen, complete, counts, todayEvent, words,
+    map, enter, isOpen, complete, counts, todayEvent, words, newCount, discoverCount,
+    notebook: (placeId = null) => openNotebook(document.querySelector('#app main') || document.body, Field.mainCare()?.sheep, placeId),
     title: id => window.EXPLORE[id]?.title,
     get current() { return Core.PREVIEW_ALL ? session : null; }
   };
