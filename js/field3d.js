@@ -2481,8 +2481,492 @@
     return { ground, height, blocks, birds, fx, star, dome, campfire, rearPath };
   }
 
-  function explorePath(from, to, open) {
-    const edge = EXPLORE_EDGE, d = .43, width = Math.floor(edge * 2 / d) + 1;
+  const ADVENTURE_EDGE = 23.5;
+  const ADVENTURE_PEOPLE = {
+    '성전 문지기': ['#445b7c', '#d9c19d', 'staff'], '사가랴': ['#e8d8be', '#95565a', 'staff'],
+    '엘리사벳': ['#547c75', '#dec69b', 'jar'], '요셉': ['#a86c4f', '#e9c39a', 'staff'],
+    '마리아': ['#546ba6', '#ddd6c6', 'jar'], '할아버지': ['#8a6954', '#c5a68d', 'staff'],
+    '여관 주인': ['#82474a', '#d9bf8d', 'basket'], '등잔 상인': ['#ae684c', '#e2bf7e', 'lantern'],
+    '비둘기 할머니': ['#82556e', '#d8aab7', 'basket'], '엄마를 찾는 아이': ['#bd8c42', '#f3deb9', null, .66]
+  };
+
+  function adventureModels() {
+    const cube = new T.BoxGeometry(), ball = new T.IcosahedronGeometry(1, 0);
+    const robe = new T.CylinderGeometry(.63, 1, 1, 7);
+    const taper = new T.ConeGeometry(1, 1, 5);
+    const painted = new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .87 });
+    const faces = new Map();
+    const skin = '#bb845e', ink = '#413034', sandals = '#5b4235';
+    let disposed = false;
+    function mesh(parts) {
+      const geometry = parts.map(([shape, color, ...transform]) => {
+        const g = place(shape, ...transform), rgb = new T.Color(color);
+        const colors = new Float32Array(g.attributes.position.count * 3);
+        for (let i = 0; i < colors.length; i += 3) colors.set([rgb.r, rgb.g, rgb.b], i);
+        g.setAttribute('color', new T.BufferAttribute(colors, 3));
+        return g;
+      });
+      const result = merged(geometry, painted);
+      geometry.forEach(g => g.dispose());
+      return result;
+    }
+    function faceFor(name) {
+      const key = window.CAST?.[name] || window.CAST?.[name + '@1'];
+      if (!window.FACES?.[key]) return null;
+      if (!faces.has(key)) {
+        const material = new T.MeshBasicMaterial({ transparent: true, depthWrite: false });
+        const image = new Image();
+        image.onload = () => {
+          if (disposed) return;
+          const map = new T.CanvasTexture(image);
+          map.colorSpace = T.SRGBColorSpace; material.map = map; material.needsUpdate = true;
+        };
+        image.src = 'img/faces/' + encodeURIComponent(key) + '.webp';
+        faces.set(key, material);
+      }
+      const face = new T.Mesh(new T.PlaneGeometry(.48, .51), faces.get(key));
+      face.position.set(0, 1.67, .225);
+      face.onBeforeRender = () => { face.material.opacity = face.material.map ? 1 : 0; };
+      return face;
+    }
+    function person(name, variant, detailed) {
+      const palette = [
+        ['#a86258', '#e9caa2', 'basket'], ['#53766f', '#d2b490', 'jar'],
+        ['#62688d', '#e3d3b1', 'staff'], ['#a78046', '#e4c2a0', 'basket'],
+        ['#80607d', '#eed7ae', 'jar'], ['#617951', '#dfc6a5', 'staff']
+      ];
+      const [cloth, linen, prop, size = /아이|소년/.test(name) ? .72 : 1] = ADVENTURE_PEOPLE[name] || palette[variant % palette.length];
+      const body = [
+        [robe, cloth, 0, .75, 0, .34, 1.1, .25],
+        [robe, linen, 0, .97, 0, .29, .095, .24],
+        [ball, linen, 0, 1.75, -.052, .265, .31, .24],
+        [ball, skin, 0, 1.66, .096, .187, .215, .144],
+        [cube, linen, -.18, 1.43, -.026, .102, .39, .18, 0, 0, -.24],
+        [cube, linen, .18, 1.44, -.035, .105, .36, .18, 0, 0, .21]
+      ];
+      for (const side of [-1, 1]) {
+        body.push([cube, ink, side * .071, 1.696, .224, .024, .026, .017]);
+        body.push([cube, sandals, side * .127, .10, .048, .16, .13, .32]);
+      }
+      if (prop === 'staff') body.push([cube, sandals, -.39, .75, .16, .046, 1.49, .05, .06, 0, -.12]);
+      if (prop === 'jar') body.push([ball, '#ae6d53', -.42, .79, .17, .24, .28, .22], [robe, '#c98960', -.42, 1.02, .17, .115, .099, .12]);
+      if (prop === 'basket') body.push([robe, '#af8551', -.41, .60, .22, .23, .25, .21, 0, 0, Math.PI]);
+      if (prop === 'lantern') body.push([robe, '#ac754b', -.4, .59, .14, .15, .18, .15], [taper, '#ffd181', -.4, .77, .14, .075, .22, .075]);
+      const actor = new T.Group();
+      let arm;
+      const staticArms = [];
+      for (const side of [-1, 1]) {
+        const parts = [[robe, cloth, side * .042, -.19, .026, .11, .42, .11, 0, 0, side * .12],
+          [ball, skin, side * .064, -.41, .049, .077, .077, .069]];
+        if (side === 1 && detailed) {
+          arm = mesh(parts); arm.position.set(.265, 1.24, 0); actor.add(arm);
+        } else for (const [shape, color, x, y, z, ...rest] of parts) staticArms.push([shape, color, side * .265 + x, 1.24 + y, z, ...rest]);
+      }
+      actor.add(mesh([...body, ...staticArms]));
+      if (detailed) {
+        const face = faceFor(name);
+        if (face) actor.add(face);
+      }
+      actor.scale.setScalar(size);
+      return { actor, arm };
+    }
+    function animal(kind) {
+      const bird = ['닭', '비둘기'].includes(kind), hoof = ['나귀', '염소', '어린 양'].includes(kind);
+      const coat = { 나귀: '#9c8e88', 염소: '#cca77d', '어린 양': '#f5e6cc', 닭: '#b66844', 비둘기: '#e5e0ed', 고양이: '#d3a263' }[kind];
+      const parts = bird ? [
+        [ball, coat, 0, .26, 0, .17, .18, .27], [ball, coat, 0, .40, .18, .114, .12, .131],
+        [taper, '#d8a057', 0, .387, .292, .05, .12, .05, Math.PI / 2],
+        [taper, coat, 0, .29, -.27, .14, .31, .06, -1.15],
+        [cube, ink, -.073, .426, .239, .035, .035, .035], [cube, ink, .073, .426, .239, .035, .035, .035]
+      ] : [
+        [ball, coat, 0, .71, 0, .38, .43, .72], [ball, coat, 0, .92, .55, .24, .39, .28, .28],
+        [ball, hoof ? '#d7be9e' : coat, 0, 1.04, .78, .25, .22, .35],
+        [ball, '#614c46', 0, 1.02, 1.02, .169, .13, .11],
+        [taper, coat, 0, .82, -.64, .085, .64, .073, .48]
+      ];
+      for (const side of [-1, 1]) {
+        if (bird) {
+          parts.push([cube, '#a47656', side * .075, .07, .04, .04, .13, .045]);
+          parts.push([ball, kind === '비둘기' ? '#a9a0bf' : '#d09051', side * .139, .255, -.03, .083, .102, .191]);
+        } else {
+          for (const z of [-.38, .32]) parts.push([cube, coat, side * .22, .29, z, .13, .53, .14, z * .2]);
+          parts.push([taper, kind === '염소' ? '#735949' : coat, side * .105, 1.36, .63, .096, kind === '나귀' ? .47 : .32, .11, -.30, 0, side * -.32]);
+          parts.push([cube, ink, side * .176, 1.12, .855, .037, .05, .048]);
+        }
+      }
+      if (kind === '닭') parts.push([ball, '#b23b3d', 0, .511, .171, .053, .082, .088]);
+      const actor = mesh(parts);
+      actor.scale.setScalar(kind === '나귀' ? 1 : kind === '고양이' ? .36 : bird ? .96 : .69);
+      return actor;
+    }
+    return { person, animal, dispose() {
+      disposed = true; painted.dispose(); cube.dispose(); ball.dispose(); robe.dispose(); taper.dispose();
+      for (const material of faces.values()) { material.map?.dispose(); material.dispose(); }
+    } };
+  }
+
+  function adventureWorld(scene, seed, layout, adventure) {
+    const rand = seeded(seed), { visual, zones } = adventure;
+    const temple = visual === 'temple' || visual === 'sanctuary';
+    const roof = visual === 'house' || visual === 'roofs';
+    const night = layout.time === 'night', dawn = layout.time === 'dawn', day = layout.time === 'day';
+    const predawn = layout.time === 'predawn', variant = layout.adventureVariant;
+    const tone = night ? '#3b3a63' : day ? '#98b6c3' : dawn ? '#c99e8e' : predawn ? '#786989' : '#bb8c77';
+    const models = adventureModels();
+    const actors = [], residents = new Map(), blocks = [], batches = new Map(), fx = [], birds = [], features = new Map();
+    const cube = new T.BoxGeometry(), pebble = new T.IcosahedronGeometry(1, 0);
+    const circle = new T.CylinderGeometry(1, 1, 1, 8);
+    const pot = new T.CylinderGeometry(.76, 1, 1, 8);
+    const slope = x => clamp(Math.floor(Math.max(0, -x) * 2) * .5, 0, 6);
+    const height = (x, z) => {
+      if (temple) return slope(z + 12) * .24;
+      if (roof) return slope(z + 3) * .23;
+      return -.12 * z + .34 * Math.sin(x * .22) + .19 * Math.sin(z * .4);
+    };
+    const elevation = (z, hook) => height(0, z) + hook;
+    function batch(geometry, color, ...shape) {
+      if (!batches.has(color)) batches.set(color, []);
+      batches.get(color).push(place(geometry, ...shape));
+    }
+    const box = (color, ...shape) => batch(cube, color, ...shape);
+    const rock = (color, ...shape) => batch(pebble, color, ...shape);
+    const round = (color, ...shape) => batch(circle, color, ...shape);
+    const stop = (x, z, radius) => blocks.push([x, z, radius]);
+    const wall = temple ? (day ? '#c6ae8d' : '#978fa0') : '#ab866f', cap = temple ? (night ? '#b4a8ae' : '#dfc4a0') : '#d3ad85';
+    const wood = '#694452', ochre = '#b27750', fabric = night ? '#8d4c60' : '#a35255';
+    const flameMat = mat('#ffca6c', { emissive: '#ff932d', ei: 1.05 });
+    const roofLine = temple ? '#655a6c' : '#634e64';
+    const ambient = new T.HemisphereLight(night ? '#bfc6ff' : '#fff0dc', '#86656b', night ? 1.45 : 1.85);
+    scene.add(ambient);
+    const sun = new T.DirectionalLight(night ? '#c4d4ff' : '#ffcf96', night ? 1.12 : 2.12);
+    sun.position.set(-17, 23, 11); scene.add(sun);
+    const horizon = new T.Color(tone);
+    scene.background = horizon;
+    scene.fog = new T.Fog(horizon, 22, 53);
+    const dome = new T.Mesh(new T.SphereGeometry(88, 20, 12), new T.ShaderMaterial({
+      side: T.BackSide, depthWrite: false,
+      uniforms: { horizon: { value: horizon }, zenith: { value: new T.Color(night ? '#0c1438' : day ? '#537da7' : dawn ? '#5d7293' : '#332e57') } },
+      vertexShader: 'varying vec3 sky; void main(){ sky=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+      fragmentShader: 'varying vec3 sky; uniform vec3 horizon,zenith; void main(){gl_FragColor=vec4(mix(horizon,zenith,smoothstep(-.06,.65,normalize(sky).y)),1.);\n#include <colorspace_fragment>\n}'
+    }));
+    dome.renderOrder = -3;
+    scene.add(dome);
+    if (!day) {
+      const dots = [];
+      for (let i = 0; i < (night || predawn ? 170 : 28); i++) {
+        const angle = rand() * 2 * Math.PI;
+        dots.push(Math.sin(angle) * 57, 10 + rand() * 33, Math.cos(angle) * 57);
+      }
+      const points = new T.Points(new T.BufferGeometry().setAttribute('position', new T.Float32BufferAttribute(dots, 3)),
+        new T.PointsMaterial({ color: '#fff2ce', size: night ? 1.8 : 1.3, sizeAttenuation: false, fog: false, opacity: .75, transparent: true }));
+      scene.add(points);
+      const star = glowSprite(night || predawn ? '#ffe3a7' : '#ffe2bd', night || predawn ? 3.1 : 6.7, .85);
+      star.position.set(predawn ? -3 : 8, night ? 16 : 10, -40); scene.add(star);
+    }
+    const routeX = z => visual === 'hills' ? 5 * Math.sin((z + 7) * .10) : 0;
+    const groundGeo = new T.PlaneGeometry(70, 68, 52, 54).rotateX(-Math.PI / 2).toNonIndexed();
+    const groundPos = groundGeo.attributes.position, colors = [];
+    const groundColor = new T.Color(temple ? '#7f7684' : roof ? '#927975' : '#706e5c');
+    const roadColor = new T.Color(temple ? '#a69ba0' : visual === 'hills' ? '#aa926f' : '#ac927e'), tint = new T.Color();
+    for (let i = 0; i < groundPos.count; i += 3) {
+      const x = (groundPos.getX(i) + groundPos.getX(i + 1) + groundPos.getX(i + 2)) / 3, z = groundPos.getZ(i);
+      const dirt = Math.abs(x - routeX(z)) < 3 || Math.abs(z - 11) < 2 || Math.abs(z + 4) < 2 || Math.abs(z + 16) < 1.4;
+      tint.copy(dirt ? roadColor : groundColor).multiplyScalar(.93 + rand() * (temple ? .12 : .14));
+      for (let j = i; j < i + 3; j++) {
+        groundPos.setY(j, height(groundPos.getX(j), groundPos.getZ(j)));
+        colors.push(tint.r, tint.g, tint.b);
+      }
+    }
+    groundGeo.setAttribute('color', new T.Float32BufferAttribute(colors, 3));
+    groundGeo.computeVertexNormals();
+    const ground = new T.Mesh(groundGeo, new T.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+    scene.add(ground);
+
+    function jar(x, z, size = 1, base = 0, color = '#a46857') {
+      const y = height(x, z) + base;
+      batch(pot, color, x, y + .27 * size, z, .24 * size, .46 * size, .24 * size);
+      round(color, x, y + .51 * size, z, .125 * size, .09 * size, .125 * size);
+      round('#563e46', x, y + .559 * size, z, .10 * size, .013 * size, .10 * size);
+    }
+    function basket(x, z, size = 1, base = 0) {
+      const y = height(x, z) + base;
+      batch(pot, ochre, x, y + .17 * size, z, .31 * size, .29 * size, .31 * size, 0, 0, Math.PI);
+      round(cap, x, y + .32 * size, z, .32 * size, .054 * size, .32 * size);
+      for (let i = 0; i < 4; i++) rock(i % 2 ? '#bd9757' : '#9a7853', x + (i % 2 - .5) * .22 * size, y + .37 * size, z + (i / 2 - .75) * .21 * size, .105 * size, .092 * size, .105 * size);
+    }
+    const smokeGeo = new T.IcosahedronGeometry(.19, 0);
+    function lamp(x, z, y = .65, bright = true, smoking = false) {
+      const h = height(x, z) + y;
+      round(wood, x, h - .25, z, .065, .5, .065);
+      round(ochre, x, h, z, .21, .115, .21);
+      if (!bright) return;
+      if (night || predawn) {
+        const light = glowSprite('#ffc482', 1.18, .60);
+        light.position.set(x, h + .22, z); scene.add(light);
+      }
+      batch(pebble, '@flame', x, h + .15, z, .114, .24, .114);
+      if (smoking) for (let i = 0; i < 3; i++) {
+        const cloud = new T.Mesh(smokeGeo, new T.MeshBasicMaterial({ color: '#f8d5bd', transparent: true, opacity: .2, depthWrite: false }));
+        scene.add(cloud); fx.push({ cloud, x, z, base: h + .2, i: i * 2 });
+      }
+    }
+    function olive(x, z, scale) {
+      const y = height(x, z);
+      round(wood, x, y + .76 * scale, z, .14 * scale, 1.52 * scale, .14 * scale, 0, 0, .16);
+      for (let n = 0; n < 5; n++) {
+        rock(n % 2 ? '#687d59' : '#536b62', x + Math.sin(n * 1.28) * .71 * scale, y + (1.58 + rand() * .47) * scale,
+          z + Math.cos(n * 1.28) * .6 * scale, .84 * scale, .62 * scale, .80 * scale, 0, n);
+      }
+      stop(x, z, .43 * scale);
+    }
+    function wallRun(x, z, count, axis, h = 1) {
+      for (let n = 0; n < count; n++) {
+        const px = x + (axis === 'x' ? n * 1.55 : 0), pz = z + (axis === 'z' ? n * 1.55 : 0), y = height(px, pz);
+        const [w, d] = axis === 'x' ? [1.54, .52] : [.52, 1.54];
+        box(wall, px, y + h / 2, pz, w, h, d);
+        box(cap, px, y + h + .055, pz, w + .025, .12, d + .14);
+        stop(px, pz, .76);
+      }
+    }
+    function column(x, z, h = 3.9) {
+      const y = height(x, z);
+      box(cap, x, y + .15, z, 1, .3, .96);
+      round(wall, x, y + h * .5, z, .38, h, .38);
+      box(cap, x, y + h, z, .94, .23, .91);
+      stop(x, z, .47);
+    }
+    function home(x, z, width, color = wall) {
+      const y = height(x, z), front = z + 1.54;
+      box(color, x, y + 1.43, z, width, 2.86, 3);
+      box(roofLine, x, y + 2.86, z, width + .23, .22, 3.17);
+      box(cap, x, y + 3.06, front, width + .18, .19, .14);
+      box(wood, x, y + .89, front, .78, 1.73, .13);
+      for (const side of [-1, 1]) {
+        box(wood, x + side * width * .3, y + 1.84, front + .015, .58, .61, .12);
+        box(night || dawn ? '@flame' : '#af926f', x + side * width * .3, y + 1.84, front + .089, .42, .43, .035);
+        box(wood, x + side * width * .3, y + 1.85, front + .111, .043, .47, .028);
+        box(cap, x + side * width * .3, y + 1.48, front + .10, .73, .10, .30);
+      }
+      for (let dx = -width / 2 + .4; dx < width / 2; dx += .9) stop(x + dx, z, 1.49);
+    }
+    function stall(x, z, color) {
+      const y = height(x, z);
+      for (const side of [-1, 1]) {
+        for (const depth of [-.72, .72]) box(wood, x + side * 1.29, y + 1.18, z + depth, .12, 2.36, .12);
+        box(wood, x + 1.01 * side, y + .49, z + .51, .12, .96, .19);
+      }
+      for (let i = 0; i < 7; i++) {
+        const px = x + (i - 3) * .404, stripe = i % 2 ? color : cap;
+        box(stripe, px, y + 2.35, z, .409, .105, 1.72, -.115);
+        box(stripe, px, y + 2.23, z + .86, .407, .24, .083);
+      }
+      box(wood, x, y + .93, z + .50, 2.57, .14, .75);
+      jar(x - .68, z + .47, .65, 1.01); basket(x + .29, z + .55, .67, 1.01);
+      jar(x + 1.53, z + .54, 1.27);
+      stop(x, z, .83);
+    }
+    function well(x, z) {
+      const y = height(x, z);
+      round('#535a68', x, y + .28, z, 1.02, .55, 1.02);
+      round('#527d86', x, y + .565, z, .79, .021, .79);
+      for (let i = 0; i < 11; i++) {
+        const a = i / 11 * 2 * Math.PI;
+        box(cap, x + Math.cos(a) * .94, y + .69, z + Math.sin(a) * .94, .33, .29, .55, 0, -a);
+      }
+      for (const side of [-1, 1]) box(wood, x + side * .99, y + 1.38, z, .129, 2.75, .16);
+      box(wood, x, y + 2.68, z, 2.35, .19, .20);
+      box(ochre, x, y + 1.85, z, .041, 1.61, .042);
+      stop(x, z, 1.03);
+    }
+    function laundry(x, z) {
+      const y = height(x, z);
+      for (const side of [-1, 1]) box(wood, x + side * 1.89, y + 1.04, z, .085, 2.08, .085);
+      box(wood, x, y + 1.94, z, 3.79, .033, .027);
+      for (let i = 0; i < 4; i++) box([cap, '#7f9d9a', fabric, '#dfc3ab'][i], x - 1.35 + i * .8, y + 1.57 + .04 * i, z, .62, .79 - .08 * i, .043, .07, 0, .06 * (i - 1));
+    }
+    function stairway(z, width) {
+      for (let i = 0; i < 6; i++) {
+        const pz = z - i * .51;
+        box(i % 2 ? wall : cap, 0, elevation(pz, -.035), pz, width, .13, .53);
+      }
+    }
+
+    if (temple) {
+      for (const side of [-1, 1]) {
+        for (const z of [-17.2, -13, -8.6, -4.3, .1]) column(side * 6.2, z, visual === 'sanctuary' ? 4.9 : 4.3);
+        box(roofLine, side * 6.2, elevation(-12, 4.45), -11, .97, .34, 15.8);
+        wallRun(side * 21.7, -20.7, 14, 'z', 1.52);
+        stall(side * 9.2, 11.8, side > 0 ? fabric : '#596f7e');
+        stall(side * 15.7, 4.6, '#927448');
+        lamp(side * 4.15, -11.75, .94, true);
+        lamp(side * 13, 6.9, 1.02, true);
+        olive(side * 15.7, -13, 1.45);
+        home(side * 16.5, -20.7, 5.3);
+        box(wall, side * 4.65, elevation(-21, 3), -21, 3.65, 6, 1.7);
+        box(cap, side * 2.8, elevation(-21, 2.96), -20.05, .68, 5.9, .58);
+        box(fabric, side * 1.45, elevation(-21, 2.46), -20.75, 2.81, 4.9, .22);
+        box(ochre, side * 3.91, elevation(-21, 4.52), -20.05, .51, 1.42, .1);
+      }
+      box('@flame', 0, elevation(-21, 2.44), -20.89, .36, 4.82, .05);
+      box(cap, 0, elevation(-21, 5.85), -21, 13.4, .49, 1.99);
+      box(roofLine, 0, elevation(-21, 6.22), -21, 13.9, .40, 2.22);
+      for (let x = -18; x <= 18; x += 2.7) for (let z = -19; z < 19; z += 2.6) {
+        if (Math.abs(x) > 11 && z > 9) continue;
+        if (z < -11.4) continue;
+        const limestone = night ? ['#aca2ae', '#a098a6', '#b1a4aa', '#9891a3'] : ['#c2b0a0', '#cbb6a0', '#b6a299', '#c1aa98'];
+        box(limestone[Math.floor(rand() * 4)], x, .021, z, 2.645, .082, 2.535, 0, (rand() - .5) * .015);
+      }
+      stairway(-12, 10);
+      well(12.7, -3.6); laundry(17.5, 13.1);
+      if (night && visual === 'temple') {
+        stall(4.75, 7.15, '#94596a'); stall(-6.25, 5.1, '#4f637a');
+        for (const [x, z] of [[-4.8, 12], [2.7, 9.4], [-3.9, 2], [3.4, -6.2]]) {
+          jar(x, z, 1.25); basket(x + .6, z + .3, .92); lamp(x - .5, z - .53, .95);
+        }
+      }
+      if (variant === 'procession') {
+        for (const z of [-13.8, -8.4, -3, 2.3, 7.7]) {
+          box('#985953', 0, height(0, z) + .084, z, 1.84, .032, 5.29);
+          for (const x of [-1, 1]) box('#d5a661', x * .79, height(0, z) + .107, z, .09, .018, 5.24);
+        }
+      }
+      if (variant === 'steps') {
+        for (const [x, z] of [[-4.45, 3.7], [4.3, -1.9], [-4.5, -6.9]]) {
+          box(cap, x, .36, z, 2.17, .22, .54); box(wall, x, .14, z, 1.63, .28, .42);
+        }
+        stall(6.85, 8.15, '#76618b');
+      }
+      if (visual === 'sanctuary') {
+        box(wood, 0, elevation(-18, .5), -18, 1.12, 1, .87);
+        box(cap, 0, elevation(-18, 1.03), -18, 1.17, .12, .91);
+        stop(0, -18, .67); lamp(0, -18, 1.18, true, true);
+      } else lamp(-4.7, 6, 1.1, true, true);
+    } else {
+      for (const side of [-1, 1]) {
+        for (const [i, z] of [15, 3, -15].entries()) {
+          home(side * (10.2 + i * 3.2), z, 4.25 + rand() * 2.2, i % 2 ? wall : '#ba9778');
+          jar(side * (8.7 + i * 3.2), z + 1.95, 1.05);
+          basket(side * (11.7 + i * 3.2), z + 2.05, .92);
+          olive(side * (17 + rand() * 3), z + 4.5, 1.15 + rand() * .42);
+        }
+        wallRun(side * 20.7, -9, 11, 'z', visual === 'hills' ? .64 : 1.05);
+        lamp(side * 3.3, -8.6, .92, true, !dawn);
+        for (let i = 0; i < 27; i++) {
+          const x = side * (5.5 + rand() * 16.4), z = -21 + rand() * 43;
+          rock(i % 2 ? '#8d8275' : '#6c795b', x, height(x, z) + .08, z, .12 + rand() * .45, .19 + rand() * .26, .28 + rand() * .30, 0, i);
+        }
+      }
+      well(5.9, 10.8); laundry(-7.5, 9.4); olive(10.4, -5.7, 1.5);
+      if (visual === 'house') {
+        home(-7.2, 4.7, 3.4, '#b38b72'); home(7.8, -2.2, 3.9, '#af8979');
+        jar(-5.36, 6.6, 1.14); basket(-5.89, 6.48);
+        wallRun(-13.7, -3.4, 3, 'x', .67);
+      }
+      if (visual === 'roofs') {
+        home(7.5, 4.5, 4.4, '#a2807c'); home(-6.5, -1.3, 4.7, '#9a787a');
+        for (const [x, z] of [[-3.9, 7.1], [4.25, 11.9], [-3.4, 1.2], [5.0, -4.4]]) lamp(x, z, .82);
+      }
+      if (visual === 'hills') for (const [x, z, scale] of [[-5.2, 7, 1.2], [7, 3.5, 1.23], [-5.2, -3.8, 1.31], [6.1, -10.2, 1.1]]) {
+        olive(x, z, scale); rock('#9b8873', x + 1.15, height(x, z) + .23, z, .64, .44, .46);
+      }
+      if (roof) {
+        for (const x of [-15.2, 7.2]) wallRun(x, -22.5, 5, 'x', .7);
+        for (const x of [-8.1, 6.4]) wallRun(x, -18, 5, 'z', .52);
+        for (let i = 0; i < 12; i++) box(i % 2 ? wall : cap, 0, elevation(-4 - i * .5, -.043), -4 - i * .5, 6.35, .17, .51);
+        box(fabric, 3.1, elevation(-15, .06), -15, 3.6, .11, 2.5);
+        for (let i = 0; i < 5; i++) box(cap, 1.61 + i * .72, elevation(-14.03, .12), -14.03, .14, .025, .43);
+        lamp(3.5, -17.6, .52, true);
+      } else {
+        for (const z of [-12, -3, 7, 17]) {
+          const x = routeX(z);
+          for (let i = 0; i < 5; i++) rock(cap, x + (rand() - .5) * 5, height(x, z) + .03, z + rand() * 2, .43, .12, .62, 0, i);
+        }
+        stall(-13, 5.3, '#706580');
+      }
+    }
+    for (let i = 0; i < 18; i++) {
+      const x = (rand() - .5) * 65, z = -29 - rand() * 6;
+      rock(night ? '#494568' : '#777d80', x, 1, z, 3.7 + rand() * 6, 4 + rand() * 8, 6, 0, i);
+    }
+    for (const [index, [opening, z]] of adventure.crossings.entries()) {
+      for (let x = -23.25; x <= 23.4; x += 1.5) {
+        if (Math.abs(x - opening) < 2.0) continue;
+        const y = height(x, z), low = temple ? .53 : .43;
+        box(wall, x, y + low / 2, z, 1.48, low, .48);
+        box(cap, x, y + low + .066, z, 1.50, .143, .62);
+        stop(x, z, .75);
+      }
+      for (const side of [-1, 1]) {
+        const x = opening + side * 1.57, y = height(x, z);
+        box(wall, x, y + .92, z, .37, 1.84, .42);
+        box(cap, x, y + 1.89, z, .56, .17, .57);
+        lamp(x, z - .08, 2.07, true);
+      }
+      for (let i = 0; i < 5; i++) {
+        const pz = z + (i - 2) * .38;
+        box(index ? cap : roofLine, opening, height(opening, pz) + .038, pz, 2.68, .063, .36);
+      }
+    }
+    for (const [i, zone] of zones.entries()) {
+      const z = [12, -2, -15][i], x = i === 1 ? -3 : 3.6;
+      const sign = textSprite(zone, { color: '#fff0c9', size: 19 });
+      sign.position.set(x, height(x, z) + 1.15, z);
+      sign.scale.setScalar(2.72); scene.add(sign);
+      box(wood, x, height(x, z) + .53, z, .09, 1.06, .09);
+    }
+    for (const target of Object.values(adventure.targets)) {
+      if (!target.feature) continue;
+      const [x, z] = target.pos, y = height(x, z);
+      const obj = new T.Group(); obj.position.set(x, y, z); scene.add(obj);
+      function part(color, geometry, dx, dy, dz, w, h, d) {
+        const mesh = new T.Mesh(place(geometry, dx, dy, dz, w, h, d), color === '@flame' ? flameMat : mat(color));
+        obj.add(mesh); return mesh;
+      }
+      if (target.feature === 'jump') {
+        part(wall, cube, 0, .27, 0, 2.25, .54, .5); part(cap, cube, 0, .56, 0, 2.29, .13, .61);
+      } else if (target.feature === 'push') {
+        part(wood, cube, 0, .59, 0, 1.11, .38, .89);
+        part(ochre, cube, 0, .81, 0, 1.15, .09, .93);
+        for (const side of [-1, 1]) part(roofLine, cube, side * .52, .34, 0, .14, .57, .57).rotation.x = .28;
+      } else if (target.feature === 'shine') {
+        part(roofLine, cube, 0, .34, 0, 1.02, .63, .73); part(wood, cube, 0, .66, 0, 1.05, .19, .76);
+      }
+      features.set(target.feature, obj);
+    }
+    for (const [color, parts] of batches) {
+      scene.add(merged(parts, color === '@flame' ? flameMat : mat(color)));
+      parts.forEach(g => g.dispose());
+    }
+    cube.dispose(); pebble.dispose(); circle.dispose(); pot.dispose();
+    function addActor(actor, pos, move, arm, key, yaw = .45) {
+      actor.position.set(pos[0], height(...pos), pos[1]); actor.rotation.y = yaw; scene.add(actor);
+      const resident = { actor, pos, move, arm, key, yaw, phase: rand() * 10 };
+      actors.push(resident);
+      if (key) residents.set(key, resident);
+      return resident;
+    }
+    for (const [i, [key, target]] of Object.entries(adventure.targets).entries()) {
+      if (target.actor) {
+        const { actor, arm } = models.person(target.actor, i, true);
+        addActor(actor, target.pos, 0, arm, key, target.yaw ?? .26);
+      } else if (target.animal) addActor(models.animal(target.animal), target.pos, target.trail || target.stationary ? 0 : .55, null, key);
+    }
+    const streets = temple ? [[-4.5, 13], [4.4, 10.8], [-3.6, 2.5], [5.7, -3.5], [-8.9, -10], [3.8, -12.8], [-11.7, 6.7], [10.3, 3.3]] :
+      [[-4.6, 13.2], [3.8, 11.5], [-8, 4.7], [5.3, 3.7], [-3.7, -6.7], [4.5, -11], [-14.3, -.8], [12.3, -7.9]];
+    streets.forEach((pos, i) => {
+      const { actor, arm } = models.person(i === 2 ? '마을 아이' : '마을 사람', i, i < 4);
+      addActor(actor, pos, i % 3 !== 1 ? 1.1 + (i % 3) * .55 : 0, arm);
+    });
+    for (const [i, pair] of (temple ? [['비둘기', [-2.4, 10]], ['비둘기', [-3, 8]], ['비둘기', [4.9, -8]], ['고양이', [2.6, 13.1]], ['나귀', [7.1, 11.5]], ['닭', [11.6, 5.4]]] :
+      [['닭', [-2.5, 12]], ['닭', [-4.7, 10]], ['염소', [3.1, 9.5]], ['나귀', [-6.6, 14]], ['고양이', [3.4, -10]], ['비둘기', [-5.2, -12]]]).entries()) {
+      const [kind, pos] = pair;
+      addActor(models.animal(kind), pos, .92 + (i % 3) * .31);
+    }
+    return { ground, height, dome, blocks, birds, fx, actors, residents, models, features };
+  }
+
+  function explorePath(from, to, open, edge = EXPLORE_EDGE) {
+    const d = edge > EXPLORE_EDGE ? .58 : .43, width = Math.floor(edge * 2 / d) + 1;
     const point = (ix, iz) => [ix * d - edge, iz * d - edge];
     const idx = x => clamp(Math.round((x + edge) / d), 0, width - 1);
     const line = (a, b) => {
@@ -2522,7 +3006,8 @@
 
   async function mountExplore(container, options, handlers = {}) {
     await load();
-    const { sheep, layout = {} } = options;
+    const { sheep, layout = {}, adventure } = options;
+    const edge = adventure ? ADVENTURE_EDGE : EXPLORE_EDGE;
     const seed = options.seed || hashStr(options.place || 'temple');
     const renderer = new T.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     renderer.outputColorSpace = T.SRGBColorSpace;
@@ -2539,9 +3024,19 @@
     wrap.append(canvas, hud); container.append(wrap);
 
     const scene = new T.Scene(), camera = new T.PerspectiveCamera(53, 1, .1, 105);
-    const world = exploreWorld(scene, options.kit || options.place, seed, layout);
+    const world = adventure ? adventureWorld(scene, seed, layout, adventure) : exploreWorld(scene, options.kit || options.place, seed, layout);
+    const guide = adventure && world.models.person('여행자', 2, true);
+    const leader = guide?.actor;
+    const spawn = adventure ? adventure.spawn : [0, 6.2];
+    const azStart = adventure ? (options.place === '1-0' ? -.18 : options.place === '1-1' ? .28 : .14) : null;
+    if (leader) {
+      leader.position.set(spawn[0], world.height(...spawn), spawn[1]);
+      leader.rotation.y = Math.PI;
+      scene.add(leader);
+    }
     let player = buildSheep(sheep.species, sheep.level, sheep.wear, seed, sheep.wool ?? 1);
-    player.position.set(0, world.height(0, 6.2), 6.2); player.rotation.y = Math.PI;
+    const sheepStart = adventure ? [spawn[0] + .66, spawn[1] + 1.1] : spawn;
+    player.position.set(sheepStart[0], world.height(...sheepStart), sheepStart[1]); player.rotation.y = Math.PI;
     scene.add(player);
     const target = new T.Vector3(0, .77, 5.0);
     const camPosition = new T.Vector3(), aim = new T.Vector3(), spot = new T.Vector3();
@@ -2585,15 +3080,27 @@
     const goal = new T.Mesh(new T.RingGeometry(.23, .29, 18).rotateX(-Math.PI / 2), mat('#ffc880', { basic: true }));
     goal.visible = false; scene.add(goal);
     const reduced = calm();
-    const azBase = [-.18, .19, -.31, .25][layout.angle || 0] || 0;
+    const azBase = azStart ?? ([-.18, .19, -.31, .25][layout.angle || 0] || 0);
     let az = azBase, azWant = azBase, activePointer, route = [], waitForTarget = null;
     let raf, lastFrame, stopped = false, reaction = null, talking, doveAt, followOrigin, markerWidth = 0, markerHeight = 0;
     let lastMetric = 0, frames = 0, frameTime = 0, sinceSlow = 0, resolution = pixelRatio, firstFrame = true;
     let metrics = { fps: 0, calls: 0, triangles: 0, ratio: resolution };
-    const enterDistance = 1.2;
+    const enterDistance = adventure ? 1.48 : 1.2;
+    const footsteps = [], trail = [];
+    let abilityEffect, waypoint, escort, joystick, displayedZone = -1, ceremony;
+    const celebrationActors = [];
+    let followTimer = 0, greeted = '', lastGreeting = -Infinity;
+    let travel = 0, walking = false, nextStepSound = 0;
+    const onGround = (x, z) => [x, world.height(x, z), z];
+    const walkPosition = () => (leader || player).position;
     const open = (x, z) => {
-      if (Math.abs(x) > EXPLORE_EDGE || Math.abs(z) > EXPLORE_EDGE) return false;
+      if (Math.abs(x) > edge || Math.abs(z) > edge) return false;
       if (world.blocks.some(([ox, oz, r]) => (x - ox) ** 2 + (z - oz) ** 2 < (r + .24) ** 2)) return false;
+      if (adventure) for (const [kind, feature] of world.features) {
+        if (kind === 'shine' || feature.userData.cleared) continue;
+        const dx = Math.abs(x - feature.position.x), dz = Math.abs(z - feature.position.z);
+        if (dx < (kind === 'jump' ? 1.29 : .78) && dz < .57) return false;
+      }
       for (const { marker } of elements.values()) {
         if (marker.type === 'clear' && (x - marker.pos[0]) ** 2 + (z - marker.pos[1]) ** 2 < .47 ** 2) return false;
       }
@@ -2613,6 +3120,7 @@
       const current = elements.get(id);
       current?.obj.removeFromParent();
       current?.label.remove();
+      current?.ring.material.dispose();
       if (current?.sign) disposeFigure(current.sign);
       if (current?.item?.isMesh && current.item.geometry !== crystal) current.item.geometry.dispose();
       if (current?.item?.isSprite) { current.item.material.map?.dispose(); current.item.material.dispose(); }
@@ -2643,7 +3151,9 @@
       const ring = new T.Mesh(groundRing, light);
       obj.add(ring);
       let item, sign;
-      if (marker.type === 'exit') {
+      if (adventure && (world.residents.has(marker.id) || marker.feature || marker.quiet)) {
+        // 마을 사람과 동물은 퀘스트 단계가 바뀌어도 같은 자리에 남는다.
+      } else if (marker.type === 'exit') {
         sign = new T.Group();
         sign.add(new T.Mesh(place(new T.BoxGeometry(), 0, .52, 0, .11, 1.04, .12), mat('#895e47')));
         sign.add(new T.Mesh(place(new T.BoxGeometry(), 0, 1.03, 0, .91, .27, .14, 0, .11, .035), mat('#b68b60')));
@@ -2714,6 +3224,11 @@
       label.type = 'button'; label.className = 'f3d-explore-label';
       label.style.setProperty('--label-half', Math.min(78, 13 + String(marker.title).length * 5.5) + 'px');
       label.style.setProperty('--marker', color);
+      if (adventure) {
+        label.dataset.action = marker.id;
+        label.dataset.kind = marker.type;
+        label.dataset.priority = marker.priority || 'optional';
+      }
       const sigil = document.createElement('i'); sigil.textContent = marker.symbol;
       const caption = document.createElement('span'); caption.textContent = marker.title;
       label.append(sigil, caption);
@@ -2735,21 +3250,27 @@
         if (!marker || JSON.stringify(marker) !== JSON.stringify(previous.marker)) removeMarker(id);
       }
       for (const marker of list) if (!elements.has(marker.id)) addMarker(marker);
-      lantern.visible = list.some(marker => marker.type === 'guard');
+      if (!adventure) lantern.visible = list.some(marker => marker.type === 'guard');
     }
     setMarkers(options.markers || []);
     function spawnPickup(id, pos) {
       removeMarker(id); addMarker({ id, pos, title: '반짝이는 물건', symbol: '✦', type: 'find' });
     }
     function moveTo(x, z, markerId = null) {
-      const [tx, tz] = [clamp(x, -EXPLORE_EDGE, EXPLORE_EDGE), clamp(z, -EXPLORE_EDGE, EXPLORE_EDGE)];
+      const p = walkPosition();
+      const [tx, tz] = [clamp(x, -edge, edge), clamp(z, -edge, edge)];
       let end = [tx, tz];
       if (markerId && !open(tx, tz)) {
-        const tries = Array.from({ length: 12 }, (_, i) => [tx + Math.sin(i / 12 * Math.PI * 2) * .93, tz + Math.cos(i / 12 * Math.PI * 2) * .93]);
-        const option = tries.filter(pt => open(...pt)).sort((a, b) => Math.hypot(a[0] - player.position.x, a[1] - player.position.z) - Math.hypot(b[0] - player.position.x, b[1] - player.position.z))[0];
+        const radii = adventure ? [.75, 1.10, 1.39] : [.93];
+        const samples = adventure ? 18 : 12;
+        const tries = radii.flatMap(r => Array.from({ length: samples }, (_, i) => {
+          const angle = i / samples * 2 * Math.PI;
+          return [tx + Math.sin(angle) * r, tz + Math.cos(angle) * r];
+        }));
+        const option = tries.filter(pt => open(...pt)).sort((a, b) => Math.hypot(a[0] - p.x, a[1] - p.z) - Math.hypot(b[0] - p.x, b[1] - p.z))[0];
         if (option) end = option;
       }
-      route = explorePath([player.position.x, player.position.z], end, open);
+      route = explorePath([p.x, p.z], end, open, edge);
       waitForTarget = markerId;
       if (markerId && elements.has(markerId)) elements.get(markerId).near = false;
       const final = route.at(-1);
@@ -2758,7 +3279,7 @@
       handlers.onMove?.();
     }
     function down(event) {
-      if (!event.isPrimary || activePointer) return;
+      if ((!adventure && !event.isPrimary) || activePointer || event.button > 0) return;
       canvas.setPointerCapture?.(event.pointerId);
       activePointer = { id: event.pointerId, x: event.clientX, moved: false, az };
     }
@@ -2766,7 +3287,7 @@
       if (event.pointerId !== activePointer?.id) return;
       const delta = event.clientX - activePointer.x;
       if (Math.abs(delta) > 8) activePointer.moved = true;
-      if (activePointer.moved) azWant = clamp(activePointer.az - delta * .007, azBase - .78, azBase + .78);
+      if (activePointer.moved) azWant = clamp(activePointer.az - delta * .007, azBase - (adventure ? 7 : .78), azBase + (adventure ? 7 : .78));
     }
     function up(event) {
       if (event.pointerId !== activePointer?.id) return;
@@ -2781,6 +3302,41 @@
     }
     canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
+    if (adventure) {
+      const stick = document.createElement('div');
+      stick.className = 'adventure-stick';
+      stick.tabIndex = 0; stick.setAttribute('role', 'group');
+      stick.setAttribute('aria-label', '이동 조이스틱 · 방향키도 사용 가능');
+      const thumb = document.createElement('span');
+      stick.append(thumb); wrap.append(stick);
+      const resetStick = () => { joystick = null; thumb.style.transform = ''; };
+      const steer = (x, y, pointer) => {
+        const length = Math.max(27, Math.hypot(x, y));
+        joystick = { x: x / length, y: y / length, pointer };
+        thumb.style.transform = `translate(${joystick.x * 26}px,${joystick.y * 26}px)`;
+      };
+      const dragStick = event => {
+        const rect = stick.getBoundingClientRect();
+        steer(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2, event.pointerId);
+      };
+      stick.onpointerdown = event => {
+        if (joystick?.pointer != null) return;
+        stick.setPointerCapture?.(event.pointerId);
+        route = []; waitForTarget = null; goal.visible = false; dragStick(event); handlers.onMove?.();
+      };
+      stick.onpointermove = event => { if (event.pointerId === joystick?.pointer) dragStick(event); };
+      stick.onlostpointercapture = stick.onpointerup = stick.onpointercancel = event => {
+        if (event.pointerId === joystick?.pointer) resetStick();
+      };
+      const arrows = { ArrowLeft: [-27, 0], ArrowRight: [27, 0], ArrowUp: [0, -27], ArrowDown: [0, 27] };
+      stick.onkeydown = event => {
+        if (!arrows[event.key]) return;
+        event.preventDefault(); route = []; waitForTarget = null; goal.visible = false;
+        steer(...arrows[event.key]); handlers.onMove?.();
+      };
+      stick.onkeyup = event => { if (arrows[event.key]) resetStick(); };
+      stick.onblur = () => { if (joystick?.pointer == null) resetStick(); };
+    }
     canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); handlers.onUnavailable?.(); });
 
     function say(id, line) {
@@ -2789,7 +3345,24 @@
       hud.append(label); talking = { id, label, until: performance.now() + 2500 };
     }
     function react(id, kind = 'spark') {
-      if (kind === 'doves') { doveAt = performance.now(); return; }
+      if (kind === 'doves') {
+        doveAt = performance.now();
+        if (adventure) {
+          const origin = world.residents.get(id)?.actor.position || walkPosition();
+          trailDoves(origin);
+        }
+        return;
+      }
+      if (kind === 'ceremony' && adventure) {
+        ceremony = performance.now();
+        const origin = elements.get(id)?.obj.position || walkPosition();
+        for (let i = 0; i < 5; i++) {
+          const { actor } = world.models.person(i === 3 ? '사가랴' : '제사장', i, false);
+          const angle = (i / 5 + .1) * 2 * Math.PI;
+          const x = origin.x + Math.sin(angle) * 2.5, z = origin.z + Math.cos(angle) * 2.5;
+          actor.position.set(...onGround(x, z)); actor.rotation.y = angle + Math.PI; scene.add(actor); celebrationActors.push(actor);
+        }
+      }
       reaction = { start: performance.now(), kind, id };
       if (kind === 'star') return;
       if (kind === 'lamb' && !reduced) {
@@ -2816,24 +3389,217 @@
       return true;
     }
 
+    function trailDoves(origin) {
+      world.birds.splice(0).forEach(({ bird }) => { bird.removeFromParent(); disposeFigure(bird); });
+      for (let i = 0; i < 5; i++) {
+        const bird = world.models.animal('비둘기');
+        bird.position.copy(origin).add(new T.Vector3((i - 2) * .34, .4, (i % 2) * .32));
+        world.birds.push({ bird, home: bird.position.clone(), i });
+        scene.add(bird);
+      }
+    }
+    function moveAnimal(key, pos, lift = 3.5) {
+      const resident = world.residents?.get(key);
+      if (!resident) return;
+      const from = resident.actor.position.clone();
+      resident.travel = { start: performance.now(), from, to: new T.Vector3(...onGround(...pos)), lift };
+    }
+    function restoreAbility(kind) {
+      const feature = world.features?.get(kind);
+      if (!feature || feature.userData.cleared) return;
+      feature.userData.cleared = true;
+      if (kind === 'push') feature.position.x += 1.7;
+    }
+    function setEscort(key) {
+      if (escort && !key) {
+        const { x, z } = escort.actor.position;
+        escort.pos = [x, z];
+      }
+      escort = key ? world.residents?.get(key) : null;
+      if (escort) escort.actor.position.copy(walkPosition()).add(new T.Vector3(-.9, 0, 1.1));
+    }
+    function revealAbility(kind, destination) {
+      if (!adventure) return;
+      const p = player.position;
+      const feature = world.features.get(kind);
+      const start = performance.now();
+      abilityEffect = { kind, start, from: p.clone(), to: destination && new T.Vector3(...onGround(...destination)), feature };
+      if (kind === 'smell' && destination) {
+        footsteps.splice(0).forEach(mark => { mark.removeFromParent(); mark.geometry.dispose(); });
+        const [tx, tz] = destination, dist = Math.hypot(tx - p.x, tz - p.z);
+        const count = Math.min(12, Math.max(4, Math.ceil(dist / 1.05)));
+        for (let n = 1; n <= count; n++) {
+          const mark = new T.Mesh(new T.CircleGeometry(.12, 7).rotateX(-Math.PI / 2), mat('#ffd989', { basic: true }));
+          const f = n / count, step = (n % 2 ? .15 : -.15);
+          const x = lerp(p.x, tx, f) + step, z = lerp(p.z, tz, f);
+          mark.position.set(x, world.height(x, z) + .061, z);
+          mark.visible = false; footsteps.push(mark); scene.add(mark);
+        }
+      }
+      if (kind === 'push' && feature) {
+        abilityEffect.featureX = feature.position.x;
+        feature.userData.cleared = true;
+      }
+      if (kind === 'jump' && feature) feature.userData.cleared = true;
+      if (kind === 'shine') {
+        lantern.visible = true;
+        react('sheep', 'spark');
+      }
+      if (reduced && kind === 'push' && feature) feature.position.x += 1.7;
+    }
+    function followLeader(p, t, now, delta) {
+      const s = player.position;
+      const last = trail.at(-1);
+      if (!last || last.distanceToSquared(p) > .26) trail.push(p.clone());
+      if (trail.length > 24) trail.shift();
+      while (trail.length > 1 && s.distanceToSquared(trail[0]) < 1.10) trail.shift();
+      const at = trail[0];
+      const dx = at.x - s.x, dz = at.z - s.z;
+      const distance = Math.hypot(dx, dz), near = Math.hypot(p.x - s.x, p.z - s.z);
+      let trotting = false;
+      if ((near > 1.36 || trail.length > 3) && distance > .38) {
+        const step = Math.min(distance, delta * (near > 3.9 ? 5.5 : 2.95));
+        const x = s.x + dx / distance * step, z = s.z + dz / distance * step;
+        if (open(x, z)) {
+          s.x = x; s.z = z; s.y = world.height(x, z); trotting = true; followTimer = 0;
+          const yaw = Math.atan2(dx, dz) - player.rotation.y;
+          player.rotation.y += Math.atan2(Math.sin(yaw), Math.cos(yaw)) * Math.min(1, delta * 9);
+        } else followTimer += delta;
+      }
+      if (near > 6 || followTimer > 1.7) {
+        const candidates = [trail.find(point => open(point.x, point.z)), p];
+        const point = candidates.find(Boolean);
+        s.copy(point); trail.splice(0, Math.max(0, trail.indexOf(point))); followTimer = 0;
+      }
+      if (escort) {
+        const e = escort.actor;
+        const point = trail.find(node => node.distanceToSquared(e.position) > 1.5) || p;
+        const dx = point.x - e.position.x, dz = point.z - e.position.z;
+        const length = Math.hypot(dx, dz);
+        if (length > 1.1) {
+          const m = Math.min(length, 3.05 * delta) / length;
+          const x = e.position.x + dx * m, z = e.position.z + dz * m;
+          if (open(x, z)) {
+            e.position.set(x, world.height(x, z) + (reduced ? 0 : .05 * Math.abs(Math.sin(t * 11))), z);
+            e.rotation.y = Math.atan2(dx, dz);
+          }
+          if (Math.hypot(p.x - e.position.x, p.z - e.position.z) > 6.5 && open(at.x, at.z)) e.position.copy(at);
+        }
+      }
+      return trotting;
+    }
+    function animateVillage(p, t, now) {
+      for (const resident of world.actors) {
+        const { actor, pos, move, arm, key, yaw, phase } = resident;
+        if (resident.hidden || escort === resident) { actor.visible = !resident.hidden; continue; }
+        if (resident.travel) {
+          const { start, from, to, lift } = resident.travel, phase = Math.min(1, (now - start) / 1900);
+          actor.position.lerpVectors(from, to, phase);
+          actor.position.y += lift ? Math.sin(phase * Math.PI) * lift : Math.abs(Math.sin(t * 9)) * .075;
+          actor.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+          if (phase === 1) {
+            resident.pos = [to.x, to.z]; resident.travel = null;
+            if (!lift) resident.move = .55;
+          }
+          continue;
+        }
+        const d = Math.hypot(actor.position.x - p.x, actor.position.z - p.z);
+        actor.visible = d < 25;
+        if (!actor.visible) continue;
+        const close = d < 10.5;
+        if (arm) {
+          arm.visible = close;
+          if (!reduced && close) arm.rotation.x = move ? .34 * Math.sin(t * 5 + phase) : d < 4.4 ? -.64 + Math.sin(t * 3 + phase) * .31 : -.20;
+        }
+        if (!reduced && move) {
+          const angle = t * (key ? .75 : .48) + phase;
+          const x = pos[0] + Math.sin(angle) * move, z = pos[1] + Math.cos(angle) * move * .6;
+          if (!open(x, z)) continue;
+          actor.position.set(x, world.height(x, z) + Math.abs(Math.sin(t * 9 + phase)) * .073, z);
+          actor.rotation.y = Math.atan2(Math.cos(angle), -Math.sin(angle) * .6);
+        } else {
+          const turn = key && d < 3.1 ? Math.atan2(p.x - actor.position.x, p.z - actor.position.z) : yaw;
+          const difference = turn - actor.rotation.y;
+          actor.rotation.y += Math.atan2(Math.sin(difference), Math.cos(difference)) * .085;
+        }
+        if (key && d < 3.2 && arm && key !== greeted && now - lastGreeting > 9500 && !talking && handlers.canInteract?.() !== false && handlers.companionLine) {
+          greeted = key; lastGreeting = now;
+          say('sheep', handlers.companionLine);
+        }
+      }
+      if (guide.arm && !reduced) guide.arm.rotation.x = walking ? Math.sin(t * 10) * .43 - .26 : -.30;
+      if (abilityEffect) {
+        const { kind, start, to, from, feature, featureX } = abilityEffect;
+        const age = now - start;
+        if (kind === 'smell') {
+          footsteps.forEach((mark, i) => {
+            mark.visible = age > i * 55 && age < 3000;
+            mark.scale.setScalar(1 + Math.sin(age * .013 - i) * .22);
+          });
+        } else if (!reduced && kind === 'jump' && age < 720 && to) {
+          const phase = age / 720;
+          player.position.lerpVectors(from, to, phase);
+          player.position.y += Math.sin(phase * Math.PI) * 1.32;
+        } else if (!reduced && kind === 'push' && feature) {
+          feature.position.x = featureX + 1.7 * Math.min(1, age / 700);
+        } else if (kind === 'shine' && age > 3000) lantern.visible = false;
+        if (age >= 3000) abilityEffect = null;
+      }
+    }
+    function setWaypoint(pos) { waypoint = pos; }
+    function bearingTarget(p) {
+      if (!adventure) return waypoint;
+      const towardsSouth = waypoint[1] > p.z;
+      const crossings = adventure.crossings;
+      const crosses = ([, z]) => (p.z - z) * (waypoint[1] - z) < 0;
+      const gate = towardsSouth ? crossings.findLast(crosses) : crossings.find(crosses);
+      return gate ? [gate[0], gate[1] + (towardsSouth ? 1.05 : -1.05)] : waypoint;
+    }
+    function moveInfo() { return { walking, travel, zone: adventure ? adventure.crossings.filter(([, z]) => walkPosition().z < z).length : 0 }; }
+
     function frame(now) {
       if (stopped) return;
       raf = requestAnimationFrame(frame);
       if (!markerWidth || document.hidden) { lastFrame = now; return; }
       const elapsed = now - (lastFrame ?? now), delta = Math.min(.07, elapsed / 1000);
       lastFrame = now;
-      const t = now / 1000, p = player.position, u = player.userData;
+      const t = now / 1000, p = walkPosition(), u = player.userData, mover = leader || player;
+      const fromX = p.x, fromZ = p.z;
       const requested = waitForTarget;
-      const step = route[0];
-      const stride = 3.45 * delta;
+      const allowed = handlers.canInteract?.() !== false;
+      const step = allowed ? route[0] : null;
+      const stride = (adventure ? 2.55 : 3.45) * delta;
       if (step) {
         const dx = step[0] - p.x, dz = step[1] - p.z, dist = Math.hypot(dx, dz);
         if (dist <= stride) { p.x = step[0]; p.z = step[1]; route.shift(); }
         else { p.x += dx / dist * stride; p.z += dz / dist * stride; }
-        const diff = Math.atan2(dx, dz) - player.rotation.y;
-        player.rotation.y += Math.atan2(Math.sin(diff), Math.cos(diff)) * Math.min(delta * 10, 1);
-      } else { waitForTarget = null; goal.visible = false; }
+        const diff = Math.atan2(dx, dz) - mover.rotation.y;
+        mover.rotation.y += Math.atan2(Math.sin(diff), Math.cos(diff)) * Math.min(delta * 10, 1);
+      } else if (allowed) { waitForTarget = null; goal.visible = false; }
+      if (joystick && Math.hypot(joystick.x, joystick.y) > .14 && allowed) {
+        const dx = (Math.cos(az) * joystick.x + Math.sin(az) * joystick.y) * stride;
+        const dz = (Math.cos(az) * joystick.y - Math.sin(az) * joystick.x) * stride;
+        if (open(p.x + dx, p.z + dz)) { p.x += dx; p.z += dz; }
+        else if (open(p.x + dx, p.z)) p.x += dx;
+        else if (open(p.x, p.z + dz)) p.z += dz;
+        const turn = Math.atan2(dx, dz) - mover.rotation.y;
+        mover.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(delta * 10, 1);
+      }
+      const walked = Math.hypot(p.x - fromX, p.z - fromZ);
+      walking = walked > .0008; travel += walked;
       p.y = world.height(p.x, p.z);
+      const sheepWalking = adventure ? followLeader(p, t, now, delta) : !!step;
+      if (adventure) {
+        animateVillage(p, t, now);
+        const zone = moveInfo().zone;
+        if (zone !== displayedZone) { displayedZone = zone; handlers.onZone?.(); }
+        if (ceremony && now - ceremony > 6000) {
+          ceremony = null;
+          celebrationActors.splice(0).forEach(actor => { actor.removeFromParent(); disposeFigure(actor); });
+        }
+        if (walking && now > nextStepSound) { handlers.onFootstep?.(); nextStepSound = now + 460; }
+        if (walking && !reduced) p.y += .037 * Math.abs(Math.sin(t * 12));
+      }
       if (step && requested !== 'photo' && requested !== 'activity') kneeling = false;
       const sleep = kneeling;
       if (world.rearPath) world.rearPath.visible = options.progress?.[options.place] === 'done';
@@ -2855,15 +3621,17 @@
         glow.material.opacity = .55 * fireStrength;
       }
       const bounce = !reduced && reaction?.kind === 'spark' ? Math.max(0, 1 - (now - reaction.start) / 700) * .28 : 0;
-      u.body.position.y = lerp(u.body.position.y, sleep ? -.33 : (step && !reduced ? Math.sin(t * 20) * .05 : 0) + bounce, .22);
-      legSwingExplore(u.legs, t, !reduced && step ? 1 : 0, sleep);
+      u.body.position.y = lerp(u.body.position.y, sleep ? -.33 : (sheepWalking && !reduced ? Math.sin(t * 20) * .05 : 0) + bounce, .22);
+      legSwingExplore(u.legs, t, !reduced && sheepWalking ? 1 : 0, sleep);
       u.head.rotation.x = lerp(u.head.rotation.x, sleep ? .17 : 0, .19);
       if (!reduced) animateWings(player, t);
       const gazing = reaction?.kind === 'star' && now - reaction.start < 2800;
-      spot.set(p.x, p.y + (gazing ? 3.55 : 1.28), p.z - 1.36);
+      const cameraYaw = az;
+      spot.set(p.x - (adventure ? Math.sin(cameraYaw) : 0) * 1.8, p.y + (gazing ? 3.55 : adventure ? 1.58 : 1.28),
+        p.z - (adventure ? Math.cos(cameraYaw) * 1.8 : 1.36));
       target.lerp(spot, firstFrame || reduced ? 1 : Math.min(1, delta * 3.6));
       az = lerp(az, azWant, Math.min(1, delta * 7));
-      camPosition.set(target.x + Math.sin(az) * 8, target.y + (gazing ? 2.10 : 3.85), target.z + Math.cos(az) * 8);
+      camPosition.set(target.x + Math.sin(az) * (adventure ? 9.6 : 8), target.y + (gazing ? 2.1 : adventure ? 4.45 : 3.85), target.z + Math.cos(az) * (adventure ? 9.6 : 8));
       camera.position.copy(camPosition);
       aim.copy(target);
       camera.lookAt(aim); camera.updateMatrixWorld();
@@ -2877,22 +3645,28 @@
           obj.position.x += dx * step; obj.position.z += dz * step;
           obj.position.y = world.height(obj.position.x, obj.position.z) + .10;
         }
-        const visible = !(marker.type === 'secret' || marker.hidden) || distance < 1.85;
+        const visible = (!adventure || distance < (marker.priority === 'main' ? 16 : marker.priority === 'side' ? 7.7 : 5.6)) && (!(marker.type === 'secret' || marker.hidden) || distance < (adventure ? 2.65 : 1.85));
         if (marker.type === 'follow' && item && !reduced) {
           item.position.x = Math.sin(t * 2.1) * .36;
           item.position.z = Math.sin(t * 1.39) * .49;
         }
+        if (adventure) {
+          const resident = world.residents.get(marker.id);
+          if (resident && !marker.moving && !marker.animal) obj.position.copy(resident.actor.position);
+        }
         obj.visible = visible || marker.type === 'bush';
-        ring.visible = visible && marker.type !== 'reflection';
+        ring.visible = visible && marker.type !== 'reflection' && !marker.quiet && (!adventure || distance < 8);
         if (reaction?.kind === 'rustle' && reaction.id === marker.id) {
           obj.rotation.z = Math.sin((now - reaction.start) * .046) * .16 * Math.max(0, 1 - (now - reaction.start) / 460);
         }
-        label.hidden = !visible || !project(label, obj.position, v.sign ? 1.45 : .76);
+        const resident = world.residents?.get(marker.id);
+        label.hidden = !visible || marker.lit || !project(label, obj.position, resident ? (marker.actor ? 2.05 * resident.actor.scale.y : .62) : v.sign ? 1.45 : .76);
         ring.scale.setScalar(reduced ? 1 : 1 + Math.sin(t * 2.8 + obj.position.x) * .084);
         if (item && !reduced && marker.type !== 'reflection') { item.rotation.y = t * 1.6; item.position.y = .35 + Math.sin(t * 2.8) * .11; }
         if (distance >= enterDistance + .3) v.near = false;
-        if ((step || requested) && !marker.lit && !v.near && distance <= enterDistance && (!requested || requested === marker.id) && handlers.canInteract?.() !== false) {
+        if ((step || walking || requested) && !marker.lit && !v.near && distance <= enterDistance && (!requested || requested === marker.id) && allowed) {
           v.near = true;
+          waitForTarget = null;
           route = []; goal.visible = false;
           if (marker.moving) followOrigin = obj.position.clone();
           if (marker.type === 'exit') handlers.onExit?.(marker.place);
@@ -2901,10 +3675,15 @@
           break;
         }
       }
+      if (waypoint) {
+        const [x, z] = bearingTarget(p);
+        const dx = x - p.x, dz = z - p.z;
+        handlers.onBearing?.(Math.atan2(dx, -dz) + az, Math.round(Math.hypot(waypoint[0] - p.x, waypoint[1] - p.z)));
+      }
       if (carryLabel) carryLabel.hidden = !project(carryLabel, p, 1.48);
       if (talking) {
         if (now >= talking.until) { talking.label.remove(); talking = null; }
-        else talking.label.hidden = !project(talking.label, elements.get(talking.id)?.obj.position || p, 2.05);
+        else talking.label.hidden = !project(talking.label, talking.id === 'sheep' ? player.position : elements.get(talking.id)?.obj.position || p, talking.id === 'sheep' ? 1.28 : 2.05);
       }
       if (!reduced) for (const { cloud, x, z, base, i } of world.fx) {
         const phase = (t * .43 + i / 6) % 1;
@@ -2942,15 +3721,17 @@
       stopped = true; cancelAnimationFrame(raf); observer.disconnect();
       for (const id of elements.keys()) removeMarker(id);
       groundRing.dispose(); crystal.dispose();
-      disposeFigure(scene); world.ground.material.dispose(); world.dome.material.dispose();
+      disposeFigure(scene); world.models?.dispose(); world.ground.material.dispose(); world.dome.material.dispose();
       scene.traverse(obj => { if (obj.isPoints || world.fx.some(f => f.cloud === obj)) obj.material.dispose(); });
       renderer.dispose(); renderer.forceContextLoss(); wrap.remove();
     };
-    return { setMarkers, spawnPickup, react, say, setCarry, kneel, tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo() {
+    return { setMarkers, spawnPickup, react, say, setCarry, kneel, setWaypoint, setEscort, revealAbility, restoreAbility, moveAnimal, moveInfo,
+      showResident(id, visible) { const resident = world.residents?.get(id); if (resident) resident.hidden = !visible; }, position: () => [walkPosition().x, walkPosition().z], tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo() {
       const old = camera.position.clone();
       const oldQuaternion = camera.quaternion.clone();
       const p = player.position, oldFacing = player.rotation.y;
       const masks = Array.from(elements.values(), ({ obj }) => [obj, obj.visible]);
+      if (leader) masks.push([leader, leader.visible]);
       for (const [obj] of masks) obj.visible = false;
       if (layout.christmas) {
         camera.position.set(p.x + 4.15, p.y + 2.9, p.z + 4.1);
@@ -2974,7 +3755,7 @@
     }, focus(id) {
       const marker = elements.get(id)?.marker;
       if (marker) moveTo(...marker.pos, id);
-    }, destroy, metrics: () => ({ ...metrics }), _debug: { player, camera, moveTo, markers: elements, blocks: world.blocks } };
+    }, destroy, metrics: () => ({ ...metrics }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors } };
   }
 
   function legSwingExplore(legs, t, strength, rest) {

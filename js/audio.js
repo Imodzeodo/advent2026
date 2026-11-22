@@ -246,7 +246,8 @@
   }
   /* ---------- 장면별 배경 소리 ---------- */
   const AMB = {
-    '나의 들판': 'pasture',
+    '나의 들판': 'pasture', '모험 장터': 'market', '모험 우물': 'water', '모험 밤길': 'night',
+    '모험 산길': 'wind', '모험 성소': 'temple', '모험 뜰': 'crowd', '모험 지붕': 'day',
     '밤하늘': 'night', '지붕': 'night', '지붕새벽': 'night', '새벽집': 'night', '새집': 'night', '들판': 'field', '들판새벽': 'day',
     '성소': 'temple', '성소천사': 'temple', '성전뜰': 'crowd', '성전': 'crowd', '베들레헴': 'crowd',
     '나사렛길': 'day', '마리아집': 'day', '유대집': 'day', '할례': 'crowd', '산길': 'wind', '길': 'day', '언덕노을': 'wind',
@@ -278,6 +279,8 @@
     const beds = { night: [0.05, 'brown', 380], field: [0.05, 'brown', 360], temple: [0.04, 'brown', 160], crowd: [0.05, 'pink', 700, 0.6], day: [0.03, 'brown', 500], wind: [0.07, 'pink', 520, 0.5], room: [0.03, 'brown', 220], stable: [0.035, 'brown', 240], dream: [0.02, 'brown', 300] };
     const bd = beds[kind]; if (bd) loopNoise(bd[0], bd[1], bd[2], bd[3]);
     if (kind === 'pasture') loopNoise(0.035, 'brown', 320);
+    if (kind === 'market') { loopNoise(.085, 'pink', 535, .72); loopNoise(.05, 'brown', 350); }
+    if (kind === 'water') { loopNoise(.054, 'pink', 1560, 1.35); loopNoise(.028, 'brown', 400); }
     if (kind === 'temple') {
       // 성소의 낮은 울림 (장면이 바뀌면 같이 멈춤)
       [110, 165].forEach(f => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; g.gain.value = 0.008; o.connect(g); g.connect(ambBus); o.start(); ambNodes.push(o); });
@@ -295,6 +298,18 @@
       }
       if (kind === 'field') { if (Math.random() < 0.25) for (let k = 0; k < 6; k++) noise(t + Math.random() * 0.8, 0.04, 0.03, 2600, 1300); if (Math.random() < 0.05) FX.sheep(t + 0.3); }
       if (kind === 'day' || kind === 'wind') { if (Math.random() < 0.55) { const f = 2400 + Math.random() * 1600; chirp(t, f, f * 1.4, 0.07, 0.014); chirp(t + 0.11, f * 1.1, f * 1.5, 0.06, 0.012); } next = t + 1.6 + Math.random() * 2.8; }
+      if (kind === 'market') {
+        noise(t, .55, .026, 360 + Math.random() * 360, 390);
+        if (Math.random() < .3) bell(81, t + .19, .011, ambBus);
+        next = t + .45 + Math.random() * 1.3;
+      }
+      if (kind === 'water') {
+        for (let k = 0; k < 4; k++) {
+          const f = 680 + Math.random() * 540;
+          chirp(t + k * .095, f, f * .72, .07, .009);
+        }
+        next = t + .52 + Math.random() * 1.1;
+      }
       if (kind === 'crowd') { noise(t, 0.9, 0.025, 500 + Math.random() * 500, 700); next = t + 0.6 + Math.random() * 0.8; }
       if (kind === 'room' || kind === 'stable') { if (Math.random() < 0.3) noise(t, 0.05, 0.02, 2200, 1200); if (kind === 'stable' && Math.random() < 0.06) thud(t, 80, 0.06, 0.2); next = t + 1 + Math.random() * 2; }
       if (kind === 'temple' || kind === 'dream') { bell((kind === 'dream' ? 84 : 76) + [0, 3, 7, 10][Math.floor(Math.random() * 4)], t, 0.018, ambBus); next = t + 3 + Math.random() * 4; }
@@ -345,6 +360,7 @@
     heart: t => { thud(t, 55, 0.3, 0.25); thud(t + 0.22, 50, 0.22, 0.25); },
     door: t => { thud(t, 90, 0.25, 0.3); noise(t + 0.02, 0.25, 0.08, 400, 200); },
     knock: t => [0, 0.18, 0.36].forEach(d => thud(t + d, 180, 0.2, 0.08)),
+    walkExplore: t => { thud(t, 106, .055, .021); noise(t, .058, .014, 840, 670); },
     steps: t => [0, 0.35, 0.7, 1.05].forEach(d => { thud(t + d, 110, 0.12, 0.1); noise(t + d, 0.08, 0.03, 900, 500); }),
     crowd: t => { noise(t, 2.2, 0.06, 500, 900); noise(t + 0.3, 1.8, 0.04, 1200, 700); },
     wind: t => noise(t, 2.6, 0.07, 300, 1400),
@@ -395,7 +411,7 @@
   }
 
   // 대사 말소리: 인물마다 높이가 다른 짧은 '톡'
-  const VOICE = { '사가랴': 150, '엘리사벳': 330, '요셉': 190, '마리아': 420, '할아버지': 135, '제사장': 170, '젊은 제사장': 230, '꼬마': 520, '이웃': 360, '천사': 600, '가브리엘': 600, '목자': 175, '여관 주인': 210, '랍비': 160, '친척': 260, '친척 아저씨': 200, '친척 아주머니': 330, '친척 청년': 240, '친척 아가씨': 400, '이웃2': 230, '군인': 180, '사람들': 300, '나': 440 };
+  const VOICE = { '성전 문지기': 133, '등잔 상인': 207, '비둘기 할머니': 281, '엄마를 찾는 아이': 520, '사가랴': 150, '엘리사벳': 330, '요셉': 190, '마리아': 420, '할아버지': 135, '제사장': 170, '젊은 제사장': 230, '꼬마': 520, '이웃': 360, '천사': 600, '가브리엘': 600, '목자': 175, '여관 주인': 210, '랍비': 160, '친척': 260, '친척 아저씨': 200, '친척 아주머니': 330, '친척 청년': 240, '친척 아가씨': 400, '이웃2': 230, '군인': 180, '사람들': 300, '나': 440 };
   let lastBlip = 0;
   function blip(who) {
     if (!on() || !ctx || ctx.state !== 'running') return;

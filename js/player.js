@@ -738,10 +738,11 @@
         const ov = showOverlay(`
           <div class="card rules">
             <div class="rules-title">이렇게 진행돼</div>
-            <p class="rules-flow">${esc(Field.GAME_LINE)}<br><b>매일 밤: 이야기 한 편 → 내 양 돌보기</b>.</p>
+            <p class="rules-flow">${esc(Field.GAME_LINE)}<br><b>매일 밤: 이야기 한 편 → 오늘의 모험 → 내 양 돌보기</b>.</p>
             <ul>
               <li>새 편은 한국 시간 자정에 열려.${Core.REL ? '' : ' 주일은 오전 11시.'} 놓쳐도 나중에 볼 수 있어.</li>
               <li>한 편을 끝내면 별이 켜져. 네 답은 묵상 노트에 남아.</li>
+              <li>양과 마을을 탐험하고 하트와 털을 받아. 양털을 모으면 구유 이불도 짤 수 있어.</li>
               <li>미션에 정직하게 답하면 등불 기름을 받아.</li>
             </ul>
             <div class="rules-warn">기록은 이 브라우저에만 남아. <b>설정 → 기록 열쇠</b>를 카톡 나와의 채팅에 보내 두면 폰을 바꿔도 이어서 할 수 있어.</div>
@@ -1030,13 +1031,14 @@
     const starSize = 104;
     const place = window.Explore?.isOpen(ep) && Explore.title(ep.id);
     const fieldLabel = place ? `${place}에 가 보자` : '오늘 밤 들판으로';
+    const adventureTime = place && window.EXPLORE[ep.id]?.adventure ? ' · 약 6분' : '';
     const ov = showOverlay(`
       <div class="card done">
         ${firstDay ? '<div class="first-day-banner">대림절이 시작됐어 · 첫째 초</div>' : ''}
         <div class="done-star">${Art.bigStar(before / total, starSize)}</div>
         <div class="done-title">${first ? '별이 조금 더 밝아졌어' : '다시 보기 끝'}</div>
         ${first || gemLine ? `<div class="done-sub">${first ? `<div>카드 No.${Card.cardNo(ep.id)} 획득</div>` : ''}${gemLine ? `<span class="gem-line">${esc(gemLine)}</span>` : ''}</div>` : ''}
-        ${fieldOpen ? `<button class="btn" data-v="field">${place ? '🧭' : '🐑'} ${esc(fieldLabel)}</button>` : ''}
+        ${fieldOpen ? `<button class="btn" data-v="field">${place ? '🧭' : '🐑'} ${esc(fieldLabel)}${adventureTime}</button>` : ''}
         ${lastDay ? '<button class="btn ghost finale-go">🌟 27일의 기록 보기</button>' : ''}
         ${chapterGuest ? '<p class="done-field-guest">🐑 들판에 친구 양이 놀러 왔어</p>' : ''}
         ${skyLine()}

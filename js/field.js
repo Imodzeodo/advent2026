@@ -112,6 +112,7 @@
   const field = () => Core.data.field;
   const has = () => !!field()?.sheep?.length;
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const exploreReaction = sheep => (REACT[sheep.species]?.idle || ['낯선 발소리가 들려. 같이 가 볼까?'])[0];
   const voice = name => { Promise.resolve(Sound.voice(name)).catch(() => {}); };
   const pick = list => list[Math.floor(Math.random() * list.length)];
   const DEX = () => window.SHEEP_DEX || [FALLBACK];
@@ -143,7 +144,8 @@
   const mainSheep = (data = field()) => data?.sheep?.find(sheep => sheep.id === data.mainId) || data?.sheep?.[0];
   const shearReady = (sheep, today = date()) => sheep.id === mainSheep()?.id && !sheep.lost && woolLength(sheep, today) === 1;
   const growthFor = days => MAIN_STAGES.findLast(item => days >= item.days) || MAIN_STAGES[0];
-  const growthStage = (data, today) => today >= Core.XMAS ? MAIN_STAGES.at(-1) : growthFor(data.mainCareDays ?? data.careDays);
+  const growthDays = data => (data.mainCareDays ?? data.careDays ?? 0) + Math.floor((data.mainAdventureDays || 0) / 3);
+  const growthStage = (data, today) => today >= Core.XMAS ? MAIN_STAGES.at(-1) : growthFor(growthDays(data));
   const heartMarks = count => '♥'.repeat(count) + '♡'.repeat(3 - count);
   function mainCare(today = date(), data = field()) {
     const sheep = mainSheep(data);
@@ -151,7 +153,8 @@
     const pet = sheep.petDay === today && sheep.petCount > 0;
     const treat = data.mainTreatOn === today;
     const wool = woolLength(sheep, today) === 0;
-    return { sheep, pet, treat, wool, hearts: Number(pet) + Number(treat) + Number(wool) };
+    const adventure = data.mainAdventureOn === today;
+    return { sheep, pet, treat, wool, adventure, hearts: Math.min(3, Number(pet) + Number(treat) + Number(wool) + Number(adventure)) };
   }
   function syncMainGrowth(data, today) {
     const sheep = mainSheep(data);
@@ -171,7 +174,16 @@
     if (data.mainCareOn === today || mainCare(today, data)?.hearts !== 3) return;
     data.mainCareOn = today;
     data.mainCareDays++;
+    if (data.mainAdventureOn === today) data.mainAdventureDays = Math.max(0, (data.mainAdventureDays || 0) - 1);
     syncMainGrowth(data, today);
+  }
+  function adventureHeart(data, today) {
+    if (data.mainAdventureOn === today || data.mainCareOn === today || !mainSheep(data)) return false;
+    data.mainAdventureOn = today;
+    data.mainAdventureDays = (data.mainAdventureDays || 0) + 1;
+    completeMainCare(data, today);
+    syncMainGrowth(data, today);
+    return true;
   }
   function tutorialStep(data) {
     const sheep = mainSheep(data);
@@ -1409,7 +1421,7 @@
       const { sheep } = daily;
       const growth = growthStage(data, today);
       const next = MAIN_STAGES[MAIN_STAGES.indexOf(growth) + 1];
-      const daysLeft = next ? next.days - data.mainCareDays : 0;
+      const daysLeft = next ? next.days - growthDays(data) : 0;
       const daysNeeded = next ? next.days - growth.days : 1;
       const name = esc(sheep.name);
       const step = tutorialStep(data);
@@ -1620,10 +1632,10 @@
       const title = `${josa(sheep.name, '이가')} ${growth.label}이 됐어!`;
       const modal = sheet(title, `<div class="field-grow ${growth.level === 10 ? 'shine' : ''}">
         ${portraitHTML(sheep.species, { level: growth.level, wear: sheep.wear }, 'big')}
-        <p>함께 돌본 날 ${data.mainCareDays}일</p></div>
+        <p>함께 자란 기록 ${growthDays(data)}일</p></div>
         <button type="button" class="btn field-growth-card">성장 카드 저장·공유</button>`, 'field-grow-sheet field-main-growth');
       const portrait = { ...sheep };
-      const days = data.mainCareDays;
+      const days = growthDays(data);
       modal.querySelector('.field-growth-card').onclick = () => cardSheet('내 양 성장 카드',
         () => Card.drawGrowth(portrait, growth.label, days), 'GROWTH', title);
     }
@@ -2769,6 +2781,6 @@
     ensure, has, panelHTML, bindPanel, page, receiveFirstLamb, flockScene, giveItem, drawCard, lostCheck, stats,
     showSheet: fieldSheet, showCard: fieldCard, wordMarkup: verseHTML,
     bonus, portrait, snapshot, summary, spec, dexList, visitCheck, awardChapterGuest, sheepArt, visitShared, prepareDex, prewarm, homeThumb,
-    shearRemaining, shearTonight, giftCardData, giftReady, lostSheep, mainCare, heartMarks, rollFirstSheep, GAME_LINE, FIRST_STORY_HINT
+    shearRemaining, shearTonight, giftCardData, giftReady, lostSheep, mainCare, adventureHeart, exploreReaction, heartMarks, rollFirstSheep, GAME_LINE, FIRST_STORY_HINT
   };
 })();
