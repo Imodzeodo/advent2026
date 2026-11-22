@@ -342,3 +342,15 @@
 .discover-flat-section h3 { margin: 8px 2px 5px; font: 700 13px var(--sans); color: #f5d595; }
 .explore-flat-markers button.is-done { opacity: .75; border-color: #98d8b066; }
 .explore-flat-markers button.is-new { border-color: #ffe08a99; background: #ffe08a14; }
+.explore-room-veil {
+  position: absolute; inset: 0; z-index: 12; background: #171018; pointer-events: none;
+}
+.explore-room-veil[hidden] { display: none; }
+.scent-compass {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px;
+  border: 1px solid #ddb87270; border-radius: 7px; color: #ffe5a0;
+  background: #ac853126; opacity: var(--near-scent, 1); white-space: nowrap;
+}
+.scent-compass[hidden] { display: none; }
+.scent-compass i { display: inline-block; font-style: normal; font-weight: 700; }
+.notebook-hint { display: block; margin-top: 4px; color: #e2c68d; }
