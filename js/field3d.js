@@ -2073,6 +2073,21 @@
   const EXPLORE_EDGE = 8;
   const EXPLORE_COLORS = { photo: '#b9e8bd', guard: '#e4a7a7', light: '#eeb77c', person: '#ffd17e', quest: '#ff9fcc', verse: '#fff8e9', exit: '#cbdda3', secret: '#af97ff', look: '#8ee0ff', touch: '#ffcf86', try: '#ff9fcc', discoverDone: '#9ddbb2' };
 
+  function exploreBoundary(scene, height, edge, color) {
+    const stone = new T.BoxGeometry(), parts = [];
+    const count = Math.ceil(edge * 2 / 1.5), width = edge * 2 / count;
+    for (const side of [-1, 1]) {
+      const border = side * (edge + .28);
+      for (let i = 0; i < count; i++) {
+        const offset = -edge + (i + .5) * width, h = i % 3 === 0 ? .96 : .80;
+        parts.push(place(stone, offset, height(offset, border) + h / 2, border, width + .035, h, .56));
+        parts.push(place(stone, border, height(border, offset) + h / 2, offset, .56, h, width + .035));
+      }
+    }
+    scene.add(merged(parts, mat(color)));
+    parts.forEach(part => part.dispose()); stone.dispose();
+  }
+
   function exploreWorld(scene, kit, seed, layout) {
     const rand = seeded(hashStr(seed));
     const dusk = layout.time === 'dusk', dawn = layout.time === 'dawn';
@@ -2081,7 +2096,21 @@
     const stable = kit === 'stable';
     const hillside = ['hillpath', 'galilee', 'elizabeth'].includes(kit);
     const dry = layout.variant === 'dry';
-    const height = (x, z) => paved ? 0 : hillside ? .17 * Math.sin(x * .47) * Math.cos(z * .5) - z * .055 : .045 * Math.sin(x * .7 + z * .4);
+    const groundHeight = (x, z) => paved ? 0 : hillside ? .17 * Math.sin(x * .47) * Math.cos(z * .5) - z * .055 : .045 * Math.sin(x * .7 + z * .4);
+    const gate = kit === 'gate', stairX = 6.47, stairHalf = 1.02, stairBase = -1.78, stairHead = -6.52, towerY = 4.16;
+    const gateRoof = (x, z) => gate && Math.abs(x) > 2.71 && Math.abs(x) < 7.84 && z <= stairHead && z >= -7.91;
+    const gateSteps = (x, z) => gate && Math.abs(Math.abs(x) - stairX) < stairHalf && z > stairHead && z < stairBase;
+    const height = (x, z) => gateRoof(x, z) ? towerY : gateSteps(x, z)
+      ? towerY * Math.floor((stairBase - z) / (stairBase - stairHead) * 17) / 17 : groundHeight(x, z);
+    const gateWall = (x, z) => {
+      if (!gate) return false;
+      const side = Math.abs(x);
+      const stairRail = Math.abs(Math.abs(side - stairX) - stairHalf) < .21 && z > stairHead && z < stairBase - .12;
+      const towerFront = Math.abs(z - stairHead) < .21 && side > 1.55 && !gateSteps(x, z + .3);
+      const towerSide = z <= stairHead && z >= -8 && (Math.abs(side - 2.71) < .23 || Math.abs(side - 7.84) < .23);
+      const towerBack = Math.abs(z + 7.91) < .17 && side >= 2.71;
+      return stairRail || towerFront || towerSide || towerBack;
+    };
     const blocks = [], batches = new Map(), birds = [], fx = [];
     let campfire, rearPath;
     const box = new T.BoxGeometry(1, 1, 1), rock = new T.IcosahedronGeometry(1, 0);
@@ -2177,7 +2206,7 @@
         tint.lerp(strawLight, strength * Math.exp(-.19 * d * d)).multiplyScalar(.80 + variation * .35);
       }
       for (let i = n; i < n + 3; i++) {
-        p.setY(i, height(p.getX(i), p.getZ(i)));
+        p.setY(i, groundHeight(p.getX(i), p.getZ(i)));
         colors.set([tint.r, tint.g, tint.b], i * 3);
       }
     }
@@ -2267,6 +2296,18 @@
       }
       cube(stone, 0, 4.27, -7.2, 3.54, .93, 1.5);
       cube(terra, 0, 4.43, -6.38, 1.62, .45, .12);
+      const tread = (stairBase - stairHead) / 17;
+      for (const side of [-1, 1]) {
+        const x = side * stairX;
+        cube(edge, side * 5.28, towerY - .07, -7.19, 5.12, .14, 1.37);
+        cube(stone, side * 5.28, towerY + .20, -7.91, 5.14, .41, .17);
+        for (const railX of [2.71, 7.84]) cube(stone, side * railX, towerY + .21, -7.19, .20, .43, 1.49);
+        for (let i = 0; i < 17; i++) {
+          const z = stairBase - (i + .5) * tread, y = height(x, z);
+          cube(i % 2 ? stone : edge, x, y / 2, z, stairHalf * 2, y + .06, tread + .01);
+          for (const hand of [-1, 1]) cube(stone, x + hand * stairHalf, (y + .36) * .5, z, .18, y + .36, tread + .02);
+        }
+      }
       at('등불 기둥', -4.9, -5.8); at('등불 기둥', 4.9, -5.8);
       for (const [lane, x] of [-2.5, 1.1, 4.4].entries()) {
         for (let i = 0; i < 4; i++) visitor(x + (i % 2) * .32, 3.45 - i * 1.36 - lane * 1.4,
@@ -2479,7 +2520,9 @@
     }
     if (night || layout.christmas) scene.add(star);
     else { star.material.map.dispose(); star.material.dispose(); }
-    return { ground, height, blocks, birds, fx, star, dome, campfire, rearPath };
+    exploreBoundary(scene, height, EXPLORE_EDGE, paved ? '#a19ba3' : '#8c7767');
+    return { ground, height, blocks, birds, fx, star, dome, campfire, rearPath,
+      walkable: (x, z) => !gateWall(x, z), climbs: gate ? [[-6.47, -7.17], [6.47, -7.17]] : [] };
   }
 
   const ADVENTURE_EDGE = 23.5;
@@ -2627,11 +2670,24 @@
     const circle = new T.CylinderGeometry(1, 1, 1, 8);
     const pot = new T.CylinderGeometry(.76, 1, 1, 8);
     const slope = x => clamp(Math.floor(Math.max(0, -x) * 2) * .5, 0, 6);
-    const height = (x, z) => {
+    const terrainHeight = (x, z) => {
       if (temple) return slope(z + 12) * .24;
       if (roof) return slope(z + 3) * .23;
       return -.12 * z + .34 * Math.sin(x * .22) + .19 * Math.sin(z * .4);
     };
+    const roofTop = 3.86, roofHalf = 3.35, stairHalf = 1.22;
+    const roofFront = -17.9, stairFoot = -12.8, roofBack = -22.8;
+    const roofProgress = z => clamp(Math.floor((stairFoot - z) / (stairFoot - roofFront) * 12) / 12, 0, 1);
+    const onRoof = (x, z) => roof && Math.abs(x) < roofHalf && z <= roofFront && z >= roofBack;
+    const onRoofStairs = (x, z) => roof && Math.abs(x) < stairHalf && z > roofFront && z < stairFoot;
+    const height = (x, z) => onRoof(x, z) ? roofTop : onRoofStairs(x, z)
+      ? lerp(terrainHeight(x, z), roofTop, roofProgress(z)) : terrainHeight(x, z);
+    const rail = (x, z) => roof && (
+      Math.abs(Math.abs(x) - roofHalf) < .28 && z >= roofBack - .25 && z <= roofFront + .25
+      || Math.abs(z - roofBack) < .28 && Math.abs(x) <= roofHalf + .25
+      || Math.abs(z - roofFront) < .25 && Math.abs(x) >= stairHalf && Math.abs(x) <= roofHalf
+      || Math.abs(Math.abs(x) - stairHalf) < .25 && z > roofFront && z < stairFoot - .12
+    );
     const elevation = (z, hook) => height(0, z) + hook;
     function batch(geometry, color, ...shape) {
       if (!batches.has(color)) batches.set(color, []);
@@ -2682,7 +2738,7 @@
       const dirt = Math.abs(x - routeX(z)) < 3 || Math.abs(z - 11) < 2 || Math.abs(z + 4) < 2 || Math.abs(z + 16) < 1.4;
       tint.copy(dirt ? roadColor : groundColor).multiplyScalar(.93 + rand() * (temple ? .12 : .14));
       for (let j = i; j < i + 3; j++) {
-        groundPos.setY(j, height(groundPos.getX(j), groundPos.getZ(j)));
+        groundPos.setY(j, terrainHeight(groundPos.getX(j), groundPos.getZ(j)));
         colors.push(tint.r, tint.g, tint.b);
       }
     }
@@ -2954,7 +3010,22 @@
         for (let i = 0; i < 12; i++) box(i % 2 ? wall : cap, 0, elevation(-4 - i * .5, -.043), -4 - i * .5, 6.35, .17, .51);
         box(fabric, 3.1, elevation(-15, .06), -15, 3.6, .11, 2.5);
         for (let i = 0; i < 5; i++) box(cap, 1.61 + i * .72, elevation(-14.03, .12), -14.03, .14, .025, .43);
-        lamp(3.5, -17.6, .52, true);
+        lamp(3.5, -17.4, .52, true);
+        const deckLength = roofFront - roofBack, deckCenter = (roofBack + roofFront) / 2;
+        box(wall, 0, roofTop / 2, deckCenter, roofHalf * 2, roofTop, deckLength);
+        box(cap, 0, roofTop - .04, deckCenter, roofHalf * 2, .10, deckLength);
+        for (const side of [-1, 1]) {
+          box(wall, side * roofHalf, roofTop + .39, deckCenter, .31, .78, deckLength + .29);
+          const frontWidth = roofHalf - stairHalf;
+          box(wall, side * (stairHalf + frontWidth / 2), roofTop + .39, roofFront, frontWidth, .78, .31);
+        }
+        box(wall, 0, roofTop + .39, roofBack, roofHalf * 2, .78, .30);
+        const tread = (stairFoot - roofFront) / 12;
+        for (let i = 0; i < 12; i++) {
+          const z = stairFoot - (i + .5) * tread, y = height(0, z);
+          box(i % 2 ? wall : cap, 0, y / 2, z, stairHalf * 2, y, tread + .016);
+          for (const side of [-1, 1]) box(wall, side * stairHalf, (y + .53) / 2, z, .24, y + .53, tread + .02);
+        }
       } else {
         for (const z of [-12, -3, 7, 17]) {
           const x = routeX(z);
@@ -2986,9 +3057,9 @@
         box(index ? cap : roofLine, opening, height(opening, pz) + .038, pz, 2.68, .063, .36);
       }
     }
-    for (const [i, zone] of zones.entries()) {
-      const z = [12, -2, -15][i], x = i === 1 ? -3 : 3.6;
-      const sign = textSprite(zone, { color: '#fff0c9', size: 19 });
+    const signs = zones.map((_, i) => [i === 1 ? -3 : 3.6, [12, -2, -15][i]]);
+    for (const [i, [x, z]] of signs.entries()) {
+      const sign = textSprite(zones[i], { color: '#fff0c9', size: 19 });
       sign.position.set(x, height(x, z) + 1.15, z);
       sign.scale.setScalar(2.72); scene.add(sign);
       box(wood, x, height(x, z) + .53, z, .09, 1.06, .09);
@@ -3042,7 +3113,9 @@
       const [kind, pos] = pair;
       addActor(models.animal(kind), pos, .92 + (i % 3) * .31);
     }
-    return { ground, height, dome, blocks, birds, fx, actors, residents, models, features };
+    exploreBoundary(scene, terrainHeight, ADVENTURE_EDGE, cap);
+    return { ground, height, dome, blocks, birds, fx, actors, residents, models, features,
+      walkable: (x, z) => !rail(x, z), signs, climbs: roof ? [[0, -20.7]] : temple ? [[1.65, -18.5]] : [] };
   }
 
   function explorePath(from, to, open, edge = EXPLORE_EDGE) {
@@ -3210,6 +3283,157 @@
       add(cube, '#b0a498', 0, .16, 0, 1.25, .32, 1.15);
       add(cube, '#4d92a6', 0, .28, 0, .96, .12, .86);
       add(cube, '#c9bfb0', -.38, .28, .26, .28, .14, .42);
+    } else if (prop === 'yoke') {
+      for (const sx of [-.42, .42]) add(cube, '#6b4730', sx, .36, 0, .1, .72, .24);
+      add(cube, '#9e6b43', 0, .74, 0, 1.18, .14, .18);
+      for (const sx of [-.32, .32]) {
+        add(ball, '#b58052', sx, .82, 0, .3, .18, .22);
+        for (const dx of [-.12, .12]) add(cyl, '#d4a977', sx + dx, .56, 0, .06, .38, .06);
+        add(cube, '#c49664', sx, .38, 0, .28, .07, .12);
+      }
+      add(cyl, '#594d48', 0, .62, .06, .14, .08, .14, Math.PI / 2);
+    } else if (prop === 'stonejar') {
+      add(cube, '#9e968c', 0, .1, 0, .58, .2, .58);
+      add(ball, '#d4ccc0', 0, .48, 0, .66, .66, .66);
+      add(cyl, '#e3dcd0', 0, .86, 0, .46, .18, .46);
+      for (const sx of [-.34, .34]) add(cube, '#bfb6aa', sx, .56, 0, .08, .26, .12);
+      add(cyl, '#5a8f9e', 0, .94, 0, .36, .04, .36);
+    } else if (prop === 'village') {
+      add(cube, '#9c8e7e', 0, .12, 0, 1.18, .24, 1.02);
+      add(cube, '#c9a685', -.24, .44, -.08, .5, .42, .46);
+      add(cube, '#8f7564', -.24, .67, -.08, .54, .06, .5);
+      add(cube, '#4a352c', -.24, .35, .16, .14, .22, .04);
+      add(cube, '#dfd0bc', .26, .5, .06, .46, .54, .48);
+      add(cube, '#8f7564', .26, .79, .06, .5, .06, .52);
+      add(cube, '#ffcb74', .26, .56, .31, .14, .14, .04);
+      add(cyl, '#6e4c36', -.36, .4, .28, .08, .34, .08);
+      add(ball, '#5c7a4e', -.36, .66, .28, .34, .26, .34);
+    } else if (prop === 'feast') {
+      for (const sx of [-.46, .46]) for (const sz of [-.24, .24]) add(cube, '#6b452d', sx, .2, sz, .1, .4, .1);
+      add(cube, '#8c5a3c', 0, .43, 0, 1.16, .09, .74);
+      add(cube, '#b84842', 0, .48, 0, 1.04, .04, .48);
+      add(cyl, '#c78863', 0, .53, 0, .44, .08, .44);
+      add(ball, '#e6b86e', -.08, .59, .04, .22, .12, .22);
+      add(ball, '#6e3568', .1, .6, -.05, .18, .14, .18);
+      for (const sx of [-.36, .36]) add(cyl, '#a65d43', sx, .57, .12, .14, .16, .14);
+    } else if (prop === 'gate') {
+      add(cube, '#9e958b', 0, .1, 0, 1.22, .2, .84);
+      for (const sx of [-.4, .4]) {
+        add(cube, '#b8afa4', sx, .58, 0, .36, .84, .5);
+        add(cube, '#cfc6ba', sx, 1.06, 0, .4, .14, .54);
+      }
+      add(cube, '#c4bab0', 0, .92, 0, .54, .22, .44);
+      add(cube, '#8a8077', -.36, .26, .32, .38, .16, .22);
+    } else if (prop === 'census') {
+      add(cube, '#6e4730', 0, .38, 0, .96, .76, .58);
+      add(cube, '#f2e3c2', -.04, .79, .02, .62, .05, .4);
+      for (const sx of [-.34, .26]) add(cyl, '#a67244', sx, .82, .02, .08, .44, .08, Math.PI / 2);
+      add(cyl, '#332d33', .34, .82, -.12, .12, .12, .12);
+      add(cyl, '#c99e5a', .28, .9, -.06, .03, .28, .03, .3, 0, -.45);
+    } else if (prop === 'soldier') {
+      add(cube, '#8f867d', 0, .12, 0, .88, .24, .74);
+      add(cube, '#b33434', -.16, .56, .12, .48, .68, .1, -.12);
+      add(cube, '#ebb952', -.16, .56, .17, .16, .16, .04, -.12);
+      add(ball, '#b8c2cc', .2, .66, -.04, .34, .32, .36);
+      add(cube, '#cf3838', .2, .88, -.04, .1, .18, .34);
+      add(cyl, '#6e4a32', .34, .7, -.16, .05, 1.08, .05);
+      add(ball, '#d4dde6', .34, 1.26, -.16, .09, .2, .06);
+    } else if (prop === 'guestroom') {
+      add(cube, '#9e9388', -.06, .28, 0, .96, .56, .74);
+      add(cube, '#3d302c', -.1, .22, .34, .44, .38, .12);
+      add(cube, '#deb562', -.1, .12, .32, .38, .1, .16);
+      add(cube, '#c99b78', -.06, .78, 0, .92, .46, .7);
+      add(cube, '#ffd075', -.1, .8, .36, .24, .22, .05);
+      add(cube, '#b08565', -.06, 1.05, 0, .98, .08, .76);
+      for (let i = 0; i < 3; i++) add(cube, '#aba095', .48, .14 + i * .22, .18 - i * .16, .22, .22, .22);
+    } else if (prop === 'door') {
+      add(cube, '#b5aba0', 0, .58, 0, .96, 1.16, .3);
+      add(cube, '#cfc5ba', 0, 1.18, 0, 1.04, .12, .36);
+      add(cube, '#6b432c', 0, .52, .06, .56, .96, .22);
+      add(cube, '#363036', 0, .74, .18, .48, .06, .04);
+      add(cube, '#363036', 0, .34, .18, .48, .06, .04);
+      add(cyl, '#d9a84e', .14, .54, .19, .1, .1, .04, Math.PI / 2);
+      add(ball, '#ffcb6b', .36, .82, .18, .14, .18, .14);
+    } else if (prop === 'david') {
+      add(cube, '#9c9288', 0, .14, 0, .96, .28, .86);
+      add(cube, '#b5aba0', 0, .42, 0, .72, .3, .64);
+      add(cyl, '#cfc5ba', 0, .76, 0, .48, .44, .48);
+      add(cyl, '#f2c456', 0, 1.04, 0, .36, .14, .36);
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        add(cube, '#ffd86b', Math.cos(a) * .15, 1.15, Math.sin(a) * .15, .09, .12, .09);
+      }
+    } else if (prop === 'sheepfold') {
+      add(cyl, '#9e8762', 0, .06, 0, 1.08, .12, 1.08);
+      for (let i = 0; i < 9; i++) {
+        const a = -2.35 + i * .58;
+        add(cube, i % 2 ? '#9c9288' : '#b5aba0', Math.sin(a) * .44, .26, Math.cos(a) * .44, .28, .36, .22, 0, a);
+      }
+      add(cyl, '#784e32', 0, .18, .44, .06, .58, .06, 0, 0, Math.PI / 2);
+      add(ball, '#f5ebd8', -.08, .24, -.06, .28, .22, .34);
+    } else if (prop === 'staff') {
+      add(ball, '#8f867d', 0, .2, 0, .68, .36, .56);
+      add(cyl, '#8c5c3a', -.1, .66, .04, .06, 1.12, .06, 0, 0, -.14);
+      add(cube, '#a36e46', -.02, 1.2, .04, .24, .08, .08);
+      add(cube, '#a36e46', .08, 1.12, .04, .08, .16, .08);
+      add(cyl, '#5e3b26', .16, .5, -.04, .09, .78, .09, 0, 0, .22);
+      add(ball, '#4a2e1d', .24, .86, -.04, .16, .16, .16);
+    } else if (prop === 'sling') {
+      add(cube, '#948b82', 0, .2, 0, .86, .4, .72);
+      add(cube, '#824e32', -.08, .44, .04, .34, .07, .22, 0, .3);
+      add(cyl, '#c9a675', -.26, .44, -.08, .04, .38, .04, 0, .4, Math.PI / 2);
+      add(cyl, '#c9a675', .12, .44, .16, .04, .38, .04, 0, -.5, Math.PI / 2);
+      for (const [dx, dz, c] of [[-.06, .04, '#c4beb6'], [.2, -.12, '#aba49c'], [.24, .08, '#cfc9c0']]) {
+        add(ball, c, dx, .5, dz, .16, .14, .16);
+      }
+    } else if (prop === 'campfire') {
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4;
+        add(ball, '#756e6a', Math.cos(a) * .4, .13, Math.sin(a) * .4, .22, .2, .22);
+      }
+      add(cyl, '#69412b', 0, .2, 0, .1, .74, .1, .3, .5, 1.25);
+      add(cyl, '#7a4d33', 0, .22, 0, .1, .74, .1, -.3, -.6, 1.25);
+      add(ball, '#e05528', 0, .28, 0, .42, .18, .42);
+      add(ball, '#ff8f29', 0, .48, 0, .34, .42, .34);
+      add(ball, '#ffd875', .04, .66, -.02, .2, .32, .2);
+    } else if (prop === 'lamb') {
+      add(cube, '#9e5b48', 0, .09, 0, .84, .18, .66);
+      add(cube, '#e8d7bd', 0, .19, 0, .7, .05, .54);
+      add(ball, '#f7efe0', -.04, .38, -.02, .46, .34, .54);
+      add(ball, '#f7efe0', -.04, .5, -.08, .36, .26, .38);
+      add(ball, '#d9bea2', .02, .52, .22, .22, .22, .26);
+      for (const sx of [-.14, .16]) add(cube, '#e3b0a6', sx, .53, .18, .12, .06, .08, 0, 0, sx * -1.2);
+    } else if (prop === 'manger') {
+      for (const sx of [-.36, .36]) add(cube, '#8f857c', sx, .2, 0, .18, .4, .56);
+      add(cube, '#b8aea2', 0, .42, 0, .98, .28, .62);
+      add(cube, '#dfb760', 0, .57, 0, .84, .1, .48);
+      add(ball, '#f7f2e6', 0, .66, 0, .52, .2, .32);
+      add(ball, '#e0b48d', .14, .7, 0, .16, .15, .16);
+    } else if (prop === 'cave') {
+      add(cube, '#756d65', 0, .1, 0, 1.18, .2, .9);
+      add(ball, '#8f867d', -.36, .52, -.06, .52, .78, .68);
+      add(ball, '#a89e94', .36, .52, -.06, .52, .78, .68);
+      add(ball, '#9c9288', 0, .86, -.06, .88, .44, .68);
+      add(cube, '#362c28', 0, .46, -.12, .56, .56, .36);
+      add(cube, '#d9b15f', 0, .22, .12, .52, .08, .38);
+      add(ball, '#ffcb6e', 0, .58, .04, .18, .22, .18);
+    } else if (prop === 'oxdonkey') {
+      add(cube, '#c9a259', 0, .07, 0, 1.16, .14, .82);
+      add(ball, '#8c4f36', -.28, .44, -.04, .42, .38, .58);
+      add(ball, '#7a432d', -.26, .62, .22, .26, .24, .28);
+      for (const sx of [-.38, -.14]) add(cyl, '#e3d3b6', sx, .76, .22, .04, .18, .04, 0, 0, (sx + .26) * 2.2);
+      add(ball, '#8f8580', .28, .42, -.04, .38, .36, .54);
+      add(ball, '#cfc2b4', .26, .58, .22, .22, .22, .26);
+      for (const sx of [.18, .34]) add(cube, '#756b66', sx, .78, .18, .06, .24, .08);
+    } else if (prop === 'greatstar') {
+      add(cube, '#8f7b6c', 0, .14, 0, .84, .28, .64);
+      add(cube, '#b09a86', 0, .32, 0, .62, .12, .48);
+      add(cyl, '#d9b45b', 0, .64, 0, .09, .56, .09);
+      add(cube, '#ffe375', 0, 1.04, 0, .78, .16, .14);
+      add(cube, '#ffe375', 0, 1.04, 0, .16, .78, .14);
+      add(cube, '#ffc94d', 0, 1.04, 0, .54, .12, .12, 0, 0, Math.PI / 4);
+      add(cube, '#ffc94d', 0, 1.04, 0, .12, .54, .12, 0, 0, Math.PI / 4);
+      add(ball, '#fff6cc', 0, 1.04, 0, .26, .26, .22);
     } else if (prop === 'steps' || prop === 'terrace' || prop === 'brick' || prop === 'roof') {
       const c1 = prop === 'brick' ? '#b88563' : '#ada296';
       const c2 = prop === 'brick' ? '#9e6f52' : '#c7bcb0';
@@ -3229,10 +3453,87 @@
     return wrap;
   }
 
+  const ROOM_EDGE = 5.6;
+
+  function addExploreShelter(scene, world, house) {
+    const [x, doorZ] = house.pos, z = doorZ - 1.62, y = world.height(x, z), geometry = new T.BoxGeometry();
+    const parts = [
+      ['#ad8a71', x, y + 1.11, z, 3.4, 2.22, 2.6],
+      ['#79615f', x, y + 2.23, z, 3.59, .24, 2.7],
+      ['#594131', x, y + .85, z + 1.34, .82, 1.7, .13],
+      ['#e8bd86', x - .97, y + 1.46, z + 1.33, .44, .40, .10]
+    ];
+    for (const [color, ...shape] of parts) scene.add(new T.Mesh(place(geometry, ...shape), mat(color)));
+    for (const dx of [-1.05, 0, 1.05]) world.blocks.push([x + dx, z, 1.22]);
+    geometry.dispose();
+  }
+
+  function interiorWorld(scene, room) {
+    const models = adventureModels(), blocks = [], walls = [];
+    const stone = room.style === 'stable' ? '#806458' : '#b18c6c';
+    const timber = '#66443a', linen = '#966253', height = () => 0;
+    const bounds = { x: ROOM_EDGE, z: 5.15 };
+    const geometry = new T.BoxGeometry();
+    function box(color, x, y, z, width, tall, depth, parent = scene) {
+      const object = new T.Mesh(place(geometry, x, y, z, width, tall, depth), mat(color));
+      parent.add(object);
+      return object;
+    }
+    function wall(axis, side) {
+      const group = new T.Group();
+      walls.push({ axis, side, group });
+      scene.add(group);
+      return group;
+    }
+    const ground = box('#b18a70', 0, -.08, 0, 11.6, .16, 10.7);
+    box(linen, 0, .016, -.75, 2.95, .035, 3.8);
+    for (const side of [-1, 1]) {
+      const x = side * (bounds.x + .14), group = wall('x', side);
+      box(stone, x, 1.45, -2.97, .31, 2.9, 4.50, group);
+      box(stone, x, 1.45, 2.97, .31, 2.9, 4.50, group);
+      box(stone, x, .65, 0, .31, 1.3, 1.46, group);
+      box(stone, x, 2.58, 0, .31, .65, 1.46, group);
+      box('#e7b97d', x, 1.30, 0, .70, .12, 1.48, group);
+    }
+    box(stone, 0, 1.45, -bounds.z - .14, 11.8, 2.9, .30, wall('z', -1));
+    const doorway = wall('z', 1);
+    for (const side of [-1, 1]) box(stone, side * 3.4, 1.45, bounds.z + .14, 4.95, 2.9, .30, doorway);
+    box(stone, 0, 2.58, bounds.z + .14, 2.0, .65, .32, doorway);
+    box(timber, 0, 1.11, bounds.z + .12, 1.7, 2.23, .18, doorway);
+    if (room.style !== 'stable') for (const z of [-4.2]) box(timber, 0, 2.86, z, 11.45, .18, .14); // 위에서 내려다보는 카메라라 가운데 들보는 시야를 가려서 뒤쪽 하나만
+    const workroom = room.style === 'workshop', stable = room.style === 'stable';
+    const tableZ = stable ? -4.18 : workroom ? -1.65 : .20;
+    box(timber, 0, workroom ? .86 : .51, tableZ, workroom ? 2.6 : 1.8, .18, .78);
+    for (const x of [-.63, .63]) box(timber, x, workroom ? .39 : .21, tableZ, .14, workroom ? .78 : .42, .55);
+    blocks.push([0, tableZ, .60]);
+    for (const side of [-1, 1]) {
+      box(timber, side * 4.62, 1.14, -4.85, 1.58, .15, .63);
+      box(timber, side * 4.62, 1.70, -4.85, 1.58, .15, .63);
+      const jar = new T.Mesh(new T.CylinderGeometry(.25, .32, .54, 8), mat(stable ? '#998053' : '#9d6549'));
+      jar.position.set(side * 4.82, .30, 3.68); scene.add(jar);
+      box('#cc9c71', side * 4.28, .075, 3.15, .80, .15, .52);
+    }
+    const lamp = new T.Mesh(new T.ConeGeometry(.10, .20, 7), mat('#ffd588', { emissive: '#ff9724', ei: 2 }));
+    lamp.position.set(0, workroom ? 1.09 : .74, tableZ); scene.add(lamp);
+    const glow = new T.PointLight('#ffbb72', 6.4, 7.5, 2);
+    glow.position.set(0, 1.65, tableZ); scene.add(glow);
+    scene.add(new T.HemisphereLight('#ffe2be', '#836658', 2.02));
+    const sun = new T.DirectionalLight('#c8d8e2', 1.4);
+    sun.position.set(-5, 2.5, -1); scene.add(sun);
+    scene.background = new T.Color('#2b2021');
+    geometry.dispose();
+    return {
+      ground, height, blocks, models, walls, bounds, residents: new Map(), features: new Map(), actors: [], birds: [], fx: [],
+      walkable: (x, z) => Math.abs(x) <= bounds.x && Math.abs(z) <= bounds.z
+    };
+  }
+
   async function mountExplore(container, options, handlers = {}) {
     await load();
-    const { sheep, layout = {}, adventure } = options;
-    const edge = adventure ? ADVENTURE_EDGE : EXPLORE_EDGE;
+    const { sheep, layout = {}, room } = options;
+    const adventure = room ? { spawn: [0, 2.55], crossings: [] } : options.adventure ||
+      (options.discovery ? { spawn: [0, 6.2], crossings: [] } : null);
+    const edge = room ? ROOM_EDGE : options.adventure ? ADVENTURE_EDGE : EXPLORE_EDGE;
     const seed = options.seed || hashStr(options.place || 'temple');
     const renderer = new T.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     renderer.outputColorSpace = T.SRGBColorSpace;
@@ -3249,10 +3550,13 @@
     wrap.append(canvas, hud); container.append(wrap);
 
     const scene = new T.Scene(), camera = new T.PerspectiveCamera(53, 1, .1, 105);
-    const world = adventure ? adventureWorld(scene, seed, layout, adventure) : exploreWorld(scene, options.kit || options.place, seed, layout);
+    const world = room ? interiorWorld(scene, room) : options.adventure ? adventureWorld(scene, seed, layout, adventure) :
+      exploreWorld(scene, options.kit || options.place, seed, layout);
+    if (adventure && !world.models) Object.assign(world, { models: adventureModels(), actors: [], residents: new Map(), features: new Map() });
+    for (const house of options.houses || []) if (house.standAlone) addExploreShelter(scene, world, house);
     const guide = adventure && world.models.person('여행자', 2, true);
     const leader = guide?.actor;
-    const spawn = adventure ? adventure.spawn : [0, 6.2];
+    const spawn = options.spawn ?? adventure?.spawn ?? [0, 6.2];
     const azStart = adventure ? (options.place === '1-0' ? -.18 : options.place === '1-1' ? .28 : .14) : null;
     if (leader) {
       leader.position.set(spawn[0], world.height(...spawn), spawn[1]);
@@ -3260,7 +3564,7 @@
       scene.add(leader);
     }
     let player = buildSheep(sheep.species, sheep.level, sheep.wear, seed, sheep.wool ?? 1);
-    const sheepStart = adventure ? [spawn[0] + .66, spawn[1] + 1.1] : spawn;
+    const sheepStart = adventure ? [clamp(spawn[0] + .66, -edge + .15, edge - .15), clamp(spawn[1] + 1.1, -edge + .15, edge - .15)] : spawn;
     player.position.set(sheepStart[0], world.height(...sheepStart), sheepStart[1]); player.rotation.y = Math.PI;
     scene.add(player);
     const target = new T.Vector3(0, .77, 5.0);
@@ -3269,7 +3573,7 @@
     const elements = new Map(), effectSprites = new Set();
     const discoverPropMat = new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .85 });
     const propAnims = new Map();
-    let inspectState = null, sheepMood = null, lastNearbyId = '';
+    let inspectState = null, sheepMood = null, lastNearbyId = '', scentEffect = null;
     const groundRing = new T.RingGeometry(.55, .66, 24).rotateX(-Math.PI / 2);
     const crystal = new T.OctahedronGeometry(.24);
     const lantern = glowSprite('#ffe1aa', 3, .65);
@@ -3324,7 +3628,7 @@
     const onGround = (x, z) => [x, world.height(x, z), z];
     const walkPosition = () => (leader || player).position;
     const open = (x, z) => {
-      if (Math.abs(x) > edge || Math.abs(z) > edge) return false;
+      if (Math.abs(x) > edge || Math.abs(z) > edge || world.walkable?.(x, z) === false) return false;
       if (world.blocks.some(([ox, oz, r]) => (x - ox) ** 2 + (z - oz) ** 2 < (r + .24) ** 2)) return false;
       if (adventure) for (const [kind, feature] of world.features) {
         if (kind === 'shine' || feature.userData.cleared) continue;
@@ -3386,6 +3690,11 @@
       } else if (marker.prop) {
         sign = buildDiscoverProp(marker.prop, discoverPropMat, world.models);
         obj.add(sign);
+      } else if (marker.type === 'house-door') {
+        sign = new T.Group();
+        const rim = new T.Mesh(place(new T.BoxGeometry(), 0, .12, .03, .71, .13, .57), mat('#d6ad77'));
+        const light = glowSprite('#ffd697', .92, .76); light.position.set(0, .42, 0);
+        sign.add(rim, light); obj.add(sign);
       } else if (marker.type === 'exit') {
         sign = new T.Group();
         sign.add(new T.Mesh(place(new T.BoxGeometry(), 0, .52, 0, .11, 1.04, .12), mat('#895e47')));
@@ -3491,8 +3800,7 @@
     function spawnPickup(id, pos) {
       removeMarker(id); addMarker({ id, pos, title: '반짝이는 물건', symbol: '✦', type: 'find' });
     }
-    function moveTo(x, z, markerId = null) {
-      const p = walkPosition();
+    function destinationRoute(from, x, z, markerId = null) {
       const [tx, tz] = [clamp(x, -edge, edge), clamp(z, -edge, edge)];
       let end = [tx, tz];
       if (markerId && !open(tx, tz)) {
@@ -3502,16 +3810,102 @@
           const angle = i / samples * 2 * Math.PI;
           return [tx + Math.sin(angle) * r, tz + Math.cos(angle) * r];
         }));
-        const option = tries.filter(pt => open(...pt)).sort((a, b) => Math.hypot(a[0] - p.x, a[1] - p.z) - Math.hypot(b[0] - p.x, b[1] - p.z))[0];
-        if (option) end = option;
+        const options = tries.filter(pt => open(...pt))
+          .sort((a, b) => Math.hypot(a[0] - from[0], a[1] - from[1]) - Math.hypot(b[0] - from[0], b[1] - from[1]));
+        for (const option of options) {
+          const path = explorePath(from, option, open, edge);
+          const last = path.at(-1) || from;
+          if (Math.hypot(last[0] - tx, last[1] - tz) < enterDistance) return path;
+        }
+        if (options.length) end = options[0];
       }
-      route = explorePath([p.x, p.z], end, open, edge);
+      return explorePath(from, end, open, edge);
+    }
+    function moveTo(x, z, markerId = null) {
+      const p = walkPosition();
+      route = destinationRoute([p.x, p.z], x, z, markerId);
       waitForTarget = markerId;
       if (markerId && elements.has(markerId)) elements.get(markerId).near = false;
       const final = route.at(-1);
       goal.visible = !!final;
       if (final) goal.position.set(final[0], world.height(...final) + .084, final[1]);
       handlers.onMove?.();
+    }
+    function routeInfo(pos) {
+      const p = walkPosition(), from = [p.x, p.z];
+      const path = destinationRoute(from, ...pos, 'approach');
+      const end = path.at(-1) || from;
+      let meters = 0, previous = from;
+      for (const point of path) {
+        meters += Math.hypot(point[0] - previous[0], point[1] - previous[1]);
+        previous = point;
+      }
+      const gap = Math.hypot(end[0] - pos[0], end[1] - pos[1]);
+      const facing = path.find(point => Math.hypot(point[0] - p.x, point[1] - p.z) > .24) || pos;
+      return { path, meters: meters + gap, reachable: gap < enterDistance, facing };
+    }
+    function scentAngle(pos) {
+      const p = walkPosition(), angle = Math.atan2(pos[0] - p.x, p.z - pos[1]) + az;
+      return Math.atan2(Math.sin(angle), Math.cos(angle));
+    }
+    function clearScent() {
+      if (!scentEffect) return;
+      for (const mark of scentEffect.marks) mark.removeFromParent();
+      scentEffect.geometry.dispose();
+      scentEffect = null;
+    }
+    function showScent(path, line) {
+      clearScent();
+      const p = walkPosition();
+      const geometry = new T.CircleGeometry(.115, 8).rotateX(-Math.PI / 2);
+      const points = [[p.x, p.z], ...path], marks = [];
+      let remaining = 6.7, previous = points[0];
+      for (const next of points.slice(1)) {
+        const length = Math.hypot(next[0] - previous[0], next[1] - previous[1]);
+        for (let n = .48; n <= Math.min(length, remaining); n += .56) {
+          const x = lerp(previous[0], next[0], n / length), z = lerp(previous[1], next[1], n / length);
+          const shift = (marks.length % 2 ? -.13 : .13);
+          const mark = new T.Mesh(geometry, mat('#ffe195', { basic: true }));
+          mark.position.set(x + shift, world.height(x + shift, z) + .07, z);
+          mark.scale.set(.87, 1, 1.26); mark.visible = false;
+          scene.add(mark); marks.push(mark);
+        }
+        remaining -= length;
+        if (remaining <= 0) break;
+        previous = next;
+      }
+      const first = points.find(point => Math.hypot(point[0] - p.x, point[1] - p.z) > .35);
+      const lead = first && Math.hypot(first[0] - p.x, first[1] - p.z);
+      const stop = lead ? [lerp(p.x, first[0], Math.min(1, 1.55 / lead)), lerp(p.z, first[1], Math.min(1, 1.55 / lead))] : null;
+      const from = [player.position.x, player.position.z];
+      const leadPath = stop ? explorePath(from, stop, open, edge) : [];
+      const segments = [];
+      let distance = 0, previousLead = from;
+      for (const point of leadPath) {
+        const length = Math.hypot(point[0] - previousLead[0], point[1] - previousLead[1]);
+        if (length > .02) { segments.push({ from: previousLead, to: point, start: distance, length }); distance += length; }
+        previousLead = point;
+      }
+      scentEffect = { geometry, marks, segments, distance: Math.min(3.2, distance), start: performance.now() };
+      sheepReact('sniff', line);
+    }
+    function updateScentEffect(now) {
+      if (!scentEffect) return;
+      const { start, marks, segments, distance } = scentEffect, age = now - start;
+      if (age >= 3800) return clearScent();
+      marks.forEach((mark, i) => {
+        mark.visible = age > 55 * i;
+        mark.scale.setScalar(1 + Math.sin(age * .015 - i) * .19);
+      });
+      if (!segments.length || reduced || walking || age >= 1100) return;
+      const shift = clamp(age / 870, 0, 1);
+      const progress = shift * distance;
+      const { from, to, start: offset, length } = segments.find(segment => progress <= segment.start + segment.length) || segments.at(-1);
+      const fraction = clamp((progress - offset) / length, 0, 1);
+      const x = lerp(from[0], to[0], fraction), z = lerp(from[1], to[1], fraction);
+      if (!open(x, z)) return;
+      player.position.set(x, world.height(x, z) + Math.abs(Math.sin(shift * Math.PI * 3)) * .06, z);
+      player.rotation.y = Math.atan2(to[0] - from[0], to[1] - from[1]);
     }
     function down(event) {
       if ((!adventure && !event.isPrimary) || activePointer || event.button > 0) return;
@@ -3533,7 +3927,19 @@
       pointerPos.set((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2);
       raycaster.setFromCamera(pointerPos, camera);
       const hit = raycaster.intersectObject(world.ground)[0]?.point;
-      if (hit) moveTo(hit.x, hit.z);
+      if (hit) {
+        const raised = world.climbs?.length && findRaisedTap();
+        moveTo(raised?.[0] ?? hit.x, raised?.[1] ?? hit.z);
+      }
+    }
+    function findRaisedTap() {
+      const ray = raycaster.ray, origin = ray.origin, direction = ray.direction;
+      if (direction.y >= -.025) return null;
+      for (let i = .2; i < 42; i += .14) {
+        const x = origin.x + i * direction.x, z = origin.z + i * direction.z;
+        if (origin.y + i * direction.y <= world.height(x, z)) return [x, z];
+      }
+      return null;
     }
     canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
@@ -3572,7 +3978,10 @@
       stick.onkeyup = event => { if (arrows[event.key]) resetStick(); };
       stick.onblur = () => { if (joystick?.pointer == null) resetStick(); };
     }
-    canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); handlers.onUnavailable?.(); });
+    canvas.addEventListener('webglcontextlost', e => {
+      e.preventDefault();
+      if (!stopped) handlers.onUnavailable?.();
+    });
 
     function say(id, line) {
       talking?.label.remove();
@@ -4019,17 +4428,23 @@
       u.head.rotation.x = lerp(u.head.rotation.x, sleep ? .17 : gs.nod, .25);
       if (!reduced) animateWings(player, t);
       applyDiscoverFrame(u, t, now);
+      updateScentEffect(now);
       if (!applyInspectCamera(now, delta)) {
         const gazing = reaction?.kind === 'star' && now - reaction.start < 2800;
         const cameraYaw = az;
-        spot.set(p.x - (adventure ? Math.sin(cameraYaw) : 0) * 1.8, p.y + (gazing ? 3.55 : adventure ? 1.58 : 1.28),
-          p.z - (adventure ? Math.cos(cameraYaw) * 1.8 : 1.36));
+        const lead = room ? .25 : adventure ? 1.8 : 1.36;
+        spot.set(p.x - (adventure ? Math.sin(cameraYaw) : 0) * lead, p.y + (room ? .62 : gazing ? 3.55 : adventure ? 1.58 : 1.28),
+          p.z - (adventure ? Math.cos(cameraYaw) * lead : lead));
         target.lerp(spot, firstFrame || reduced ? 1 : Math.min(1, delta * 3.6));
         az = lerp(az, azWant, Math.min(1, delta * 7));
-        camPosition.set(target.x + Math.sin(az) * (adventure ? 9.6 : 8), target.y + (gazing ? 2.1 : adventure ? 4.45 : 3.85), target.z + Math.cos(az) * (adventure ? 9.6 : 8));
+        const distance = room ? 4.9 : adventure ? 9.6 : 8;
+        camPosition.set(target.x + Math.sin(az) * distance, target.y + (room ? 4.1 : gazing ? 2.1 : adventure ? 4.45 : 3.85), target.z + Math.cos(az) * distance);
         camera.position.copy(camPosition);
         aim.copy(target);
         camera.lookAt(aim); camera.updateMatrixWorld();
+      }
+      for (const { axis, side, group } of world.walls || []) {
+        group.visible = side * camera.position[axis] < world.bounds[axis] - .13;
       }
       firstFrame = false;
       for (const v of elements.values()) {
@@ -4073,6 +4488,7 @@
         }
       }
       checkNearbyDiscover(p);
+      handlers.onExploreTick?.(now);
       if (waypoint) {
         const [x, z] = bearingTarget(p);
         const dx = x - p.x, dz = z - p.z;
@@ -4117,14 +4533,15 @@
     const destroy = () => {
       if (stopped) return;
       stopped = true; cancelAnimationFrame(raf); observer.disconnect();
+      clearScent();
       for (const id of elements.keys()) removeMarker(id);
       groundRing.dispose(); crystal.dispose(); discoverPropMat.dispose();
-      disposeFigure(scene); world.models?.dispose(); world.ground.material.dispose(); world.dome.material.dispose();
+      disposeFigure(scene); world.models?.dispose(); world.ground.material.dispose(); world.dome?.material.dispose();
       scene.traverse(obj => { if (obj.isPoints || world.fx.some(f => f.cloud === obj)) obj.material.dispose(); });
       renderer.dispose(); renderer.forceContextLoss(); wrap.remove();
     };
     return { setMarkers, spawnPickup, react, say, setCarry, kneel, setWaypoint, setEscort, revealAbility, restoreAbility, moveAnimal, moveInfo,
-      inspect, endInspect, touchProp, sheepReact, snapProp,
+      inspect, endInspect, touchProp, sheepReact, snapProp, routeInfo, scentAngle, showScent,
       showResident(id, visible) { const resident = world.residents?.get(id); if (resident) resident.hidden = !visible; }, position: () => [walkPosition().x, walkPosition().z], tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo() {
       const old = camera.position.clone();
       const oldQuaternion = camera.quaternion.clone();
@@ -4154,7 +4571,8 @@
     }, focus(id) {
       const marker = elements.get(id)?.marker;
       if (marker) moveTo(...marker.pos, id);
-    }, destroy, metrics: () => ({ ...metrics }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors } };
+    }, destroy, metrics: () => ({ ...metrics }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors,
+      destinationRoute, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance } };
   }
 
   // ---------- 걸음새 (Claude) ----------

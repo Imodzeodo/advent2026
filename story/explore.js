@@ -1270,12 +1270,12 @@
       sheep: '발굽이 보라색이 될 것 같아! 달콤한 포도 향이 퍼져.'
     },
     yoke: {
-      title: '멍에', kind: 'look', theme: 'work', prop: 'carpenter', cue: 'craft', icon: '🪵',
+      title: '멍에', kind: 'look', theme: 'work', prop: 'yoke', cue: 'craft', icon: '🪵',
       fact: '두 마리 소가 함께 끌도록 어깨에 얹는 나무야. 예수님은 "내 멍에는 쉽고"라고 하셨어.',
       ref: '마 11:30', sheep: '둘이 나란히 걸으면 짐이 가벼워지나 봐.'
     },
     'stone-jar': {
-      title: '돌 정결 항아리', kind: 'look', theme: 'work', prop: 'jar', cue: 'water', icon: '🪨',
+      title: '돌 정결 항아리', kind: 'look', theme: 'work', prop: 'stonejar', cue: 'water', icon: '🪨',
       fact: '돌 항아리는 부정해지지 않는다고 여겨 정결 예식 물을 담았어.',
       ref: '요 2:6', sheep: '돌을 깎아 만든 항아리라 묵직해 보여.'
     },
@@ -1317,95 +1317,95 @@
       ref: '눅 4:16', sheep: '돌돌 말린 두루마리를 펼치면 말씀이 가득 적혀 있겠지.'
     },
     'small-village': {
-      title: '작은 마을', kind: 'look', theme: 'road', prop: 'terrace', cue: 'road', icon: '🏘️',
+      title: '작은 마을', kind: 'look', theme: 'road', prop: 'village', cue: 'road', icon: '🏘️',
       fact: '나사렛은 수백 명이 사는 작은 시골 마을이었어. "나사렛에서 무슨 선한 것이 나올 수 있느냐"는 말도 있었지.',
       ref: '요 1:46', sheep: '작고 조용한 마을이라 골목 끝까지 금방 친해지겠어.'
     },
     'city-gate': {
-      title: '성문', kind: 'look', theme: 'road', prop: 'colonnade', cue: 'road', icon: '🚪',
+      title: '성문', kind: 'look', theme: 'road', prop: 'gate', cue: 'road', icon: '🚪',
       fact: '성문은 장로들이 앉아 재판하고 약속을 맺던 마을의 광장이었어.',
       ref: '룻 4:1', sheep: '사람들이 많이 오가는 자리네. 마을 소식이 다 모이겠다.'
     },
     census: {
-      title: '호적 등록', kind: 'look', theme: 'road', prop: 'scroll', cue: 'road', icon: '📋',
+      title: '호적 등록', kind: 'look', theme: 'road', prop: 'census', cue: 'road', icon: '📋',
       fact: '로마 황제의 명령으로 사람들은 조상의 고향에 가서 이름을 올렸어.',
       ref: '눅 2:1-3', sheep: '줄이 길게 늘어섰어. 멀리서 온 사람도 많나 봐.'
     },
     'roman-soldier': {
-      title: '로마 군인', kind: 'look', theme: 'road', prop: 'milestone', cue: 'animal', icon: '🛡️',
+      title: '로마 군인', kind: 'look', theme: 'road', prop: 'soldier', cue: 'animal', icon: '🛡️',
       fact: '유대는 로마의 다스림을 받았어.',
       sheep: '갑옷 소리가 철컥거려. 괜히 발걸음이 조심스러워져.'
     },
 
     // 들과 목자
     sheepfold: {
-      title: '돌 양 우리', kind: 'look', theme: 'field', prop: 'terrace', cue: 'wool', icon: '🐑',
+      title: '돌 양 우리', kind: 'look', theme: 'field', prop: 'sheepfold', cue: 'wool', icon: '🐑',
       fact: '밤이면 양을 돌담 우리에 넣고 목자가 입구에 누워 문이 되었대.',
       ref: '요 10:7', sheep: '목자님이 입구를 지켜 주면 밤에도 하나도 안 무섭겠다.'
     },
     'shepherd-staff': {
-      title: '목자의 지팡이와 막대기', kind: 'touch', theme: 'field', prop: 'pack', anim: 'scribe', cue: 'road', icon: '🦯',
+      title: '목자의 지팡이와 막대기', kind: 'touch', theme: 'field', prop: 'staff', anim: 'scribe', cue: 'road', icon: '🦯',
       fact: '지팡이로 양을 이끌고 막대기로 들짐승을 쫓았어.',
       ref: '시 23:4', touchLine: '지팡이 끝으로 바닥을 톡 짚자 든든한 소리가 났어.', sheep: '저 지팡이가 있으면 길을 잃을 걱정이 없겠어.'
     },
     sling: {
-      title: '물매 돌리기', kind: 'try', theme: 'field', prop: 'millstone', cue: 'craft', icon: '🪨',
+      title: '물매 돌리기', kind: 'try', theme: 'field', prop: 'sling', cue: 'craft', icon: '🪨',
       tryMode: 'spin', tryPrompt: '원을 그려 물매를 힘차게 돌려 봐.', tryBtn: '물매 돌리기',
       bag: { name: '목자의 물매', icon: '🪨' },
       fact: '다윗도 쓰던 돌팔매야. 목자는 이걸로 양 떼를 지켰어.',
       ref: '삼상 17:40', sheep: '휘잉 소리가 나! 들짐승이 얼씬도 못 하겠다.'
     },
     'watch-fire': {
-      title: '모닥불 지키기', kind: 'try', theme: 'field', prop: 'oven', cue: 'fire', icon: '🔥',
+      title: '모닥불 지키기', kind: 'try', theme: 'field', prop: 'campfire', cue: 'fire', icon: '🔥',
       tryMode: 'tap', tryPrompt: '장작을 톡톡 넣어 모닥불을 따뜻하게 지켜 봐.', tryBtn: '장작 넣기',
       bag: { name: '따뜻한 불씨', icon: '🔥' },
       fact: '목자들은 밤새 불을 피우고 번갈아 깨어 있었어.',
       ref: '눅 2:8', sheep: '타닥타닥 불꽃이 따뜻해. 불 옆에서 꾸벅 졸릴 것 같아.'
     },
     'hold-lamb': {
-      title: '새끼 양 안기', kind: 'touch', theme: 'field', prop: 'cradle', anim: 'sway', cue: 'baby', icon: '🐑',
+      title: '새끼 양 안기', kind: 'touch', theme: 'field', prop: 'lamb', anim: 'sway', cue: 'baby', icon: '🐑',
       fact: '목자는 어린 양을 품에 안아 옮겼어.',
       ref: '사 40:11', touchLine: '새끼 양을 품에 안으니 보드라운 온기가 전해졌어.', sheep: '나도 가끔 그렇게 안아 줘!'
     },
     'feast-table': {
-      title: '잔칫상', kind: 'touch', theme: 'field', prop: 'coins', anim: 'pray', cue: 'food', icon: '🍽️',
+      title: '잔칫상', kind: 'touch', theme: 'field', prop: 'feast', anim: 'pray', cue: 'food', icon: '🍽️',
       fact: '아이가 태어나고 여드레째 이름을 짓고 이웃이 함께 기뻐했어.',
       ref: '눅 1:59', touchLine: '이웃들이 모여 아기 이름을 부르며 환하게 웃었어.', sheep: '맛있는 냄새랑 웃음소리가 마당 가득해!'
     },
 
     // 성탄의 밤
     'guest-room': {
-      title: '손님방과 아래층 동물 칸', kind: 'look', theme: 'christmas', prop: 'roof', cue: 'animal', icon: '🏠',
+      title: '손님방과 아래층 동물 칸', kind: 'look', theme: 'christmas', prop: 'guestroom', cue: 'animal', icon: '🏠',
       fact: '\'여관\'으로 옮긴 말은 집의 손님방을 뜻할 수도 있어. 집 아래층에는 동물이 지내는 칸이 있었대.',
       ref: '눅 2:7', sheep: '아래층에 동물들 자리가 있으면 밤에 꽤 따뜻하겠어.'
     },
     'knock-door': {
-      title: '문 두드리기', kind: 'touch', theme: 'christmas', prop: 'brick', anim: 'scribe', cue: 'road', icon: '✊',
+      title: '문 두드리기', kind: 'touch', theme: 'christmas', prop: 'door', anim: 'scribe', cue: 'road', icon: '✊',
       fact: '그날 밤 베들레헴은 사람으로 꽉 찼어.',
       touchLine: '똑똑 두드렸지만 안쪽은 이미 사람들로 가득해.', sheep: '빈자리가 있을까? 조금 더 걸어 보자.'
     },
     'city-of-david': {
-      title: '다윗의 동네', kind: 'look', theme: 'christmas', prop: 'steps', cue: 'worship', icon: '👑',
+      title: '다윗의 동네', kind: 'look', theme: 'christmas', prop: 'david', cue: 'worship', icon: '👑',
       fact: '베들레헴은 다윗 왕이 태어난 마을이야.',
       ref: '눅 2:4', sheep: '오래전 다윗이 양을 치던 언덕이 바로 이 근처래.'
     },
     'stone-manger': {
-      title: '돌 구유', kind: 'look', theme: 'christmas', prop: 'mikveh', cue: 'baby', icon: '🪨',
+      title: '돌 구유', kind: 'look', theme: 'christmas', prop: 'manger', cue: 'baby', icon: '🪨',
       fact: '구유는 가축의 먹이를 담는 돌이나 나무 여물통이야.',
       ref: '눅 2:7', sheep: '여물통에 아기가 누웠다니… 발소리를 낮추게 돼.'
     },
     'cave-stable': {
-      title: '동굴 마구간', kind: 'look', theme: 'christmas', prop: 'terrace', cue: 'quiet', icon: '🪨',
+      title: '동굴 마구간', kind: 'look', theme: 'christmas', prop: 'cave', cue: 'quiet', icon: '🪨',
       fact: '베들레헴에선 동굴을 가축 우리로 쓰기도 했대.',
       sheep: '바위 안쪽이라 찬 바람이 덜 들어오네.'
     },
     'ox-donkey': {
-      title: '소와 나귀', kind: 'touch', theme: 'christmas', prop: 'donkey', anim: 'donkey', cue: 'animal', icon: '🐂',
+      title: '소와 나귀', kind: 'touch', theme: 'christmas', prop: 'oxdonkey', anim: 'donkey', cue: 'animal', icon: '🐂',
       fact: '따뜻한 숨을 쉬는 가축들이야.',
       touchLine: '소와 나귀가 하얀 입김을 내쉬며 조용히 고개를 끄덕였어.', sheep: '따뜻한 숨결 덕분에 마구간이 포근해.'
     },
     'great-star': {
-      title: '큰 별', kind: 'look', theme: 'christmas', prop: 'menorah', cue: 'worship', icon: '⭐',
+      title: '큰 별', kind: 'look', theme: 'christmas', prop: 'greatstar', cue: 'worship', icon: '⭐',
       fact: '동방에서 온 사람들은 별을 따라왔어.',
       ref: '마 2:2', sheep: '저 별 진짜 밝다! 밤하늘에서 눈을 못 떼겠어.'
     }
@@ -1421,12 +1421,12 @@
         { id: 'merchant', actor: '등잔 상인', pos: [9.2, 14.3], lines: [[null, '깨어 있는 사람에겐 반값이지. 밤이 기니 등잔 기름부터 챙겨.']] }
       ],
       items: [
-        spot('oil-lamp', 1.8, 13.4),
+        spot('oil-lamp', 1.8, 13.4, { indoor: true }),
         spot('solomon-colonnade', -4.4, -6.2),
         spot('money-changer', 7.4, 14.5),
         spot('ascent-steps', 2.4, -10.5),
         spot('mikveh', 13.8, 1.4),
-        spot('water-jar', 10.6, -2.5),
+        spot('water-jar', 10.6, -2.5, { indoor: true }),
         spot('mud-brick', -12.6, 8.4),
         spot('traveler-pack', -17.2, -3.5, { ability: 'smell', hidden: true })
       ]
@@ -1437,15 +1437,15 @@
         { id: 'elizabeth', actor: '엘리사벳', pos: [-4.1, 8.4], lines: cues['1-1'].lines }
       ],
       items: [
-        spot('millstone', -1.8, 10.4),
-        spot('empty-cradle', -3.6, 13.1),
-        spot('flat-roof', -4.8, -16.6),
-        spot('clay-oven', 2.3, 8.3),
+        spot('millstone', -1.8, 10.4, { indoor: true }),
+        spot('empty-cradle', -3.6, 13.1, { indoor: true }),
+        spot('flat-roof', -1.80, -20.34),
+        spot('clay-oven', 2.3, 8.3, { indoor: true }),
         spot('well-bucket', 5.9, 9.1),
-        spot('oil-lamp', 2.9, -15.4),
-        spot('water-jar', -5.4, 15.2),
+        spot('oil-lamp', 2.9, -15.4, { indoor: true }),
+        spot('water-jar', -5.4, 15.2, { indoor: true }),
         spot('mud-brick', 11.4, 6.2),
-        spot('carpenter-plane', 8.8, -19.5, { ability: 'jump' })
+        spot('carpenter-plane', 8.8, -19.5, { indoor: true, ability: 'jump' })
       ]
     },
     '1-2': {
@@ -1461,8 +1461,8 @@
         spot('money-changer', 7.4, 14.3),
         spot('ascent-steps', -2.4, -10.4),
         spot('mikveh', 13.8, 1.4),
-        spot('water-jar', 10.6, -2.5),
-        spot('oil-lamp', -10.8, 15.8)
+        spot('water-jar', 10.6, -2.5, { indoor: true }),
+        spot('oil-lamp', -10.8, 15.8, { indoor: true })
       ]
     },
     '1-3': {
@@ -1479,7 +1479,7 @@
         spot('temple-trumpet', -4.6, -14.8),
         spot('solomon-colonnade', -4.3, -2.8),
         spot('mikveh', 13.8, 1.4),
-        spot('oil-lamp', 11.8, 13.5, { ability: 'smell', hidden: true })
+        spot('oil-lamp', 11.8, 13.5, { indoor: true, ability: 'smell', hidden: true })
       ]
     },
     '1-4': {
@@ -1489,9 +1489,9 @@
         { id: 'zach', actor: '사가랴', pos: [-1.7, -16.9], lines: zachariahLater }
       ],
       items: [
-        spot('wax-tablet', 7.6, 13.4),
+        spot('wax-tablet', 7.6, 13.4, { indoor: true }),
         spot('water-carry', 10.5, -2.2),
-        spot('scroll-synagogue', -4.2, -14.6),
+        spot('scroll-synagogue', -4.2, -14.6, { indoor: true }),
         spot('solomon-colonnade', -4.3, -2.8),
         spot('dove-seller', -7.4, 14.6),
         spot('money-changer', 11.4, 6.2),
@@ -1525,15 +1525,352 @@
         { id: 'elizabeth', actor: '엘리사벳', pos: [-3.6, -11.9], lines: cues['1-6'].lines }
       ],
       items: [
-        spot('swaddle-wrap', 1.4, -15.6),
-        spot('loom-spindle', -8.6, 10.6),
+        spot('swaddle-wrap', 1.4, -15.6, { indoor: true }),
+        spot('loom-spindle', -8.6, 10.6, { indoor: true }),
         spot('courtyard-hill', 3.6, 13.8),
-        spot('flat-roof', -4.8, -16.8),
-        spot('millstone', -1.8, 10.4),
-        spot('clay-oven', 2.4, 8.2),
-        spot('oil-lamp', 3.2, -14.2),
-        spot('water-jar', -5.4, 15.2),
-        spot('empty-cradle', -3.6, -13.6)
+        spot('flat-roof', -1.80, -20.34),
+        spot('millstone', -1.8, 10.4, { indoor: true }),
+        spot('clay-oven', 2.4, 8.2, { indoor: true }),
+        spot('oil-lamp', 3.2, -14.2, { indoor: true }),
+        spot('water-jar', -5.4, 15.2, { indoor: true }),
+        spot('empty-cradle', -3.6, -13.6, { indoor: true })
+      ]
+    },
+    '2-0': {
+      newIds: ['milestone', 'traveler-pack', 'donkey'],
+      storyPeople: [
+        { id: 'joseph', actor: '요셉', pos: [-2.6, 14.6], lines: cues['2-0'].lines },
+        { id: 'guide', actor: '고갯길 목자', pos: [9.9, -13.5], lines: [[null, '물이 빠지고 돌이 남았어. 길을 곧게 닦아 두면 나그네들이 편히 지나갈 거야.']] }
+      ],
+      items: [
+        spot('milestone', -3.2, 10.5),
+        spot('traveler-pack', 4.6, 12.2),
+        spot('donkey', 2.8, 14.0),
+        spot('wild-flowers', -5.4, 2.5),
+        spot('terraced-field', 11.4, -3.5),
+        spot('fig-tree', -11.5, -6.2),
+        spot('shepherd-staff', 8.2, -13.2),
+        spot('olive-press', 14.2, 4.8, { ability: 'push' })
+      ]
+    },
+    '2-1': {
+      newIds: ['small-village', 'fig-tree', 'mud-brick'],
+      storyPeople: [
+        { id: 'joseph', actor: '요셉', pos: [-3.4, 11.2], lines: cues['2-1'].lines },
+        { id: 'waterNeighbor', actor: '우물가 이웃', pos: [-4.7, -15.7], lines: [[null, '오늘은 목공소가 조용하네. 요셉이 먼저 말해 줄 때까지 기다려 주자.']] }
+      ],
+      items: [
+        spot('small-village', -3.8, 13.5),
+        spot('fig-tree', -14.2, -15.4),
+        spot('mud-brick', 6.8, 3.2),
+        spot('well-bucket', 5.9, 9.1),
+        spot('water-carry', 3.8, 9.2),
+        spot('carpenter-plane', 1.9, -3.2, { indoor: true, house: '나사렛 집' }),
+        spot('oil-lamp', 1.2, -3.2, { indoor: true, house: '나사렛 집' }),
+        spot('millstone', 2.6, -3.2, { indoor: true, house: '나사렛 집' }),
+        spot('clay-oven', 1.5, -2.9, { indoor: true, house: '나사렛 집' })
+      ]
+    },
+    '2-2': {
+      newIds: ['carpenter-plane', 'yoke', 'scroll-synagogue'],
+      storyPeople: [
+        { id: 'joseph', actor: '요셉', pos: [-2.8, -16.6], lines: cues['2-2'].lines },
+        { id: 'apprentice', actor: '견습 목수', pos: [13.1, -15.7], lines: [[null, '요셉 형님이 다듬은 멍에는 모서리가 매끈해서 소 어깨가 상하지 않아.']] }
+      ],
+      items: [
+        spot('carpenter-plane', 0.4, -19.2, { indoor: true, house: '요셉의 작업장' }),
+        spot('yoke', -3.8, -15.2),
+        spot('scroll-synagogue', 1.1, -19.2, { indoor: true, house: '요셉의 작업장' }),
+        spot('oil-lamp', -0.3, -19.2, { indoor: true, house: '요셉의 작업장' }),
+        spot('water-jar', 0.8, -18.9, { indoor: true, house: '요셉의 작업장' }),
+        spot('mud-brick', -8.4, 4.5),
+        spot('small-village', 3.5, 13.8),
+        spot('traveler-pack', 10.6, -2.2),
+        spot('wax-tablet', 0.0, -18.9, { indoor: true, house: '요셉의 작업장', ability: 'smell', hidden: true })
+      ]
+    },
+    '2-3': {
+      newIds: ['clay-oven', 'water-jar', 'oil-lamp'],
+      storyPeople: [
+        { id: 'story-joseph', actor: '요셉', pos: [-1.3, 12.1], lines: cues['2-3'].lines },
+        { id: 'watch', actor: '골목을 지키는 이웃', pos: [12.6, 11.7], lines: [[null, '등잔이 꺼진 밤에는 별빛이 처마 끝까지 내려앉는단다.']] }
+      ],
+      items: [
+        spot('clay-oven', 0.4, -19.2, { indoor: true, house: '요셉의 작업장' }),
+        spot('water-jar', 1.0, -19.2, { indoor: true, house: '요셉의 작업장' }),
+        spot('oil-lamp', -0.4, -19.2, { indoor: true, house: '요셉의 작업장' }),
+        spot('carpenter-plane', 0.2, -18.9, { indoor: true, house: '요셉의 작업장' }),
+        spot('millstone', -0.8, -18.9, { indoor: true, house: '요셉의 작업장' }),
+        spot('yoke', 10.6, -2.5),
+        spot('flat-roof', 3.4, -16.8),
+        spot('donkey', 13.8, 1.2)
+      ]
+    },
+    '2-4': {
+      newIds: ['olive-press', 'ascent-steps', 'scroll-synagogue'],
+      storyPeople: [
+        { id: 'joseph', actor: '요셉', pos: [-2.9, 13.6], lines: cues['2-4'].lines },
+        { id: 'farmer', actor: '올리브 밭 주인', pos: [-8.8, 3.0], lines: [[null, '가을에 딴 올리브를 돌 틀에 으깨고 눌러야 맑은 기름이 나온단다.']] }
+      ],
+      items: [
+        spot('olive-press', -7.2, 2.2),
+        spot('ascent-steps', -3.2, 10.4),
+        spot('scroll-synagogue', -10.0, 13.5, { indoor: true, house: '갈릴리 회당' }),
+        spot('wild-flowers', -4.2, -1.5),
+        spot('terraced-field', 5.2, -7.4),
+        spot('fig-tree', 11.2, -4.2),
+        spot('milestone', 2.4, 13.8),
+        spot('traveler-pack', -8.7, -19.2, { ability: 'jump' })
+      ]
+    },
+    '2-5': {
+      newIds: ['stone-jar', 'mikveh', 'oil-lamp'],
+      storyPeople: [
+        { id: 'joseph', actor: '요셉', pos: [-3.4, 13.8], lines: cues['2-5'].lines },
+        { id: 'maria', actor: '마리아', pos: [-12.6, -4.2], lines: [[null, '요셉이 곧게 단 문을 같이 닫고 처음으로 한 등잔에 불을 켰어요.']] }
+      ],
+      items: [
+        spot('stone-jar', 0.5, -18.2, { indoor: true, house: '요셉과 마리아의 새집' }),
+        spot('mikveh', -10.4, 3.5),
+        spot('oil-lamp', -0.5, -18.2, { indoor: true, house: '요셉과 마리아의 새집' }),
+        spot('clay-oven', 0.2, -17.9, { indoor: true, house: '요셉과 마리아의 새집' }),
+        spot('loom-spindle', -0.4, -17.9, { indoor: true, house: '요셉과 마리아의 새집' }),
+        spot('small-village', 3.8, 13.2),
+        spot('wild-flowers', 11.2, -15.4),
+        spot('well-bucket', 5.9, 9.1),
+        spot('fig-tree', -14.2, -15.6)
+      ]
+    },
+    '2-6': {
+      newIds: ['well-bucket', 'water-carry', 'water-jar'],
+      storyPeople: [
+        { id: 'joe', actor: '요셉', pos: [5.2, 12.8], lines: cues['2-6'].lines },
+        { id: 'maria', actor: '마리아', pos: [2.9, -17.3], lines: [[null, '우물에서 길어 온 물로 항아리를 채웠어요. 이제 정말 사람 사는 집 같아요.']] }
+      ],
+      items: [
+        spot('well-bucket', 2.7, 0.7),
+        spot('water-carry', -2.4, 13.2),
+        spot('water-jar', 4.7, -17.5, { indoor: true, house: '요셉과 마리아의 집' }),
+        spot('stone-jar', 5.2, -17.5, { indoor: true, house: '요셉과 마리아의 집' }),
+        spot('oil-lamp', 4.2, -17.5, { indoor: true, house: '요셉과 마리아의 집' }),
+        spot('millstone', 4.5, -17.2, { indoor: true, house: '요셉과 마리아의 집' }),
+        spot('loom-spindle', 5.0, -17.2, { indoor: true, house: '요셉과 마리아의 집' }),
+        spot('mud-brick', -11.2, 4.8),
+        spot('olive-press', 11.6, -3.2, { ability: 'smell', hidden: true })
+      ]
+    },
+    '3-0': {
+      newIds: ['fig-tree', 'loom-spindle', 'small-village'],
+      storyPeople: [
+        { id: 'maria', actor: '마리아', pos: [-2.7, -4.7], lines: cues['3-0'].lines }
+      ],
+      items: [
+        spot('fig-tree', -4.6, 1.2),
+        spot('loom-spindle', -5.4, -5.5, { indoor: true, house: '마리아의 집' }),
+        spot('small-village', -2.8, 3.6),
+        spot('oil-lamp', -5.0, -5.5, { indoor: true, house: '마리아의 집' }),
+        spot('water-jar', -5.8, -5.5, { indoor: true, house: '마리아의 집' }),
+        spot('millstone', -5.2, -5.2, { indoor: true, house: '마리아의 집' }),
+        spot('well-bucket', 4.2, -0.8),
+        spot('mud-brick', 3.4, -4.6)
+      ]
+    },
+    '3-1': {
+      newIds: ['well-bucket', 'stone-jar'],
+      storyPeople: [
+        { id: 'maria', actor: '마리아', pos: [-3.5, -4.6], lines: cues['3-1'].lines }
+      ],
+      items: [
+        spot('well-bucket', -0.4, -3.5),
+        spot('stone-jar', -5.4, -5.5, { indoor: true, house: '우물가 집' }),
+        spot('water-carry', 1.6, -2.1),
+        spot('water-jar', -5.0, -5.5, { indoor: true, house: '우물가 집' }),
+        spot('oil-lamp', -5.8, -5.5, { indoor: true, house: '우물가 집' }),
+        spot('clay-oven', -5.2, -5.2, { indoor: true, house: '우물가 집' }),
+        spot('small-village', -3.2, 2.8),
+        spot('wild-flowers', 3.6, 1.4, { ability: 'smell', hidden: true })
+      ]
+    },
+    '3-2': {
+      newIds: ['traveler-pack', 'milestone', 'donkey'],
+      storyPeople: [
+        { id: 'maria', actor: '마리아', pos: [-0.3, 4.3], lines: cues['3-2'].lines }
+      ],
+      items: [
+        spot('traveler-pack', -2.6, 3.8),
+        spot('milestone', 2.8, 2.5),
+        spot('donkey', -3.8, -1.2),
+        spot('terraced-field', 4.2, -1.8),
+        spot('wild-flowers', -4.4, 1.6),
+        spot('fig-tree', 3.6, -4.5),
+        spot('water-jar', 0.4, -6.5, { indoor: true, house: '산골집' }),
+        spot('oil-lamp', -0.4, -6.5, { indoor: true, house: '산골집' })
+      ]
+    },
+    '3-3': {
+      newIds: ['courtyard-hill', 'swaddle-wrap', 'loom-spindle'],
+      storyPeople: [
+        { id: 'elizabeth', actor: '엘리사벳', pos: [2.0, -5.37], lines: cues['3-3'].lines }
+      ],
+      items: [
+        spot('courtyard-hill', -3.2, 2.8),
+        spot('swaddle-wrap', 0.4, -5.9, { indoor: true, house: '엘리사벳의 집' }),
+        spot('loom-spindle', -0.4, -5.9, { indoor: true, house: '엘리사벳의 집' }),
+        spot('empty-cradle', 0.2, -5.7, { indoor: true, house: '엘리사벳의 집' }),
+        spot('oil-lamp', -0.2, -5.7, { indoor: true, house: '엘리사벳의 집' }),
+        spot('water-jar', 0.6, -5.7, { indoor: true, house: '엘리사벳의 집' }),
+        spot('millstone', -0.6, -5.7, { indoor: true, house: '엘리사벳의 집' }),
+        spot('mud-brick', 4.2, -2.6),
+        spot('fig-tree', -4.2, -3.2)
+      ]
+    },
+    '3-4': {
+      newIds: ['wild-flowers', 'terraced-field'],
+      storyPeople: [
+        { id: 'maria', actor: '마리아', pos: [0, 3.8], lines: cues['3-4'].lines }
+      ],
+      items: [
+        spot('wild-flowers', 2.4, 2.4),
+        spot('terraced-field', 3.8, -1.6),
+        spot('scroll-synagogue', -4.0, 2.5, { indoor: true, house: '언덕 쉼터' }),
+        spot('temple-trumpet', 3.2, -2.5),
+        spot('fig-tree', -4.5, -3.2),
+        spot('olive-press', 4.4, 1.4),
+        spot('ascent-steps', 0.2, -4.4),
+        spot('traveler-pack', -3.6, 4.4, { ability: 'smell', hidden: true })
+      ]
+    },
+    '3-5': {
+      newIds: ['winepress', 'olive-press'],
+      storyPeople: [
+        { id: 'maria', actor: '마리아', pos: [0, 2.9], lines: cues['3-5'].lines }
+      ],
+      items: [
+        spot('winepress', 4.4, 2.2),
+        spot('olive-press', -4.4, 2.0),
+        spot('terraced-field', -4.6, -2.4),
+        spot('wild-flowers', 4.2, -2.2),
+        spot('fig-tree', -3.4, 4.2),
+        spot('water-carry', 2.8, -3.6),
+        spot('clay-oven', 0.4, -5.9, { indoor: true, house: '엘리사벳의 집' }),
+        spot('millstone', -0.4, -5.9, { indoor: true, house: '엘리사벳의 집' })
+      ]
+    },
+    '3-6': {
+      newIds: ['feast-table', 'wax-tablet'],
+      storyPeople: [
+        { id: 'elizabeth', actor: '엘리사벳', pos: [-1.1, 1.5], lines: cues['3-6'].lines },
+        { id: 'zach', actor: '사가랴', pos: [1.7, -4.6], lines: zachariahLater }
+      ],
+      items: [
+        spot('feast-table', -3.2, -4.4),
+        spot('wax-tablet', 0.4, -5.9, { indoor: true, house: '엘리사벳의 집' }),
+        spot('swaddle-wrap', -0.4, -5.9, { indoor: true, house: '엘리사벳의 집' }),
+        spot('empty-cradle', 0.2, -5.7, { indoor: true, house: '엘리사벳의 집' }),
+        spot('clay-oven', -0.2, -5.7, { indoor: true, house: '엘리사벳의 집' }),
+        spot('water-jar', 0.6, -5.7, { indoor: true, house: '엘리사벳의 집' }),
+        spot('oil-lamp', -0.6, -5.7, { indoor: true, house: '엘리사벳의 집' }),
+        spot('courtyard-hill', 3.4, -4.2),
+        spot('winepress', 4.4, 1.8)
+      ]
+    },
+    '4-0': {
+      newIds: ['city-gate', 'census', 'roman-soldier'],
+      storyPeople: [
+        { id: 'grandpa', actor: '할아버지', pos: [-3.8, 4.6], lines: cues['4-0'].lines }
+      ],
+      items: [
+        spot('city-gate', 0, -5.2),
+        spot('census', 2.8, -4.8),
+        spot('roman-soldier', -4.4, -4.8),
+        spot('city-of-david', 3.0, 2.4),
+        spot('milestone', -5.2, 2.6),
+        spot('traveler-pack', -5.2, -1.2),
+        spot('donkey', 5.6, -1.4),
+        spot('water-carry', -0.4, 4.4, { ability: 'smell', hidden: true })
+      ]
+    },
+    '4-1': {
+      newIds: ['guest-room', 'knock-door', 'city-of-david'],
+      storyPeople: [
+        { id: 'innkeeper', actor: '여관 주인', pos: [-0.1, 3.5], lines: cues['4-1'].lines }
+      ],
+      items: [
+        spot('guest-room', -5.4, -5.5, { indoor: true, house: '여관' }),
+        spot('knock-door', -3.2, -5.2),
+        spot('city-of-david', 2.8, 2.6),
+        spot('oil-lamp', -5.0, -5.5, { indoor: true, house: '여관' }),
+        spot('water-jar', -5.8, -5.5, { indoor: true, house: '여관' }),
+        spot('clay-oven', -5.2, -5.2, { indoor: true, house: '여관' }),
+        spot('traveler-pack', -3.2, 2.4),
+        spot('donkey', 3.4, -3.8),
+        spot('well-bucket', 4.2, -0.8)
+      ]
+    },
+    '4-2': {
+      newIds: ['sheepfold', 'shepherd-staff', 'hold-lamb'],
+      storyPeople: [
+        { id: 'grandpa', actor: '할아버지', pos: [0.7, -2.8], lines: cues['4-2'].lines }
+      ],
+      items: [
+        spot('sheepfold', 4.4, -4.4),
+        spot('shepherd-staff', -2.6, -2.4),
+        spot('hold-lamb', -4.4, 1.4),
+        spot('sling', 3.4, 1.2),
+        spot('watch-fire', -1.4, -4.6),
+        spot('wild-flowers', -3.6, 4.2),
+        spot('terraced-field', 4.6, 2.2),
+        spot('traveler-pack', -4.6, -4.4, { ability: 'smell', hidden: true })
+      ]
+    },
+    '4-3': {
+      newIds: ['watch-fire', 'sling'],
+      storyPeople: [
+        { id: 'grandpa', actor: '할아버지', pos: [-0.1, -3.65], lines: cues['4-3'].lines }
+      ],
+      items: [
+        spot('watch-fire', -1.4, -4.6),
+        spot('sling', 2.8, -1.6),
+        spot('sheepfold', 4.4, -4.4),
+        spot('shepherd-staff', -3.2, -2.4),
+        spot('hold-lamb', 3.8, 1.8),
+        spot('oil-lamp', -4.0, 2.5, { indoor: true, house: '목자의 천막' }),
+        spot('traveler-pack', 2.6, 2.4),
+        spot('donkey', 4.6, -1.2, { ability: 'smell', hidden: true })
+      ]
+    },
+    '4-4': {
+      newIds: ['cave-stable', 'ox-donkey', 'great-star'],
+      storyPeople: [
+        { id: 'grandpa', actor: '할아버지', pos: [-1.4, 4.3], lines: cues['4-4'].lines }
+      ],
+      items: [
+        spot('cave-stable', -3.2, -3.8),
+        spot('ox-donkey', 0.4, -5.1, { indoor: true, house: '마구간' }),
+        spot('great-star', 3.6, -4.6),
+        spot('stone-manger', -0.4, -5.1, { indoor: true, house: '마구간' }),
+        spot('swaddle-wrap', 0.2, -4.9, { indoor: true, house: '마구간' }),
+        spot('oil-lamp', -0.2, -4.9, { indoor: true, house: '마구간' }),
+        spot('shepherd-staff', -2.8, 1.6),
+        spot('hold-lamb', 2.8, 1.2),
+        spot('guest-room', -4.4, 2.8)
+      ]
+    },
+    end: {
+      newIds: ['stone-manger', 'swaddle-wrap', 'great-star'],
+      storyPeople: [
+        { id: 'joseph', actor: '요셉', pos: [0, -4.38], lines: cues.end.lines }
+      ],
+      items: [
+        spot('stone-manger', 0.0, -5.1, { indoor: true, house: '마구간' }),
+        spot('swaddle-wrap', 0.4, -5.1, { indoor: true, house: '마구간' }),
+        spot('great-star', 3.4, -4.4),
+        spot('cave-stable', -3.4, -3.8),
+        spot('ox-donkey', -0.4, -5.1, { indoor: true, house: '마구간' }),
+        spot('oil-lamp', 0.2, -4.9, { indoor: true, house: '마구간' }),
+        spot('hold-lamb', -2.6, 1.4),
+        spot('shepherd-staff', 2.8, 1.6),
+        spot('city-of-david', -4.2, 3.2)
       ]
     }
   };
