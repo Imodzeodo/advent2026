@@ -57,11 +57,112 @@
       standAlone: !pos && i === 0
     }));
   }
+  const REGION_LAYOUTS = [
+    { title: '예루살렘 성전', bounds: [57, 49], sites: [
+      ['temple', '성전 뜰', -28, -12], ['sanctuary', '성소 앞', 28, -12],
+    ] },
+    { title: '유대 산골', bounds: [58, 55], sites: [
+      ['roof', '사가랴의 집', -29, -27], ['hillpath', '산골 길', 28, -27],
+      ['elizabeth', '엘리사벳 집과 포도밭', 12, 32],
+    ] },
+    { title: '나사렛·갈릴리', bounds: [81, 57], sites: [
+      ['nazareth', '나사렛 골목', -51, 28], ['workshop', '요셉의 작업장', 0, 28],
+      ['well', '마을 우물', 51, 28], ['galilee', '갈릴리 언덕', 0, -28],
+      ['desert', '광야 길 입구', -51, -28],
+    ] },
+    { title: '베들레헴', bounds: [52, 52], sites: [
+      ['gate', '베들레헴 성문', -25, -25], ['inn', '여관 골목', 25, -25],
+      ['field', '들판과 양 우리', 25, 25], ['stable', '마구간', -25, 25],
+    ] },
+  ];
+
+  const siteKey = id => id === '2-0' ? 'desert' : window.EXPLORE[id].kit;
+  const regionCell = 6;
+  function makeRegion(id, log) {
+    const currentKey = siteKey(id);
+    const index = REGION_LAYOUTS.findIndex(region => region.sites.some(([key]) => key === currentKey));
+    if (index < 0) return null;
+    const { title, bounds, sites: layout } = REGION_LAYOUTS[index];
+    const [, , ox, oz] = layout.find(([key]) => key === currentKey);
+    const visibleEpisodes = openList();
+    const sites = layout.map(([key, name, x, z]) => {
+      const primary = key === currentKey;
+      const ep = primary ? Core.epById(id) : visibleEpisodes.findLast(ep => siteKey(ep.id) === key);
+      const episode = ep?.id;
+      const area = window.EXPLORE[episode];
+      const offset = [x - ox, z - oz];
+      const translate = ([px, pz]) => [px + offset[0], pz + offset[1]];
+      const markerId = key => primary ? key : episode + ':' + key;
+      const houses = area ? placeDoors(episode, area).map(house => ({
+        ...house, id: markerId(house.id), pos: translate(house.pos), episode
+      })) : [];
+      return { key, name, label: key === 'elizabeth' ? '엘리사벳 집' : name, x, z, primary, episode, area, offset, translate, markerId, houses, edge: area?.adventure ? 23.5 : 8 };
+    });
+    const main = sites.find(site => site.primary);
+    const visited = new Set(Array.isArray(log.regionWalk[index]) ? log.regionWalk[index] : []);
+    let dirty = false, savedAt = performance.now();
+    const canonical = ([x, z]) => [x + ox, z + oz];
+    const nearSite = ([x, z]) => sites.find(site => Math.abs(x - site.offset[0]) <= site.edge + .4 &&
+      Math.abs(z - site.offset[1]) <= site.edge + .4);
+    function visit(pos) {
+      const [x, z] = canonical(pos);
+      const cell = Math.floor(x / regionCell) + ',' + Math.floor(z / regionCell);
+      if (!visited.has(cell)) { visited.add(cell); dirty = true; }
+      if (dirty && performance.now() - savedAt > 8000) save();
+    }
+    function save() {
+      if (!dirty) return;
+      log.regionWalk[index] = [...visited];
+      dirty = false; savedAt = performance.now();
+      Core.save();
+    }
+    const roads = [...new Set(sites.map(site => site.x))].sort((a, b) => a - b);
+    const paths = [[[roads[0], 0], [roads.at(-1), 0]], ...sites.map(site => [[site.x, 0], [site.x, site.z]])];
+    if (index === 2) paths.push([[51, 0], [36, -24]], [[36, -24], [16, -27]]);
+    const placesToPlay = [
+      [['pigeons', -3, 5.5]], [['chickens', -9, 3], ['bush', -20, 4]],
+      [['stones', 26, 0], ['bush', 37, 4]], [['game', -4, 7], ['chickens', 10, 4]],
+    ][index].map(([type, x, z]) => ({ type, pos: [x - ox, z - oz] }));
+    return { index, title, bounds, sites, main, origin: [ox, oz], canonical, nearSite, visited, visit, save, paths, placesToPlay };
+  }
+
+  function regionMapMarkup(region, position, scent, log) {
+    region.visit(position);
+    region.save();
+    const { title, bounds: [w, h], sites, paths, visited, canonical } = region;
+    const [px, pz] = canonical(position);
+    const [sx, sz] = scent ? canonical(scent) : [];
+    const reveal = [...visited].map(cell => {
+      const [x, z] = cell.split(',').map(Number);
+      return `<rect x="${x * regionCell}" y="${z * regionCell}" width="${regionCell}" height="${regionCell}" fill="white"/>`;
+    }).join('');
+    const pins = sites.map(site => {
+      const walked = visited.has(Math.floor(site.x / regionCell) + ',' + Math.floor(site.z / regionCell));
+      return `<circle cx="${site.x}" cy="${site.z}" r="2.6" fill="${walked ? '#ffdaa0' : '#9a8696'}"/>
+        <text x="${site.x}" y="${site.z + 7.8}" text-anchor="middle" fill="#f5debd" font-size="4.2">${esc(site.label)}</text>`;
+    }).join('');
+    return `<svg class="region-chart" viewBox="${-w} ${-h} ${w * 2} ${h * 2}" role="img" aria-label="${esc(title)} 지도">
+      <defs><mask id="region-walk-mask">${reveal}</mask></defs>
+      <rect x="${-w}" y="${-h}" width="${w * 2}" height="${h * 2}" fill="#322c44"/>
+      <rect x="${-w}" y="${-h}" width="${w * 2}" height="${h * 2}" fill="#817056" mask="url(#region-walk-mask)"/>
+      <g fill="none" stroke="#b5a079" stroke-width="1.5" stroke-linecap="round" mask="url(#region-walk-mask)">
+        ${paths.map(([[x, z], [tx, tz]]) => `<path d="M${x} ${z}L${tx} ${tz}"/>`).join('')}
+      </g>${pins}
+      ${scent ? `<circle cx="${sx}" cy="${sz}" r="2.5" fill="#ffc36b" stroke="#36233d" data-region-scent/>` : ''}
+      <circle cx="${px}" cy="${pz}" r="2.6" fill="#d5fbff" stroke="#254861" data-region-player/>
+    </svg>
+    <p class="region-map-key">● 지금 위치 ${scent ? ' · 🟠 양이 맡은 냄새' : ''}</p>
+    <ul class="region-places">${sites.map(site => {
+      const dc = site.episode ? discoverCount(site.episode, log) : null;
+      return `<li><b>${esc(site.name)}</b><span>${dc ? `발견 ${dc.n}/${dc.max}` : '아직 이야기가 열리지 않았어'}</span></li>`;
+    }).join('')}</ul>`;
+  }
+
   function progress() {
     const field = Field.ensure();
     if (!field.explore || Array.isArray(field.explore) || typeof field.explore !== 'object') field.explore = {};
     const log = field.explore;
-    for (const key of ['found', 'quests', 'rewards', 'photos', 'adventures', 'discoveries', 'discoverBag', 'discoverUnlock', 'themeRewards', 'narrated', 'visits', 'friendHints']) {
+    for (const key of ['found', 'quests', 'rewards', 'photos', 'adventures', 'discoveries', 'discoverBag', 'discoverUnlock', 'themeRewards', 'narrated', 'visits', 'friendHints', 'regionWalk']) {
       if (!log[key] || Array.isArray(log[key]) || typeof log[key] !== 'object') log[key] = {};
     }
     if (!log.discoverOil || typeof log.discoverOil !== 'object') log.discoverOil = { date: '', count: 0 };
@@ -1313,7 +1414,7 @@
 
   function createDiscovery(context) {
     const { id, area, day, log, root, sheep, record, card, feedback, grant, refresh, getView, isFlat, currentLine, say,
-      houses, getRoom, changeRoom } = context;
+      houses, getRoom, changeRoom, region } = context;
     const spec = area.discover, catalog = window.DISCOVERIES || {};
     const adv = area.adventure || {
       zones: [area.title], ambience: [{ stable: '마구간', well: '모험 우물', field: '모험 산길',
@@ -1332,21 +1433,32 @@
     const next = root.querySelector('[data-field-next]');
     let zone = -1, restoredView, activeInspectId = null, nearbyMarker = null;
     let scent = null, scentTimer, lastSniff = -Infinity;
+    const nextHintDelay = () => (60 + Math.random() * 60) * 1000;
+    let nextHint = performance.now() + nextHintDelay();
 
     const slots = [[-2.1, 2.75], [2.1, 2.6], [-3.55, .65], [3.55, .8], [-3.6, -1.8],
       [3.6, -1.65], [-1.85, -3.55], [1.85, -3.65], [-3.9, -3.25], [3.9, -3.25]];
-    const roomCount = new Map();
-    const entries = spec.items.map(entry => {
-      if (!entry.indoor || !houses.length) return entry;
-      const house = houses.find(h => h.title === entry.house) || houses[0];
-      const count = roomCount.get(house.id) || 0;
-      roomCount.set(house.id, count + 1);
-      return { ...entry, room: house, pos: slots[count] };
+    const places = region?.sites.filter(site => site.area?.discover) || [{
+      episode: id, primary: true, area, houses, translate: pos => pos, markerId: key => key
+    }];
+    const entries = places.flatMap(site => {
+      const roomCount = new Map();
+      return site.area.discover.items.map(entry => {
+        const { episode, houses } = site;
+        const key = site.markerId(entry.residentKey || ('disc/' + entry.id));
+        if (!entry.indoor || !houses.length) return { ...entry, site, episode, key, pos: site.translate(entry.pos) };
+        const house = houses.find(h => h.title === entry.house) || houses[0];
+        const count = roomCount.get(house.id) || 0;
+        roomCount.set(house.id, count + 1);
+        return { ...entry, site, episode, key, room: house, pos: slots[count] };
+      });
     });
+    let activeSite = region?.main;
+    const localEntries = () => entries.filter(entry => entry.episode === (getRoom()?.episode || activeSite?.episode || id));
 
     const here = () => getView()?.position() || adv.spawn;
     const proximity = pos => Math.hypot(here()[0] - pos[0], here()[1] - pos[1]);
-    const isUnlocked = kind => !!log.discoverUnlock[id + '/' + kind];
+    const isUnlocked = (kind, episode = activeSite?.episode || id) => !!log.discoverUnlock[episode + '/' + kind];
     const doneFound = key => log.found[foundKey(id, key)];
 
     function soundZone(index) {
@@ -1373,7 +1485,8 @@
       getView()?.endInspect?.();
     }
 
-    function recordDiscovery(itemId, markerId) {
+    function recordDiscovery(entry, markerId) {
+      const { id: itemId, episode } = entry;
       const item = catalog[itemId];
       if (!item) return { isFirst: false };
       const isFirst = !log.discoveries[itemId];
@@ -1382,15 +1495,15 @@
         let shot = null;
         try { shot = getView()?.snapProp?.(markerId); } catch { /* 2D 또는 스냅숏 생략 */ }
         if (shot) void photoFile('discover', itemId, shot);
-        log.discoveries[itemId] = { date: day, place: id, thumb: !!shot };
+        log.discoveries[itemId] = { date: day, place: episode, thumb: !!shot };
         if (log.discoverOil.date !== day) log.discoverOil = { date: day, count: 0 };
         if (log.discoverOil.count < 5) {
           log.discoverOil.count++;
           grant({ oil: 1 });
           oilBonus = true;
         }
-        const dc = discoverCount(id, log);
-        if (dc.n >= Math.min(2, spec.newIds.length || 2)) {
+        const dc = discoverCount(episode, log);
+        if (dc.n >= Math.min(2, window.EXPLORE[episode].discover.newIds.length || 2)) {
           Field.adventureHeart(record, day);
         }
         // 주제 완성 확인
@@ -1431,7 +1544,7 @@
         Sound.sfx(sfxMap[item.anim] || 'pop');
       }
       view?.sheepReact?.(react.mood, react.line);
-      const res = recordDiscovery(entry.id, markerId);
+      const res = recordDiscovery(entry, markerId);
       if (res.isFirst) Sound.sfx('star');
       activeInspectId = markerId;
       const meta = KIND_META[item.kind] || KIND_META.look;
@@ -1477,7 +1590,7 @@
           view?.touchProp?.(markerId, item.tryMode === 'spin' ? 'spin' : 'spark');
           view?.sheepReact?.(react.mood, react.line);
           Sound.sfx('mission');
-          res = recordDiscovery(entry.id, markerId);
+          res = recordDiscovery(entry, markerId);
           statusChanged(); refresh();
           feedback(`${sheep.name}: ${react.line}`);
           return res;
@@ -1517,18 +1630,18 @@
     function sniff() {
       const view = getView(), now = performance.now();
       const canReach = entry => {
-        if (!entry.ability || entry.ability === 'smell' || isUnlocked(entry.ability)) return true;
+        if (!entry.ability || entry.ability === 'smell' || isUnlocked(entry.ability, entry.episode)) return true;
         const ability = ABILITIES.find(a => a.id === entry.ability);
         return ability && (Field.mainCare()?.sheep.level >= ability.level || ability.id === 'shine' && day >= '2026-12-20');
       };
-      const unseen = entries.filter(entry => !log.discoveries[entry.id]);
+      const unseen = localEntries().filter(entry => !log.discoveries[entry.id]);
       if (!unseen.length) { clearCompass(); return feedback('여긴 다 찾았어! 🌟'); }
       if (now - lastSniff < 4000) return feedback('잠깐 숨을 고르고 다시 냄새를 맡아 보자.');
       const room = getRoom();
       const candidates = unseen.filter(canReach).map(entry => {
         const through = entry.room === (room || undefined) ? null : room ? 'out' : 'in';
-        const feature = !isUnlocked(entry.ability) && !room && adv.targets[entry.ability]?.feature ? adv.targets[entry.ability] : null;
-        const pos = through === 'out' ? roomExitPos : through === 'in' ? entry.room.pos : feature?.pos || entry.pos;
+        const feature = !isUnlocked(entry.ability, entry.episode) && !room ? entry.site.area.adventure?.targets[entry.ability] : null;
+        const pos = through === 'out' ? roomExitPos : through === 'in' ? entry.room.pos : feature?.feature ? entry.site.translate(feature.pos) : entry.pos;
         const route = view?.routeInfo(pos) || { meters: proximity(pos), reachable: true, facing: pos, path: [pos] };
         return { entry, through, pos, route };
       }).filter(x => x.route.reachable);
@@ -1538,7 +1651,7 @@
       if (!pick) return feedback('양이 더 자라면 닿을 수 있는 곳이 남았어.');
       lastSniff = now;
       log.sniffCount = (log.sniffCount || 0) + 1;
-      if (pick.entry.hidden) log.discoverUnlock[id + '/smell-' + pick.entry.id] = true;
+      if (pick.entry.hidden) log.discoverUnlock[pick.entry.episode + '/smell-' + pick.entry.id] = true;
       clearTimeout(scentTimer);
       scent = { ...pick, origin: here(), updated: now, until: now + 10000 };
       const angle = view ? view.scentAngle(pick.route.facing) : 0;
@@ -1554,24 +1667,44 @@
       statusChanged(); refresh(); feedback(line);
     }
 
-    function applyAbility(kind) {
+    function sheepHint(now, view, pos) {
+      if (now < nextHint || view.moveInfo().walking || scent || root.querySelector('dialog[open]') || !inspectBox.hidden) return;
+      nextHint = now + nextHintDelay();
+      const candidates = entries.filter(entry => !entry.room && !entry.hidden && !entry.ability && !log.discoveries[entry.id])
+        .map(entry => ({ entry, distance: Math.hypot(pos[0] - entry.pos[0], pos[1] - entry.pos[1]) }))
+        .filter(({ distance }) => distance > 2.6 && distance < 11).sort((a, b) => a.distance - b.distance);
+      for (const { entry } of candidates) {
+        const route = view.routeInfo(entry.pos);
+        if (!route.reachable || route.meters > 14) continue;
+        scent = { entry, pos: entry.pos, route, origin: pos, updated: now, until: now + 10000 };
+        view.showScent(route.path, '메에! ❗');
+        Sound.sfx('sheep');
+        feedback(`${sheep.name}: 메에! ❗`);
+        showCompass(now);
+        break;
+      }
+    }
+
+    function applyAbility(kind, atSite) {
       const view = getView();
       if (kind === 'smell') return sniff();
-      if (isUnlocked(kind)) return feedback('이 장소에서 이미 사용했어.');
-      const featTarget = getRoom() ? null : adv.targets[kind];
-      if (featTarget && !isFlat() && proximity(featTarget.pos) > 3.2) {
-        view?.focus?.(kind);
+      const site = atSite || places.find(site => site.episode === (getRoom()?.episode || activeSite?.episode)) || places[0];
+      const scope = site.markerId(kind);
+      if (isUnlocked(kind, site.episode)) return feedback('이 장소에서 이미 사용했어.');
+      const featTarget = getRoom() ? null : site.area.adventure?.targets[kind];
+      if (featTarget && !isFlat() && proximity(site.translate(featTarget.pos)) > 3.2) {
+        view?.focus?.(scope);
         return feedback(featTarget.title + ' 쪽으로 다가간 뒤 다시 써 보자.');
       }
-      log.discoverUnlock[id + '/' + kind] = true;
-      const gated = entries.find(e => e.ability === kind && e.room === (getRoom() || undefined));
-      view?.revealAbility?.(kind, kind === 'jump' && gated ? gated.pos : null);
+      log.discoverUnlock[site.episode + '/' + kind] = true;
+      const gated = entries.find(e => e.episode === site.episode && e.ability === kind && e.room === (getRoom() || undefined));
+      view?.revealAbility?.(kind, kind === 'jump' && gated ? gated.pos : null, scope);
       Sound.sfx(kind === 'push' ? 'thump' : 'gem');
       feedback({ jump: '낮은 담을 폴짝 넘었어! 지붕 끝을 살펴봐.', push: '수레를 밀어 길을 열었어! 안쪽을 살펴봐.', shine: '양의 빛이 어두운 틈을 환하게 비췄어.' }[kind]);
       statusChanged(); refresh();
     }
 
-    function abilitySheet(kind) {
+    function abilitySheet(kind, site) {
       const abilities = kind ? ABILITIES.filter(a => a.id === kind) : ABILITIES;
       const dialog = card('양 능력', '', {
         extra: `<div class="adventure-abilities">${abilities.map(ability => {
@@ -1581,7 +1714,7 @@
       });
       dialog?.querySelectorAll('[data-ability]').forEach(button => button.onclick = () => {
         dialog.querySelector('[data-continue]').click();
-        applyAbility(button.dataset.ability);
+        applyAbility(button.dataset.ability, site);
       });
     }
 
@@ -1596,22 +1729,24 @@
       const view = getView();
       if (view && view !== restoredView) {
         restoredView = view;
-        for (const kind of ['jump', 'push']) if (isUnlocked(kind)) view.restoreAbility(kind);
+        for (const site of places) {
+          for (const kind of ['jump', 'push']) if (isUnlocked(kind, site.episode)) view.restoreAbility(kind, site.markerId(kind));
+        }
       }
-      const dc = discoverCount(id, log);
+      const dc = discoverCount(getRoom()?.episode || activeSite?.episode || id, log);
       if (countEl) countEl.textContent = `발견 ${dc.n}/${dc.max}`;
       if (newEl) {
-        newEl.hidden = dc.newLeft === 0;
+        newEl.hidden = !dc.newLeft || !!(region && !getRoom() && !activeSite?.primary);
         newEl.textContent = `오늘 새 발견 ${dc.newLeft}개`;
       }
       const totalGot = Object.keys(log.discoveries || {}).filter(k => catalog[k]).length;
       if (nbButton) nbButton.querySelector('small').textContent = totalGot;
       const bagTotal = Object.values(log.discoverBag || {}).reduce((s, x) => s + (x.count || 0), 0);
       if (bagButton) bagButton.querySelector('small').textContent = bagTotal;
-      if (next) next.hidden = dc.n < 1;
+      if (next) next.hidden = discoverCount(id, log).n < 1;
 
       const room = getRoom();
-      const markers = discoveryMarkers(entries.filter(entry => entry.room === (room || undefined)));
+      const markers = discoveryMarkers(entries.filter(entry => entry.room === (room || undefined) && (!isFlat() || entry.episode === id)));
       if (room) return markers;
       for (const npc of spec.storyPeople || []) {
         markers.push({ id: npc.id, type: 'person', actor: npc.actor, pos: npc.pos, title: npc.actor, symbol: '💬', storyNpc: npc });
@@ -1619,9 +1754,12 @@
       for (const key of ['word', 'photo', 'secret']) {
         if (adv.targets[key]) markers.push({ ...adv.targets[key], id: key });
       }
-      for (const kind of ['jump', 'push']) {
-        if (entries.some(e => e.ability === kind) && !isUnlocked(kind) && adv.targets[kind]) {
-          markers.push({ ...adv.targets[kind], id: kind });
+      for (const site of places.filter(site => !isFlat() || site.primary)) {
+        for (const kind of ['jump', 'push']) {
+          const target = site.area.adventure?.targets[kind];
+          if (target && entries.some(e => e.episode === site.episode && e.ability === kind) && !isUnlocked(kind, site.episode)) {
+            markers.push({ ...target, pos: site.translate(target.pos), id: site.markerId(kind) });
+          }
         }
       }
       return markers;
@@ -1633,9 +1771,9 @@
         const item = catalog[entry.id];
         if (!item) continue;
         const seen = !!log.discoveries[entry.id];
-        const isNew = spec.newIds.includes(entry.id);
-        const hidden = !!entry.hidden && !seen && !log.discoverUnlock[id + '/smell-' + entry.id];
-        const markerId = entry.residentKey || ('disc/' + entry.id);
+        const isNew = entry.episode === id && spec.newIds.includes(entry.id);
+        const hidden = !!entry.hidden && !seen && !log.discoverUnlock[entry.episode + '/smell-' + entry.id];
+        const markerId = entry.key;
         markers.push({
           id: markerId, discoverId: entry.id, type: item.kind, prop: entry.residentKey ? null : item.prop,
           pos: entry.pos, title: (seen ? '✓ ' : '') + item.title, symbol: KIND_META[item.kind].icon,
@@ -1675,7 +1813,10 @@
     root.querySelector('[data-abilities]').onclick = () => abilitySheet();
     nbButton.onclick = () => { closeInspect(); openNotebook(root, sheep, id); };
     root.querySelector('[data-quest-map]')?.addEventListener('click', () => {
-      const room = getRoom();
+      const room = getRoom(), view = getView();
+      if (region && view) return card(region.title, '', {
+        extra: regionMapMarkup(region, room?.pos || here(), scent && (room?.pos || scent.pos), log), button: '지도 닫기'
+      });
       const unfound = entries.filter(e => !log.discoveries[e.id] && !e.hidden && e.room === (room || undefined));
       const dlg = card('이 장소 둘러보기', '', {
         extra: `<ol class="adventure-zones">${zones.map((name, i) => `<li>${i === zone ? '●' : '○'} ${esc(name)}</li>`).join('')}</ol>
@@ -1699,20 +1840,41 @@
         onNearby(null);
         soundZone(getView()?.moveInfo().zone || 0);
       },
-      dispose() { clearCompass(); closeInspect(); },
-      tick: showCompass,
-      zoneChanged() { const info = getView()?.moveInfo(); if (info) soundZone(info.zone); },
+      dispose() { clearCompass(); closeInspect(); region?.save(); },
+      tick(now) {
+        showCompass(now);
+        if (!region || !getView() || getRoom()) return;
+        const pos = here();
+        region.visit(pos);
+        sheepHint(now, getView(), pos);
+        const site = region.nearSite(pos);
+        if (site === activeSite) return;
+        activeSite = site;
+        zone = -1;
+        if (site?.primary) soundZone(getView().moveInfo().zone);
+        else {
+          if (zoneText) zoneText.textContent = site?.name || region.title;
+          Sound.ambience(site?.area?.adventure?.ambience[0] || '모험 산길');
+        }
+        const dc = discoverCount(site?.episode || id, log);
+        countEl.textContent = `발견 ${dc.n}/${dc.max}`;
+        newEl.hidden = !site?.primary || !dc.newLeft;
+      },
+      zoneChanged() {
+        const info = getView()?.moveInfo();
+        if (info && (!region || activeSite?.primary || getRoom())) soundZone(info.zone);
+      },
       onNearby,
       reach(key) {
-        const entry = entries.find(e => e.room === (getRoom() || undefined) && (e.residentKey || ('disc/' + e.id)) === key);
+        const entry = entries.find(e => e.room === (getRoom() || undefined) && e.key === key);
         if (entry) {
           const item = catalog[entry.id];
-          if (entry.ability && entry.ability !== 'smell' && !isUnlocked(entry.ability)) {
+          if (entry.ability && entry.ability !== 'smell' && !isUnlocked(entry.ability, entry.episode)) {
             const ab = ABILITIES.find(a => a.id === entry.ability);
             const ready = Field.mainCare()?.sheep.level >= ab.level;
             card(item.title, `${ab.icon} ${ab.title} 능력이 있으면 여기까지 닿을 수 있어.${ready ? '' : ` (${ab.stage}부터 가능)`}`, {
               button: ready ? `${ab.icon} 양 능력 쓰기` : '알겠어',
-              action: ready ? () => applyAbility(entry.ability) : undefined
+              action: ready ? () => applyAbility(entry.ability, entry.site) : undefined
             });
             return true;
           }
@@ -1726,7 +1888,11 @@
           say({ id: key, title: npc.actor }, line?.[1] || '', line?.[2] || npc.actor);
           return true;
         }
-        if (adv.targets[key]?.feature) { abilitySheet(adv.targets[key].feature); return true; }
+        const feature = ['jump', 'push'].find(kind => places.some(site => site.markerId(kind) === key));
+        if (feature) {
+          abilitySheet(feature, places.find(site => site.markerId(feature) === key));
+          return true;
+        }
         return false;
       }
     };
@@ -1747,8 +1913,11 @@
     const day = date(), event = todayEvent(), act = area.activity, wool = Field.spec(sheep.species).wool || 'white';
     const hasDiscover = !!area.discover;
     const enhanced = hasDiscover || !!area.adventure;
-    const houses = placeDoors(id, area);
-    const outsideDoors = houses.map(house => ({
+    const region = hasDiscover ? makeRegion(id, log) : null;
+    if (region) window.addEventListener('pagehide', region.save);
+    const houses = region?.main.houses || placeDoors(id, area);
+    const regionHouses = region ? region.sites.flatMap(site => site.houses) : houses;
+    const outsideDoors = regionHouses.map(house => ({
       id: house.id, type: 'house-door', pos: house.pos, title: house.title + ' 문', symbol: '🚪', house
     }));
     const insideDoor = { id: 'house/out', type: 'house-door', pos: roomExitPos, title: '밖으로 나가는 문', symbol: '🚪' };
@@ -1769,13 +1938,13 @@
     Sound.music('night');
     if (!enhanced) Sound.ambience('나의 들판');
     const narrLine = area.narration || window.PLACE_NARRATION?.[id] || '';
-    const root = replace(`<header class="explore-head">${backButton('지도로')}<div><h1>${esc(area.title)}${narrLine ? ' <button type="button" class="explore-narr-btn" data-place-voice aria-label="장소 소개 다시 듣기" title="장소 소개 다시 듣기">🔈</button>' : ''}</h1><p data-place-caption>${esc(Core.dateLabel(ep.date))} · ${esc(regions[area.region])}</p></div><button class="explore-sub" type="button" data-field-return>들판</button></header>
+    const root = replace(`<header class="explore-head">${backButton('지도로')}<div><h1>${esc(area.title)}${narrLine ? ' <button type="button" class="explore-narr-btn" data-place-voice aria-label="장소 소개 다시 듣기" title="장소 소개 다시 듣기">🔈</button>' : ''}</h1><p data-place-caption>${esc(Core.dateLabel(ep.date))} · ${esc(region?.title || regions[area.region])}</p></div><button class="explore-sub" type="button" data-field-return>들판</button></header>
       ${hasDiscover ? `<section class="discover-bar" aria-label="발견 현황">
         <div class="discover-bar-left"><span class="discover-count" data-discover-count>발견 0/0</span><span class="scent-compass" aria-label="냄새 방향과 거리" data-scent-compass hidden><i aria-hidden="true">↑</i><small></small></span><span class="discover-new-badge" data-discover-new hidden></span></div>
         <button type="button" class="discover-nearby" data-nearby hidden>✨ <span></span></button>
       </section>` : ''}
       <div class="explore-location-main">${narrLine ? `<p class="explore-narr-caption" data-narr-caption hidden aria-live="polite"><i aria-hidden="true">🔈</i><span>${esc(narrLine)}</span></p>` : ''}<div class="explore-stage" aria-label="${esc(area.title)}" data-kit="${area.kit}"><p class="explore-loading">장소를 불러오는 중…</p><div class="explore-room-veil" aria-hidden="true" hidden></div>
-      ${enhanced ? '<button type="button" data-quest-map class="adventure-zone"><i aria-hidden="true">◇</i> <span data-zone></span></button>' : ''}</div>
+      ${enhanced ? '<button type="button" data-quest-map class="adventure-zone"><i aria-hidden="true">' + (region ? '📍' : '◇') + '</i> <span data-zone></span></button>' : ''}</div>
       ${hasDiscover ? '<section class="discover-inspect" data-inspect hidden aria-live="polite"></section>' : ''}
       <p class="explore-status" role="status">${hasDiscover ? `조이스틱이나 바닥을 톡 눌러 ${esc(Core.josa(sheep.name, '이랑'))} 천천히 둘러봐.` : enhanced ? '조이스틱이나 바닥을 톡 눌러 이동해. 오른쪽 화면을 밀면 둘러볼 수 있어.' : `바닥을 톡 누르면 ${esc(Core.josa(sheep.name, '이가'))} 걸어가.`}</p>
       ${hasDiscover ? '' : '<p class="explore-task-line"><span data-score></span><strong data-timer hidden></strong></p>'}</div>
@@ -1845,12 +2014,13 @@
     if (hintsBtn) hintsBtn.onclick = showGuide;
     if (!enhanced) root.querySelector('[data-activity-link]').onclick = () => view ? view.focus('activity') : startActivity();
     const discovery = hasDiscover ? createDiscovery({ id, area, day, log, root, sheep, record, card, grant, feedback,
-      refresh, getView: () => view, isFlat: () => flat, currentLine, say, houses, getRoom: () => room, changeRoom }) : null;
+      refresh, getView: () => view, isFlat: () => flat, currentLine, say, houses, getRoom: () => room, changeRoom, region }) : null;
     const adventure = enhanced && !hasDiscover ? createAdventure({ id, area, day, log, root, sheep, record, card, grant, feedback,
       refresh, getView: () => view, isFlat: () => flat }) : null;
     function dispose() {
       if (dead) return;
       dead = true; observer.disconnect(); clearInterval(interval); clearTimeout(narrTimer); hintTimers.forEach(clearTimeout);
+      if (region) window.removeEventListener('pagehide', region.save);
       discovery?.dispose();
       adventure?.dispose();
       view?.destroy(); view = null;
@@ -1861,7 +2031,8 @@
     function refresh() {
       if (discovery) {
         const markers = discovery.render();
-        markers.push(...(room ? [insideDoor] : outsideDoors));
+        markers.push(...(room ? [insideDoor] : flat ? outsideDoors.filter(door => houses.includes(door.house)) : outsideDoors));
+        if (!room && !flat && view) markers.push(...view.scenicMarkers);
         if (!room && sameDay) markers.push({ id: event.id, type: 'event', pos: area.adventure ? [-5.25, 20.4] : [-5.15, 5.35],
           title: event.title, hidden: !!event.wool || event.title === '아이들의 숨바꼭질' });
         shown = withSymbols(markers);
@@ -2179,16 +2350,17 @@
         extra: `<ul class="explore-checklist">${rows.map(m => `<li>${log.found[foundKey(id, m.id)] ? '✓' : icons[m.type]} ${esc(m.title)}</li>`).join('')}${secret ? `<li>${log.found[foundKey(id, secret.id)] ? '✓ ' + esc(secret.title) : '⚿ 조용한 구석에도 들러 봐.'}</li>` : ''}</ul>`
       });
     }
-    function photo() {
+    function photo(viewpoint) {
       if (photoBusy) return;
+      const place = viewpoint?.episode || id;
       card('포토 스팟', `${Core.josa(sheep.name, '과와')} 찍은 사진을 여정 앨범에 넣을까?`, {
         button: '📷 사진 찍기', action: async () => {
           if (photoBusy) return;
           photoBusy = true;
           let shot;
           try {
-            if (act.manger) view?.kneel(false);
-            shot = view?.photo();
+            if (act.manger && !viewpoint) view?.kneel(false);
+            shot = view?.photo(viewpoint);
           } catch { /* 기기가 장면을 저장할 수 없으면 양의 초상으로 남김 */ }
           if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
             !document.documentElement.classList.contains('no-motion')) {
@@ -2199,15 +2371,15 @@
           let url;
           try {
             url = shot || await Field.portrait(sheep.species, sheep);
-            if (shot) await photoFile(id, data.token, shot);
+            if (shot) await photoFile(place, data.token, shot);
             if (dead) {
-              if (shot) void deletePhoto(id, data.token);
+              if (shot) void deletePhoto(place, data.token);
               return;
             }
-            const old = log.photos[id];
-            log.photos[id] = data;
-            mark(log, id, 'photo'); statusChanged(); refresh();
-            if (old?.token) void deletePhoto(id, old.token);
+            const old = log.photos[place];
+            log.photos[place] = data;
+            mark(log, place, 'photo'); statusChanged(); refresh();
+            if (old?.token) void deletePhoto(place, old.token);
             Sound.sfx('exploreBell', 3);
             card('찰칵!', '여정 앨범에 사진을 담았어.', { extra: `<img class="explore-photo-preview" alt="${esc(sheep.name)}의 기념사진" src="${esc(url)}">` });
           } finally { photoBusy = false; }
@@ -2241,6 +2413,8 @@
       const marker = shown.find(m => m.id === markerId);
       if (!marker) return;
       if (marker.type === 'house-door') return changeRoom(marker.house || null);
+      if (marker.viewpoint) return photo(marker.viewpoint);
+      if (marker.pathPlay) return view?.playAt(marker.id);
       if (discovery?.reach(markerId)) return;
       if (adventure?.reach(markerId)) return;
       if (marker.type === 'exit') return enter(marker.place);
@@ -2282,7 +2456,7 @@
     async function mountScene(spawn) {
       try {
         const engine = await Field3D.mountExplore(stage, { place: id, kit: area.kit, seed: area.seed,
-          room, spawn, houses: room ? [] : houses, discovery: hasDiscover, layout: { ...area.layout, christmas: christmas && !room, eve: eve && !room,
+          room, spawn, region: room ? null : region, houses: room ? [] : regionHouses, discovery: hasDiscover, layout: { ...area.layout, christmas: christmas && !room, eve: eve && !room,
             blanket: record.woolGifts?.blanket && Object.keys(record.woolGifts.blanket.wool || {}).map(id => window.WOOL_TYPES?.[id]?.color).filter(Boolean) },
           progress: log.quests, found: log.found, sheep, markers: shown, adventure: area.adventure }, {
           companionLine: enhanced ? Field.exploreReaction(sheep) : null,
@@ -2292,7 +2466,7 @@
           onNearbyDiscover: discovery?.onNearby,
           onExploreTick: discovery?.tick,
           canInteract: () => !changingRoom && !curtain?.open && (!hasDiscover || root.querySelector('[data-inspect]')?.hidden !== false),
-          onReach: reach, onExit: place => { if (!curtain?.open) enter(place); }, onUnavailable: no3D
+          onReach: reach, onUnavailable: no3D
         });
         if (dead || flat) { engine?.destroy(); return; }
         view = engine;

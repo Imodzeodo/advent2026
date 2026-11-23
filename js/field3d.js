@@ -2313,7 +2313,7 @@
   }
 
   function exploreWorld(scene, kit, seed, layout,
-    climate = { time: layout.time || 'night', weather: 'clear', reduced: true }, protectedPoints = []) {
+    climate = { time: layout.time || 'night', weather: 'clear', reduced: true }, protectedPoints = [], regional = false) {
     const rand = seeded(hashStr(seed));
     const { time } = climate, daylight = DAYLIGHT[time];
     const dawn = time === 'dawn', night = time === 'night', day = time === 'day';
@@ -2420,7 +2420,7 @@
     scene.add(new T.HemisphereLight(stable ? '#f4ddc0' : dawn ? '#ccd9ff' : '#c6caff', stable ? '#805a3f' : '#756169', night ? 1.33 : 1.7));
     const sun = new T.DirectionalLight(night ? (stable ? '#ffdfb5' : '#f4e9e8') : daylight.sun, night ? 1.6 : daylight.light);
     sun.position.set(...(night ? [-5, 10, 5] : daylight.angle)); scene.add(sun);
-    const groundGeo = new T.PlaneGeometry(64, 54, 48, 40).rotateX(-Math.PI / 2).translate(0, 0, -8).toNonIndexed();
+    const groundGeo = new T.PlaneGeometry(regional ? 16.08 : 64, regional ? 16.08 : 54, 48, 40).rotateX(-Math.PI / 2).translate(0, 0, regional ? 0 : -8).toNonIndexed();
     const p = groundGeo.attributes.position, colors = new Float32Array(p.count * 3);
     const earth = new T.Color(stable ? '#755039' : paved ? '#958b95' : dry ? '#a8795d' : ['nazareth', 'workshop', 'well', 'inn'].includes(kit) ? '#876f71' : '#697454');
     const pathColor = new T.Color(stable ? '#9d733f' : paved ? '#aa9da6' : dry ? '#c5906c' : '#aa8a79');
@@ -2455,7 +2455,7 @@
     if (!day) scene.add(new T.Points(starsGeo, new T.PointsMaterial({ color: '#fff0d0', size: 1.8, sizeAttenuation: false, opacity: .77, transparent: true, fog: false })));
     else starsGeo.dispose();
 
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < (regional ? 0 : 14); i++) {
       const x = -31 + i * 4.65, z = -21 - rand() * 13;
       batch(cone, mat(paved ? '#6e6588' : '#505e76'), x, .3, z, 8 + rand() * 4, 5 + rand() * 8, 8, 0, rand() * 6);
       if (i % 2 === 0) building(x * .82, z + 5, .53 + rand() * .29);
@@ -2752,8 +2752,8 @@
     }
     if (night || layout.christmas) scene.add(star);
     else { star.material.map.dispose(); star.material.dispose(); }
-    exploreBoundary(scene, height, EXPLORE_EDGE, paved ? '#a19ba3' : '#8c7767');
-    return { ground, height, blocks, birds, fx, star, dome, campfire, rearPath,
+    if (!regional) exploreBoundary(scene, height, EXPLORE_EDGE, paved ? '#a19ba3' : '#8c7767');
+    return { ground, height, groundHeight, blocks, birds, fx, star, dome, campfire, rearPath,
       walkable: (x, z) => !gateWall(x, z), climbs: gate ? [[-6.47, -7.17], [6.47, -7.17]] : [] };
   }
 
@@ -2887,7 +2887,7 @@
     } };
   }
 
-  function adventureWorld(scene, seed, layout, adventure, climate, protectedPoints) {
+  function adventureWorld(scene, seed, layout, adventure, climate, protectedPoints, regional = false) {
     const rand = seeded(seed), { visual, zones } = adventure;
     const temple = visual === 'temple' || visual === 'sanctuary';
     const roof = visual === 'house' || visual === 'roofs';
@@ -2964,7 +2964,7 @@
       star.position.set(predawn ? -3 : 8, night ? 16 : 10, -40); scene.add(star);
     }
     const routeX = z => (visual === 'hills' || openCountry) ? 5 * Math.sin((z + 7) * .10) : 0;
-    const groundGeo = new T.PlaneGeometry(70, 68, 52, 54).rotateX(-Math.PI / 2).toNonIndexed();
+    const groundGeo = new T.PlaneGeometry(regional ? 47.08 : 70, regional ? 47.08 : 68, 52, 54).rotateX(-Math.PI / 2).toNonIndexed();
     const groundPos = groundGeo.attributes.position, colors = [];
     const groundColor = new T.Color(desert ? '#a68262' : galilee ? '#697e54' : temple ? '#7f7684' : roof ? '#927975' : '#706e5c');
     const roadColor = new T.Color(desert ? '#c1a179' : temple ? '#a69ba0' : visual === 'hills' ? '#aa926f' : '#ac927e'), tint = new T.Color();
@@ -3269,7 +3269,7 @@
         stall(-13, 5.3, '#706580');
       }
     }
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < (regional ? 0 : 18); i++) {
       const x = (rand() - .5) * 65, z = -29 - rand() * 6 - (galilee ? 21 : 0);
       rock(desert ? '#a78177' : night ? '#494568' : '#777d80', x, 1, z, 3.7 + rand() * 6, 4 + rand() * 8, 6, 0, i);
     }
@@ -3347,23 +3347,452 @@
       const [kind, pos] = pair;
       addActor(models.animal(kind), pos, .92 + (i % 3) * .31);
     }
-    exploreBoundary(scene, terrainHeight, ADVENTURE_EDGE, cap);
-    return { ground, height, dome, blocks, birds, fx, actors, residents, models, features,
+    if (!regional) exploreBoundary(scene, terrainHeight, ADVENTURE_EDGE, cap);
+    return { ground, height, groundHeight: terrainHeight, dome, blocks, birds, fx, actors, residents, models, features,
       walkable: (x, z) => !rail(x, z), signs, climbs: roof ? [[0, -20.7]] : temple ? [[1.65, -18.5]] : [] };
   }
 
-  function explorePath(from, to, open, edge = EXPLORE_EDGE) {
-    const d = edge > EXPLORE_EDGE ? .58 : .43, width = Math.floor(edge * 2 / d) + 1;
-    const point = (ix, iz) => [ix * d - edge, iz * d - edge];
-    const idx = x => clamp(Math.round((x + edge) / d), 0, width - 1);
+  function regionWorld(scene, options, climate, protectedPoints) {
+    const { region, seed } = options;
+    const [ox, oz] = region.origin, [wide, deep] = region.bounds;
+    const water = region.placesToPlay.find(play => play.type === 'stones')?.pos;
+    const game = region.placesToPlay.find(play => play.type === 'game')?.pos;
+    const summit = region.index === 2 ? [36 - ox, -24 - oz] : null;
+    const ground = new T.Group(), sky = new T.Group();
+    const blocks = [], actors = [], birds = [], fx = [];
+    const features = new Map(), residents = new Map(), parts = [];
+    scene.add(ground, sky);
+    let main, activePart;
+    const rand = seeded(hashStr('region/' + region.index));
+    for (const site of region.sites) {
+      if (!site.area) continue;
+      const { area, offset: [x, z], translate, markerId } = site;
+      const group = new T.Group();
+      group.position.set(x, 0, z);
+      scene.add(group);
+      const layout = site.primary ? options.layout : area.layout;
+      const weather = site.primary ? climate : { ...climate, weather: 'clear' };
+      const adventure = area.adventure && (site.primary ? area.adventure : { ...area.adventure,
+        targets: Object.fromEntries(Object.entries(area.adventure.targets)
+          .filter(([key, target]) => target.feature || (area.discover?.items.some(entry => entry.residentKey === key)))
+          .map(([key, target]) => [markerId(key), target])) });
+      const points = protectedPoints.map(([px, pz]) => [px - x, pz - z]);
+      const local = adventure
+        ? adventureWorld(group, area.seed || seed, layout, adventure, weather, points, true)
+        : exploreWorld(group, area.kit, area.seed || seed, layout, weather, points, true);
+      if (site.primary) {
+        main = local;
+        activePart = group;
+        scene.background = group.background;
+        scene.fog = group.fog;
+        scene.fog.near += 8; scene.fog.far += 26;
+      }
+      for (const child of [...group.children]) {
+        const skyObject = child === local.dome || child.isPoints;
+        if (!skyObject && (!child.isLight || child.isPointLight)) continue;
+        if (site.primary) (skyObject ? sky : scene).add(child);
+        else {
+          child.removeFromParent();
+          child.geometry?.dispose(); child.material?.dispose();
+        }
+      }
+      ground.add(local.ground);
+      local.ground.position.set(x, 0, z);
+      blocks.push(...local.blocks.map(([px, pz, r]) => [...translate([px, pz]), r]));
+      for (const resident of local.actors || []) {
+        resident.pos = translate(resident.pos);
+        actors.push(resident);
+      }
+      for (const [key, resident] of local.residents || []) residents.set(key, resident);
+      for (const [key, feature] of local.features || []) {
+        feature.userData.kind = key;
+        features.set(markerId(key), feature);
+      }
+      for (const effect of local.fx) {
+        effect.cloud.userData.drawPriority = 1;
+        fx.push(effect);
+      }
+      for (const bird of local.birds) {
+        bird.bird.removeFromParent();
+        bird.bird.position.x += x; bird.bird.position.z += z;
+        bird.home.x += x; bird.home.z += z;
+        scene.add(bird.bird);
+        birds.push(bird);
+      }
+      parts.push({ site, group, local });
+    }
+    const moveActor = resident => {
+      const { actor } = resident, part = parts.find(part => actor.parent === part.group);
+      if (part) {
+        actor.position.add(part.group.position);
+        part.group.remove(actor);
+        part.actors.add(actor);
+        actor.userData.drawPriority = resident.key ? 20 : 0;
+      }
+    };
+    for (const part of parts) {
+      part.actors = new T.Group();
+      scene.add(part.actors);
+    }
+    actors.forEach(moveActor);
+    const positionOf = ([x, z]) => [x - ox, z - oz];
+    const pathSegments = region.paths.map(path => path.map(positionOf));
+    const pathDistance = (x, z) => {
+      let distance = Infinity;
+      for (const [[ax, az], [bx, bz]] of pathSegments) {
+        const dx = bx - ax, dz = bz - az;
+        const t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+        distance = Math.min(distance, Math.hypot(x - ax - dx * t, z - az - dz * t));
+      }
+      return distance;
+    };
+    const gapFrom = (site, x, z) => Math.max(Math.abs(x - site.offset[0]), Math.abs(z - site.offset[1])) - site.edge;
+    const partAt = (x, z) => parts.find(({ site }) => gapFrom(site, x, z) <= 0);
+    const exterior = (x, z) => {
+      const px = x + ox, pz = z + oz;
+      const slope = region.index === 1 || region.index === 2 ? 1.35 : .65;
+      const rise = summit ? 5.2 * Math.max(0, 1 - Math.hypot((x - summit[0]) / 11, (z - summit[1]) / 9)) : 0;
+      const hills = rise + slope * Math.sin(px * .072) * Math.cos(pz * .065) + .20 * Math.sin(pz * .23);
+      let near, gap = 8;
+      for (const part of parts) {
+        const distance = gapFrom(part.site, x, z);
+        if (distance < gap) { gap = distance; near = part; }
+      }
+      if (!near) return hills;
+      const { site, local } = near, [dx, dz] = site.offset, r = site.edge;
+      return lerp(local.groundHeight(clamp(x - dx, -r, r), clamp(z - dz, -r, r)), hills, clamp(gap / 8, 0, 1));
+    };
+    const height = (x, z) => {
+      const part = partAt(x, z);
+      return part ? part.local.height(x - part.site.offset[0], z - part.site.offset[1]) : exterior(x, z);
+    };
+    const landGeo = new T.PlaneGeometry(wide * 2 + 4, deep * 2 + 4, Math.ceil(wide * 1.25), Math.ceil(deep * 1.25))
+      .rotateX(-Math.PI / 2).translate(-ox, 0, -oz).toNonIndexed();
+    const pos = landGeo.attributes.position, colors = new Float32Array(pos.count * 3);
+    const earth = new T.Color(['#8c7d78', '#777855', '#677a5a', '#77634f'][region.index]);
+    const road = new T.Color(['#b6a296', '#b3986f', '#b69b77', '#ab8967'][region.index]);
+    const color = new T.Color();
+    for (let i = 0; i < pos.count; i += 3) {
+      const x = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3;
+      const z = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
+      const wear = clamp((2.8 - pathDistance(x, z) + rand() * .55) / 1.1, 0, 1);
+      color.copy(earth).lerp(road, wear).multiplyScalar(.91 + rand() * .18);
+      for (let j = i; j < i + 3; j++) {
+        pos.setY(j, exterior(pos.getX(j), pos.getZ(j)) - .07);
+        colors.set([color.r, color.g, color.b], j * 3);
+      }
+    }
+    landGeo.setAttribute('color', new T.BufferAttribute(colors, 3));
+    landGeo.computeVertexNormals();
+    ground.add(new T.Mesh(landGeo, new T.MeshStandardMaterial({ vertexColors: true, roughness: 1 })));
+
+    const cube = new T.BoxGeometry(), stone = new T.IcosahedronGeometry(1, 0);
+    const cone = new T.ConeGeometry(1, 1, 7), column = new T.CylinderGeometry(.72, 1, 1, 7);
+    const patches = new Map();
+    const add = (mesh, color, ...shape) => {
+      if (!patches.has(color)) patches.set(color, []);
+      patches.get(color).push(place(mesh, ...shape));
+    };
+    const wall = ['#a9978f', '#a18c76', '#a68e73', '#987f6e'][region.index];
+    const cap = ['#d0bba7', '#bbab88', '#bba68d', '#b0987d'][region.index];
+    const foliage = ['#62735d', '#687b51', '#547b53', '#646d4d'][region.index];
+    const trunk = '#6f5243';
+    function tree(x, z, size) {
+      const canopy = Array.from({ length: 5 }, () => rand());
+      if (game && Math.hypot(x - game[0], z - game[1]) < 13) return;
+      const y = height(x, z);
+      add(column, trunk, x, y + size, z, .24 * size, 2 * size, .24 * size);
+      for (let i = 0; i < 5; i++) add(stone, foliage, x + Math.cos(i * 2.4) * .88 * size,
+        y + (2.0 + canopy[i] * .55) * size, z + Math.sin(i * 2.4) * .88 * size, size, .73 * size, size, 0, i);
+      blocks.push([x, z, .30 * size]);
+    }
+    function wallAt(x, z, width, length, h = .7) {
+      const y = height(x, z);
+      add(cube, wall, x, y + h * .5, z, width, h, length);
+      add(cube, cap, x, y + h, z, width + .12, .12, length + .12);
+    }
+    // The region has a continuous stone boundary, with its road network inside.
+    for (const side of [-1, 1]) {
+      for (let x = -wide + 1; x < wide; x += 2) wallAt(x - ox, side * (deep + .15) - oz, 2.10, .66);
+      for (let z = -deep + 1; z < deep; z += 2) wallAt(side * (wide + .15) - ox, z - oz, .66, 2.10);
+    }
+    for (let i = 0; i < 17; i++) {
+      const x = -wide - 3 + i * (2 * wide + 6) / 16 - ox;
+      const z = -deep - 7 - rand() * 7 - oz;
+      const size = 4 + rand() * 9;
+      add(stone, ['#756c7f', '#616d73', '#536d74', '#645970'][region.index],
+        x, size * .26, z, size * 1.45, size * .89, size * 1.35, .15, i * 1.18);
+    }
+    for (let i = 0; i < 270; i++) {
+      const [x, z] = positionOf([(rand() * 2 - 1) * (wide - 3), (rand() * 2 - 1) * (deep - 3)]);
+      if (pathDistance(x, z) < 3.65 || region.sites.some(site => gapFrom(site, x, z) < 2)) continue;
+      const y = height(x, z), size = .13 + rand() * .38;
+      if (i % 8 === 0) tree(x, z, .85 + rand() * .83);
+      else if (i % 3 === 0) add(stone, wall, x, y + size * .28, z, size, size * .60, size * .74, 0, i);
+      else add(cone, foliage, x, y + size * .5, z, size * .65, size, size * .65, .2, i);
+    }
+
+    const signs = [];
+    if (water) {
+      const [wx, wz] = water;
+      const river = new T.PlaneGeometry(2.62, 13.8, 4, 17).rotateX(-Math.PI / 2);
+      const position = river.attributes.position;
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i) + wx, z = position.getZ(i) + wz;
+        position.setXYZ(i, x, height(x, z) + .07, z);
+      }
+      river.computeVertexNormals();
+      scene.add(new T.Mesh(river, mat('#598492', { rough: .39 })));
+      for (const dx of [-1.26, -.42, .42, 1.26]) add(stone, cap, wx + dx, height(wx + dx, wz) + .11, wz, .61, .19, .72, 0, dx);
+      for (const dx of [-1.64, 1.64]) for (const dz of [-5.3, -3.4, 2.8, 4.9]) {
+        const x = wx + dx, z = wz + dz;
+        add(cone, foliage, x, height(x, z) + .36, z, .13, .78, .14, .10, dz);
+      }
+    }
+    for (const site of region.sites) {
+      const [x, z] = site.offset, r = site.edge, towardsRoad = site.z > 0 ? -1 : 1;
+      const entranceZ = z + towardsRoad * (r + 1.45);
+      const signX = x + 2.75, signY = height(signX, entranceZ);
+      signs.push([signX, entranceZ]);
+      const sign = textSprite(site.name, { color: '#fff1c7', size: 21 });
+      sign.position.set(signX, signY + 2.19, entranceZ);
+      sign.scale.setScalar(4.8);
+      scene.add(sign);
+      sign.userData.drawPriority = 8;
+      add(column, trunk, signX, signY + .97, entranceZ, .095, 1.94, .095);
+      add(cube, trunk, signX, signY + 1.86, entranceZ, 2.4, .5, .13);
+      for (const side of [-1, 1]) {
+        const px = x + side * 3.7, py = height(px, entranceZ);
+        wallAt(px, entranceZ, 1.73, .96, 1.08);
+        add(stone, cap, px, py + 1.18, entranceZ, .35, .20, .35);
+      }
+      const inward = site.x <= 0 ? 1 : -1;
+      const lx = x + inward * (r + 3.7), lz = z - towardsRoad * Math.min(r - 3, inward > 0 ? 9 : 3);
+      const y = height(lx, lz);
+      if (['temple', 'sanctuary', 'gate'].includes(site.key)) {
+        const tower = site.key === 'gate', tall = tower ? 7.8 : 5.35;
+        add(cube, wall, lx, y + tall * .5, lz, tower ? 4.2 : 6, tall, 3.8);
+        add(cube, cap, lx, y + tall, lz, tower ? 4.6 : 7.2, .48, 4.4);
+        for (const dx of [-2.6, -1.3, 0, 1.3, 2.6]) {
+          if (tower) add(cube, wall, lx + dx * .71, y + tall + .41, lz + 1.5, .54, .69, .59);
+          else add(column, cap, lx + dx, y + tall * .45, lz + 2.25, .27, tall * .9, .27);
+        }
+        blocks.push([lx, lz, 2.6]);
+      } else if (site.key === 'stable' || site.key === 'field') {
+        const stable = site.key === 'stable';
+        for (const dx of [-2.8, 2.8]) wallAt(lx + dx, lz, .45, 4, stable ? 2.55 : .67);
+        if (stable) {
+          add(cube, trunk, lx, y + 2.65, lz, 6.25, .55, 4.35);
+          const glow = glowSprite('#ffd790', 7.1, .74);
+          glow.position.set(lx, y + 1.14, lz + 1.2); scene.add(glow);
+        } else {
+          add(cube, trunk, lx, y + .22, lz, 1.1, .28, .65, 0, -.3);
+          add(cone, '#d8854c', lx, y + .72, lz, .32, .90, .34);
+          for (let i = 1; i <= 4; i++) add(stone, '#978b9a', lx + i * .28, y + i * 1.25, lz, .38 * i, .29 * i, .32 * i);
+        }
+      } else if (site.key === 'well') {
+        add(column, wall, lx, y + .48, lz, 1.95, .96, 1.95);
+        add(column, '#617f91', lx, y + .98, lz, 1.40, .07, 1.40);
+        for (const dx of [-1.6, 1.6]) add(cube, trunk, lx + dx, y + 1.8, lz, .18, 3.6, .18);
+        add(cone, '#b48b63', lx, y + 3.66, lz, 2.8, 1.25, 2.8, 0, .4);
+        blocks.push([lx, lz, 1.8]);
+      } else if (site.key === 'desert') {
+        for (const dx of [-3.5, 0, 2.2]) add(stone, '#9e8566', lx + dx, y + 1.28, lz, 2.4, 2.2, 1.45, 0, dx);
+        blocks.push([lx, lz, 2]);
+      } else {
+        tree(lx, lz, site.key === 'galilee' ? 2.8 : 1.85);
+        for (const side of [-1, 1]) wallAt(lx + side * 2.8, lz + 3.3, 1.9, .64, .52);
+      }
+    }
+    if (region.index === 1) {
+      for (const px of [6.8, 9.1, 14.9, 17.2]) {
+        for (let pz = 14.5; pz < 22.5; pz += 1.4) {
+          const [x, z] = positionOf([px, pz]), y = height(x, z);
+          add(column, trunk, x, y + .32, z, .12, .65, .12);
+          add(stone, foliage, x, y + .69, z, .61, .28, .69, 0, pz);
+          add(stone, '#686187', x + .27, y + .59, z, .19, .23, .18, 0, px);
+        }
+      }
+    }
+    // Roadside sellers, bundles and a trough sit clear of the walking lane.
+    for (const [px, pz, cloth] of [[1, 4.8, '#aa645f'], [-12, -4.7, '#957aa0'], [13, -4.6, '#b8885f']]) {
+      const [x, z] = positionOf([px, pz]);
+      const y = height(x, z);
+      if (partAt(x, z) || pathDistance(x, z) < 2.4) continue;
+      for (const dx of [-1.45, 1.45]) for (const dz of [-.65, .65]) {
+        add(column, trunk, x + dx, y + 1.07, z + dz, .07, 2.14, .07);
+      }
+      add(cube, cloth, x, y + 2.13, z, 3.15, .12, 1.81, .17);
+      add(cube, trunk, x, y + .51, z + .25, 2.05, .18, .81);
+      for (const dx of [-.65, 0, .65]) add(column, '#9f6959', x + dx, y + .78, z + .32, .19, .37, .19);
+      add(column, '#667b57', x - 1.9, y + .55, z + .2, .23, .98, .23);
+      add(stone, '#bd917b', x - 1.9, y + 1.17, z + .2, .17, .19, .17);
+      blocks.push([x, z, 1.05]);
+    }
+    addScenery(scene, patches, color => mat(color));
+    cube.dispose(); stone.dispose(); cone.dispose(); column.dispose();
+    function update(x, z) {
+      sky.position.set(x, 0, z);
+      let group = null, nearest = 8;
+      for (const part of parts) {
+        const gap = gapFrom(part.site, x, z);
+        if (gap < nearest) { nearest = gap; group = part.group; }
+      }
+      if (group === activePart) return;
+      activePart = group;
+      for (const part of parts) {
+        part.group.visible = part.actors.visible = part.group === group;
+      }
+    }
+    const titles = { temple: '성전 계단 전망', sanctuary: '성소 계단 전망', roof: '사가랴 집 지붕 전망', gate: '성문 망루 전망' };
+    const viewpoints = parts.flatMap(({ site, local }) => (local.climbs || []).map(pos => ({
+      pos: site.translate(pos), title: titles[site.key] || site.name + ' 전망', episode: site.episode
+    })));
+    if (summit) {
+      const hill = region.sites.find(site => site.key === 'galilee');
+      viewpoints.push({ pos: summit, title: '갈릴리 언덕 전망', episode: hill.episode || region.main.episode });
+    }
+    activePart = undefined;
+    update(...(options.spawn || options.adventure?.spawn || [0, 6.2]));
+    return { ...main, ground, height, blocks, actors, residents, features, birds, fx, update, viewpoints,
+      placesToPlay: region.placesToPlay,
+      climbs: viewpoints.map(viewpoint => viewpoint.pos),
+      signs: signs.concat(parts.flatMap(({ site, local }) => (local.signs || []).map(site.translate))),
+      walkable(x, z) {
+        if (Math.abs(x + ox) > wide || Math.abs(z + oz) > deep) return false;
+        if (water && Math.abs(x - water[0]) < 1.28 && Math.abs(z - water[1]) < 6.85 && Math.abs(z - water[1]) > .63) return false;
+        const part = partAt(x, z);
+        return !part || part.local.walkable(x - part.site.offset[0], z - part.site.offset[1]);
+      },
+      dispose() {
+        for (const { local } of parts) if (local !== main) local.models?.dispose();
+        for (const part of ground.children) part.material.dispose();
+      }
+    };
+  }
+
+  function makePathPlay(scene, world, models, reduced, open) {
+    const group = new T.Group();
+    scene.add(group);
+    const animals = [];
+    const games = [];
+    const markers = [];
+    for (const play of world.placesToPlay) {
+      const [x, z] = play.pos;
+      const y = world.height(x, z);
+      if (play.type === 'pigeons' || play.type === 'chickens') {
+        const flock = new T.Group();
+        flock.position.set(x, y, z);
+        const flying = play.type === 'pigeons';
+        const birds = Array.from({ length: flying ? 4 : 2 }, (_, i) => {
+          const bird = models.animal(flying ? '비둘기' : '닭');
+          const home = new T.Vector3((i - 1) * .45, 0, Math.sin(i * 2.4) * .48);
+          bird.position.copy(home);
+          bird.rotation.y = i * 2.3;
+          flock.add(bird);
+          return { bird, home };
+        });
+        flock.userData.drawPriority = 8;
+        group.add(flock);
+        animals.push({ flock, birds, flying, start: null, direction: 0 });
+      } else if (play.type === 'bush') {
+        markers.push({ id: 'path/bush', type: 'bush', pos: play.pos, title: '길가 수풀', symbol: '✋', pathPlay: true });
+      } else if (play.type === 'game') {
+        const circle = new T.Group();
+        circle.position.set(x, y, z - .9);
+        const rug = new T.Mesh(new T.CircleGeometry(1.06, 9).rotateX(-Math.PI / 2), mat('#bc9576'));
+        rug.position.y = .04; circle.add(rug);
+        const children = [-1, 1].map((side, i) => {
+          const { actor, arm } = models.person('마을 아이', 4 + i, true);
+          actor.position.set(side * .77, world.height(x + side * .77, z - .95) - y, -.05);
+          actor.rotation.y = -side * Math.PI / 2;
+          actor.userData.gait.rig.position.y = -.43;
+          actor.userData.gait.feet.forEach(foot => { foot.position.z = .36; });
+          circle.add(actor);
+          return arm;
+        });
+        const pebbleShape = new T.IcosahedronGeometry(.092, 0);
+        for (let i = 0; i < 4; i++) {
+          const pebble = new T.Mesh(pebbleShape, mat(i % 2 ? '#9caca0' : '#e3caac'));
+          pebble.position.set(-.22 + (i % 2) * .31, .13, -.21 + Math.floor(i / 2) * .27);
+          circle.add(pebble);
+        }
+        const tossed = new T.Mesh(pebbleShape, mat('#d7ae8c'));
+        circle.add(tossed);
+        const seat = new T.Mesh(new T.BoxGeometry(1.45, .30, .43), mat('#8a7467'));
+        seat.position.set(0, .15, 1.71); circle.add(seat);
+        circle.userData.drawPriority = 12;
+        group.add(circle);
+        markers.push({ id: 'path/game', type: 'look', pos: play.pos, quiet: true, title: '아이들의 공기놀이', symbol: '👀', pathPlay: true });
+        games.push({ circle, children, tossed });
+      }
+    }
+    function update(p, now, t) {
+      for (const { circle, children, tossed } of games) {
+        circle.visible = circle.position.distanceToSquared(p) < 18 ** 2;
+        if (!circle.visible) continue;
+        const beat = reduced ? .25 : (t / 1.9) % 1;
+        const side = Math.floor(t / 1.9) % 2 ? -1 : 1;
+        tossed.position.set(side * (.42 - beat * .25), .14 + Math.sin(beat * Math.PI) * .73, 0);
+        children.forEach((arm, i) => { arm.rotation.x = side === (i ? 1 : -1) ? -.35 - Math.sin(beat * Math.PI) : -.43; });
+      }
+      for (const animal of animals) {
+        const { flock, birds, flying } = animal;
+        const dist = Math.hypot(flock.position.x - p.x, flock.position.z - p.z);
+        flock.visible = dist < 23;
+        if (reduced || !flock.visible) continue;
+        if (animal.start === null && dist < 2.85) {
+          animal.start = now;
+          const away = Math.atan2(flock.position.x - p.x, flock.position.z - p.z);
+          animal.direction = away;
+          if (!flying) {
+            const alternatives = [0, .68, -.68, 1.35, -1.35, Math.PI].map(turn => away + turn);
+            animal.direction = alternatives.find(angle => birds.every(({ home }, i) => {
+              const heading = angle + (i - 1) * .33;
+              return [.6, 1.3, 2.15].every(step => open(flock.position.x + home.x + Math.sin(heading) * step,
+                flock.position.z + home.z + Math.cos(heading) * step));
+            })) ?? away;
+          }
+        }
+        const age = animal.start === null ? 0 : (now - animal.start) / 1000;
+        if (age > 4.5 && dist > 8) animal.start = null;
+        birds.forEach(({ bird, home }, i) => {
+          const step = Math.max(0, age - i * .09);
+          const direction = animal.direction + (i - 1) * .33;
+          const distance = flying ? step * 2.4 : Math.min(step, 1.38) * 1.6;
+          const x = home.x + Math.sin(direction) * distance, z = home.z + Math.cos(direction) * distance;
+          if (!step || open(flock.position.x + x, flock.position.z + z)) {
+            bird.position.set(x, world.height(flock.position.x + x, flock.position.z + z) - flock.position.y, z);
+          }
+          bird.visible = !flying || step < 3.2;
+          if (step) {
+            bird.rotation.y = direction;
+            if (flying) {
+              bird.position.y = step * 1.55 + home.y;
+              bird.children.forEach((wing, j) => { if (j) wing.rotation.z = Math.sin(t * 19) * (j % 2 ? -1 : 1) * .55; });
+            } else if (step < 1.38) bird.position.y += Math.abs(Math.sin(t * 19)) * .095;
+          }
+        });
+      }
+    }
+    return { markers, update, animals };
+  }
+
+  function explorePath(from, to, open, edge = EXPLORE_EDGE, bounds = null) {
+    const d = edge > EXPLORE_EDGE ? .58 : .43;
+    const [left, top, right, bottom] = bounds || [-edge, -edge, edge, edge];
+    const width = Math.floor((right - left) / d) + 1, height = Math.floor((bottom - top) / d) + 1;
+    const point = (ix, iz) => [ix * d + left, iz * d + top];
+    const col = x => clamp(Math.round((x - left) / d), 0, width - 1);
+    const row = z => clamp(Math.round((z - top) / d), 0, height - 1);
     const line = (a, b) => {
       const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (d * .52));
       for (let i = 1; i <= n; i++) if (!open(lerp(a[0], b[0], i / n), lerp(a[1], b[1], i / n))) return false;
       return true;
     };
     if (line(from, to)) return [to];
-    const source = idx(from[1]) * width + idx(from[0]), queue = [source];
-    const seen = new Int16Array(width * width).fill(-1);
+    const source = row(from[1]) * width + col(from[0]), queue = [source];
+    const seen = new Int32Array(width * height).fill(-1);
     const neighbors = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]];
     seen[source] = source;
     let best = source, bestDist = Infinity;
@@ -3374,7 +3803,7 @@
       if (open(...to) && distance < d * 1.6 && line(a, to)) { best = here; break; }
       for (const [dx, dz] of neighbors) {
         const x = ix + dx, z = iz + dz, next = z * width + x;
-        if (x < 0 || z < 0 || x >= width || z >= width || seen[next] !== -1 || !line(a, point(x, z))) continue;
+        if (x < 0 || z < 0 || x >= width || z >= height || seen[next] !== -1 || !line(a, point(x, z))) continue;
         seen[next] = here; queue.push(next);
       }
     }
@@ -3764,10 +4193,10 @@
 
   async function mountExplore(container, options, handlers = {}) {
     await load();
-    const { sheep, layout = {}, room } = options;
+    const { sheep, layout = {}, room, region } = options;
     const adventure = room ? { spawn: [0, 2.55], crossings: [] } : options.adventure ||
       (options.discovery ? { spawn: [0, 6.2], crossings: [] } : null);
-    const edge = room ? ROOM_EDGE : options.adventure ? ADVENTURE_EDGE : EXPLORE_EDGE;
+    const edge = room ? ROOM_EDGE : region ? Math.max(...region.bounds.map((size, i) => size + Math.abs(region.origin[i]))) : options.adventure ? ADVENTURE_EDGE : EXPLORE_EDGE;
     const seed = options.seed || hashStr(options.place || 'temple');
     const renderer = new T.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     renderer.outputColorSpace = T.SRGBColorSpace;
@@ -3783,13 +4212,13 @@
     hud.className = 'f3d-explore-labels';
     wrap.append(canvas, hud); container.append(wrap);
 
-    const scene = new T.Scene(), camera = new T.PerspectiveCamera(53, 1, .1, 105);
+    const scene = new T.Scene(), camera = new T.PerspectiveCamera(53, 1, .1, region ? 160 : 105);
     const reduced = calm();
     const climate = room ? null : exploreClimate(options.place, layout.time, reduced);
     const protectedPoints = [options.spawn || adventure?.spawn || [0, 6.2],
       ...Object.values(adventure?.targets || {}).map(target => target.pos),
       ...(options.markers || []).map(marker => marker.pos), ...(options.houses || []).map(house => house.pos)].filter(Boolean);
-    const world = room ? interiorWorld(scene, room) : options.adventure ? adventureWorld(scene, seed, layout, adventure, climate, protectedPoints) :
+    const world = room ? interiorWorld(scene, room) : region ? regionWorld(scene, options, climate, protectedPoints) : options.adventure ? adventureWorld(scene, seed, layout, adventure, climate, protectedPoints) :
       exploreWorld(scene, options.kit || options.place, seed, layout, climate, protectedPoints);
     if (climate?.weather === 'market') {
       const onZone = handlers.onZone;
@@ -3797,7 +4226,10 @@
       marketSound();
       handlers = { ...handlers, onZone() { onZone?.(); marketSound(); } };
     }
-    if (adventure && !world.models) Object.assign(world, { models: adventureModels(), actors: [], residents: new Map(), features: new Map() });
+    if (adventure && !world.models) {
+      world.models = adventureModels();
+      world.actors ??= []; world.residents ??= new Map(); world.features ??= new Map();
+    }
     for (const house of options.houses || []) if (house.standAlone) addExploreShelter(scene, world, house);
     const guide = adventure && world.models.person('여행자', 2, true);
     const leader = guide?.actor;
@@ -3825,6 +4257,7 @@
     lantern.visible = false;
     lantern.position.set(-.5, .82, .5); player.add(lantern);
     let carrying = '', carryLabel, kneeling = false, foundLamb;
+    let seated = false, vista = null, vistaSince = 0, vistaBlend = 0;
     let fireStrength = world.campfire && climate?.time === 'night' ? .3 : 1;
     if (options.progress?.[options.place] === 'done') fireStrength = 1;
     function setCarry(symbol) {
@@ -3860,8 +4293,75 @@
     let az = azBase, azWant = azBase, activePointer, route = [], waitForTarget = null;
     let raf, lastFrame, stopped = false, reaction = null, talking, doveAt, followOrigin, markerWidth = 0, markerHeight = 0;
     let lastMetric = 0, frames = 0, frameTime = 0, sinceSlow = 0, resolution = pixelRatio, firstFrame = true;
-    let metrics = { fps: 0, calls: 0, triangles: 0, ratio: resolution };
+    let peakCalls = 0, metrics = { fps: 0, calls: 0, triangles: 0, ratio: resolution };
     const enterDistance = adventure ? 1.48 : 1.2;
+    const actionDistance = 2.15;
+    const actionHUD = document.createElement('div');
+    actionHUD.className = 'explore-action-hud';
+    actionHUD.hidden = true;
+    const actionButton = document.createElement('button');
+    actionButton.type = 'button'; actionButton.className = 'explore-action';
+    const switchAction = (label, title, offset) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.textContent = label;
+      button.setAttribute('aria-label', title);
+      button.onclick = () => {
+        if (nearbyActions.length < 2) return;
+        manualAction = true;
+        const i = nearbyActions.findIndex(entry => entry.marker.id === chosenAction);
+        chosenAction = nearbyActions[(Math.max(0, i) + offset + nearbyActions.length) % nearbyActions.length]?.marker.id;
+        renderActions();
+      };
+      return button;
+    };
+    let nearbyActions = [], chosenAction = '', manualAction = false;
+    const prevAction = switchAction('◀', '이전 행동', -1);
+    const nextAction = switchAction('▶', '다음 행동', 1);
+    actionHUD.append(prevAction, actionButton, nextAction);
+    wrap.append(actionHUD);
+    actionButton.onclick = () => activateMarker(chosenAction);
+
+    function actionText(marker) {
+      const title = marker.title.replace(/^✓\s*/, '');
+      const verb = {
+        look: '살펴보기', touch: '만져 보기', try: '해 보기', person: '말하기',
+        verse: '읽기', photo: '사진 찍기', exit: '가기'
+      }[marker.type] || '살펴보기';
+      if (marker.discoverId === 'millstone') return '🛠 맷돌 돌려 보기';
+      if (marker.id === 'path/bush') return '✋ 수풀 흔들어 보기';
+      if (marker.id === 'path/game') return seated ? '👀 자리에서 일어나기' : '👀 공기놀이 옆에 앉기';
+      if (marker.type === 'person') return `💬 ${Core.josa(title, '과와')} ${verb}`;
+      const icon = { look: '👀', touch: '✋', try: '🛠', person: '💬' }[marker.type] || marker.symbol;
+      return `${icon} ${title} · ${verb}`;
+    }
+
+    function canActivate(entry, p = walkPosition()) {
+      if (!entry || entry.marker.lit || entry.marker.type === 'house-door') return false;
+      const { x, y, z } = entry.obj.position;
+      return Math.hypot(x - p.x, z - p.z) <= actionDistance && Math.abs(y - p.y) < 1.4;
+    }
+
+    function activateMarker(id) {
+      const entry = elements.get(id);
+      if (stopped || handlers.canInteract?.() === false || !canActivate(entry)) return false;
+      waitForTarget = null;
+      route = []; goal.visible = false;
+      leaderVel.set(0, 0);
+      if (entry.marker.moving) followOrigin = entry.obj.position.clone();
+      handlers.onReach?.(id);
+      return true;
+    }
+
+    function renderActions() {
+      const selected = nearbyActions.find(entry => entry.marker.id === chosenAction);
+      actionHUD.hidden = !selected;
+      prevAction.hidden = nextAction.hidden = nearbyActions.length < 2;
+      if (!selected) return;
+      const { marker } = selected;
+      const text = actionText(marker);
+      if (actionButton.textContent !== text) actionButton.textContent = text;
+      actionButton.dataset.action = marker.id;
+    }
     const footsteps = [], trail = [];
     let abilityEffect, waypoint, escort, joystick, displayedZone = -1, ceremony;
     const celebrationActors = [];
@@ -3871,19 +4371,118 @@
     let travel = 0, walking = false, nextStepSound = 0;
     const onGround = (x, z) => [x, world.height(x, z), z];
     const walkPosition = () => (leader || player).position;
+    const blockCells = region && new Map();
+    const cellSize = 4;
+    if (blockCells) for (const block of world.blocks) {
+      const [x, z, r] = block, reach = r + .24;
+      for (let i = Math.floor((x - reach) / cellSize); i <= Math.floor((x + reach) / cellSize); i++) {
+        for (let j = Math.floor((z - reach) / cellSize); j <= Math.floor((z + reach) / cellSize); j++) {
+          const key = `${i},${j}`;
+          if (!blockCells.has(key)) blockCells.set(key, []);
+          blockCells.get(key).push(block);
+        }
+      }
+    }
     const open = (x, z) => {
       if (Math.abs(x) > edge || Math.abs(z) > edge || world.walkable?.(x, z) === false) return false;
-      if (world.blocks.some(([ox, oz, r]) => (x - ox) ** 2 + (z - oz) ** 2 < (r + .24) ** 2)) return false;
+      const blocks = blockCells ? blockCells.get(`${Math.floor(x / cellSize)},${Math.floor(z / cellSize)}`) || [] : world.blocks;
+      if (blocks.some(([ox, oz, r]) => (x - ox) ** 2 + (z - oz) ** 2 < (r + .24) ** 2)) return false;
       if (adventure) for (const [kind, feature] of world.features) {
-        if (kind === 'shine' || feature.userData.cleared) continue;
-        const dx = Math.abs(x - feature.position.x), dz = Math.abs(z - feature.position.z);
-        if (dx < (kind === 'jump' ? 1.29 : .78) && dz < .57) return false;
+        const featureKind = feature.userData.kind || kind;
+        if (featureKind === 'shine' || feature.userData.cleared) continue;
+        const group = feature.parent === scene ? null : feature.parent;
+        const dx = Math.abs(x - feature.position.x - (group?.position.x || 0));
+        const dz = Math.abs(z - feature.position.z - (group?.position.z || 0));
+        if (dx < (featureKind === 'jump' ? 1.29 : .78) && dz < .57) return false;
       }
       for (const { marker } of elements.values()) {
         if (marker.type === 'clear' && (x - marker.pos[0]) ** 2 + (z - marker.pos[1]) ** 2 < .47 ** 2) return false;
       }
       return true;
     };
+    const pathPlay = region ? makePathPlay(scene, world, world.models, reduced, open) : null;
+    const scenicMarkers = region ? pathPlay.markers.concat(world.viewpoints.map((viewpoint, i) => ({
+      id: 'viewpoint/' + i, type: 'photo', title: viewpoint.title, symbol: '📷', pos: viewpoint.pos, viewpoint
+    }))) : [];
+    function playAt(id) {
+      if (id === 'path/bush') {
+        react(id, 'rustle');
+        doveAt = performance.now();
+        trailDoves(elements.get(id).obj.position);
+      }
+      if (id === 'path/game') {
+        seated = !seated;
+        kneeling = seated;
+        if (seated && leader) {
+          const [x, z] = elements.get(id).marker.pos;
+          leader.rotation.y = Math.atan2(x - leader.position.x, z - .9 - leader.position.z);
+        }
+      }
+    }
+
+    const clipPlanes = region && Array.from({ length: 6 }, () => new T.Plane());
+    const drawSphere = region && new T.Sphere();
+    const viewMatrix = region && new T.Matrix4();
+    const drawPosition = region && new T.Vector3();
+    const drawCosts = new Map();
+    const culled = [];
+    function inView(obj) {
+      if (obj.isSprite) {
+        drawSphere.center.set(0, 0, 0);
+        drawSphere.radius = Math.SQRT1_2;
+      } else {
+        const source = obj.isInstancedMesh ? obj : obj.geometry;
+        if (!source.boundingSphere) source.computeBoundingSphere();
+        drawSphere.copy(source.boundingSphere);
+      }
+      drawSphere.applyMatrix4(obj.matrixWorld);
+      return clipPlanes.every(plane => plane.distanceToPoint(drawSphere.center) >= -drawSphere.radius);
+    }
+    const passCount = material => !material?.visible ? 0 :
+      material.transparent && material.side === T.DoubleSide && !material.forceSinglePass ? 2 : 1;
+    function countDraws(obj, candidate) {
+      if (!obj.visible) return 0;
+      const optional = Number.isFinite(obj.userData.drawPriority) ? obj : candidate;
+      let calls = 0;
+      if (obj.layers.test(camera.layers) && (obj.isMesh || obj.isPoints || obj.isLine || obj.isSprite) &&
+          (!obj.frustumCulled || inView(obj))) {
+        if (Array.isArray(obj.material)) {
+          for (const group of obj.geometry.groups) calls += passCount(obj.material[group.materialIndex]);
+        } else calls = passCount(obj.material);
+        if (optional && calls) drawCosts.set(optional, (drawCosts.get(optional) || 0) + calls);
+      }
+      for (const child of obj.children) calls += countDraws(child, optional);
+      return calls;
+    }
+    function renderScene() {
+      if (region) {
+        scene.updateMatrixWorld();
+        camera.updateMatrixWorld();
+        const clip = viewMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).elements;
+        for (let i = 0; i < clipPlanes.length; i++) {
+          const a = Math.floor(i / 2), sign = i % 2 ? -1 : 1;
+          clipPlanes[i].setComponents(clip[3] + sign * clip[a], clip[7] + sign * clip[a + 4],
+            clip[11] + sign * clip[a + 8], clip[15] + sign * clip[a + 12]).normalize();
+        }
+        drawCosts.clear();
+        let calls = countDraws(scene);
+        if (calls > 148) {
+          const pos = walkPosition();
+          const order = [...drawCosts].map(([obj, calls]) => {
+            drawPosition.setFromMatrixPosition(obj.matrixWorld);
+            return { obj, calls, score: Math.hypot(drawPosition.x - pos.x, drawPosition.z - pos.z) - obj.userData.drawPriority };
+          }).sort((a, b) => b.score - a.score);
+          for (const { obj, calls: saved } of order) {
+            if (calls <= 148) break;
+            obj.visible = false; culled.push(obj); calls -= saved;
+          }
+        }
+      }
+      renderer.render(scene, camera);
+      peakCalls = Math.max(peakCalls, renderer.info.render.calls);
+      for (const obj of culled) obj.visible = true;
+      culled.length = 0;
+    }
 
     function resize() {
       const width = container.clientWidth, height = container.clientHeight;
@@ -4006,22 +4605,27 @@
         item.position.y = .32; obj.add(item);
       }
       scene.add(obj);
+      if (region) obj.userData.drawPriority = 38;
       const label = document.createElement('button');
       label.type = 'button'; label.className = 'f3d-explore-label';
-      label.style.setProperty('--label-half', Math.min(78, 13 + String(marker.title).length * 5.5) + 'px');
+      label.style.setProperty('--label-half', (marker.type === 'house-door' ? Math.min(78, 13 + String(marker.title).length * 5.5) : 18) + 'px');
       label.style.setProperty('--marker', color);
+      label.dataset.action = marker.id;
+      label.dataset.kind = marker.type;
       if (adventure) {
-        label.dataset.action = marker.id;
-        label.dataset.kind = marker.type;
         label.dataset.priority = marker.priority || 'optional';
         if (marker.discovered) label.dataset.discovered = 'true';
         if (marker.isNew) label.dataset.isNew = 'true';
       }
-      const sigil = document.createElement('i'); sigil.textContent = marker.symbol;
+      label.setAttribute('aria-label', actionText(marker));
+      const sigil = document.createElement('i'); sigil.textContent =
+        ({ look: '👀', touch: '✋', try: '🛠', person: '💬' })[marker.type] || marker.symbol;
       const caption = document.createElement('span'); caption.textContent = marker.title;
       label.append(sigil, caption);
       label.addEventListener('click', () => {
-        if (!label.hidden) moveTo(...marker.pos, marker.id);
+        if (label.hidden) return;
+        if (marker.type === 'house-door') moveTo(...marker.pos, marker.id);
+        else activateMarker(marker.id);
       });
       hud.append(label);
       if (marker.moving && followOrigin) {
@@ -4044,6 +4648,19 @@
     function spawnPickup(id, pos) {
       removeMarker(id); addMarker({ id, pos, title: '반짝이는 물건', symbol: '✦', type: 'find' });
     }
+    function findPath(from, to, tolerance = .07) {
+      if (!region) return explorePath(from, to, open, edge);
+      const margin = 19;
+      const [ox, oz] = region.origin, [halfX, halfZ] = region.bounds;
+      const bounds = [-halfX - ox, -halfZ - oz, halfX - ox, halfZ - oz];
+      const local = [Math.max(bounds[0], Math.min(from[0], to[0]) - margin),
+        Math.max(bounds[1], Math.min(from[1], to[1]) - margin),
+        Math.min(bounds[2], Math.max(from[0], to[0]) + margin),
+        Math.min(bounds[3], Math.max(from[1], to[1]) + margin)];
+      const path = explorePath(from, to, open, edge, local), last = path.at(-1) || from;
+      if (Math.hypot(to[0] - last[0], to[1] - last[1]) <= tolerance || !open(...to)) return path;
+      return explorePath(from, to, open, edge, bounds);
+    }
     function destinationRoute(from, x, z, markerId = null) {
       const [tx, tz] = [clamp(x, -edge, edge), clamp(z, -edge, edge)];
       let end = [tx, tz];
@@ -4057,13 +4674,13 @@
         const options = tries.filter(pt => open(...pt))
           .sort((a, b) => Math.hypot(a[0] - from[0], a[1] - from[1]) - Math.hypot(b[0] - from[0], b[1] - from[1]));
         for (const option of options) {
-          const path = explorePath(from, option, open, edge);
+          const path = findPath(from, option);
           const last = path.at(-1) || from;
           if (Math.hypot(last[0] - tx, last[1] - tz) < enterDistance) return path;
         }
         if (options.length) end = options[0];
       }
-      return explorePath(from, end, open, edge);
+      return findPath(from, end, markerId ? enterDistance : .07);
     }
     function moveTo(x, z, markerId = null) {
       const p = walkPosition();
@@ -4122,7 +4739,7 @@
       const lead = first && Math.hypot(first[0] - p.x, first[1] - p.z);
       const stop = lead ? [lerp(p.x, first[0], Math.min(1, 1.55 / lead)), lerp(p.z, first[1], Math.min(1, 1.55 / lead))] : null;
       const from = [player.position.x, player.position.z];
-      const leadPath = stop ? explorePath(from, stop, open, edge) : [];
+      const leadPath = stop ? findPath(from, stop) : [];
       const segments = [];
       let distance = 0, previousLead = from;
       for (const point of leadPath) {
@@ -4170,7 +4787,15 @@
       const rect = canvas.getBoundingClientRect();
       pointerPos.set((event.clientX - rect.left) / rect.width * 2 - 1, 1 - (event.clientY - rect.top) / rect.height * 2);
       raycaster.setFromCamera(pointerPos, camera);
-      const hit = raycaster.intersectObject(world.ground)[0]?.point;
+      const propHits = nearbyActions.flatMap(entry => {
+        if (!canActivate(entry)) return [];
+        const actor = world.residents?.get(entry.marker.id)?.actor;
+        const models = [entry.sign, entry.item, actor].filter(child => child?.visible);
+        const hit = raycaster.intersectObjects(models, true)[0];
+        return hit ? [{ id: entry.marker.id, distance: hit.distance }] : [];
+      }).sort((a, b) => a.distance - b.distance);
+      if (propHits.length && activateMarker(propHits[0].id)) return;
+      const hit = raycaster.intersectObject(world.ground, true)[0]?.point;
       if (hit) {
         const raised = world.climbs?.length && findRaisedTap();
         moveTo(raised?.[0] ?? hit.x, raised?.[1] ?? hit.z);
@@ -4285,6 +4910,7 @@
       for (let i = 0; i < 5; i++) {
         const bird = world.models.animal('비둘기');
         bird.position.copy(origin).add(new T.Vector3((i - 2) * .34, .4, (i % 2) * .32));
+      if (region) bird.userData.drawPriority = 16;
         world.birds.push({ bird, home: bird.position.clone(), i });
         scene.add(bird);
       }
@@ -4295,8 +4921,8 @@
       const from = resident.actor.position.clone();
       resident.travel = { start: performance.now(), from, to: new T.Vector3(...onGround(...pos)), lift };
     }
-    function restoreAbility(kind) {
-      const feature = world.features?.get(kind);
+    function restoreAbility(kind, key = kind) {
+      const feature = world.features?.get(key);
       if (!feature || feature.userData.cleared) return;
       feature.userData.cleared = true;
       if (kind === 'push') feature.position.x += 1.7;
@@ -4309,10 +4935,10 @@
       escort = key ? world.residents?.get(key) : null;
       if (escort) escort.actor.position.copy(walkPosition()).add(new T.Vector3(-.9, 0, 1.1));
     }
-    function revealAbility(kind, destination) {
+    function revealAbility(kind, destination, key = kind) {
       if (!adventure) return;
       const p = player.position;
-      const feature = world.features.get(kind);
+      const feature = world.features.get(key);
       const start = performance.now();
       abilityEffect = { kind, start, from: p.clone(), to: destination && new T.Vector3(...onGround(...destination)), feature };
       if (kind === 'smell' && destination) {
@@ -4338,6 +4964,7 @@
       }
       if (reduced && kind === 'push' && feature) feature.position.x += 1.7;
     }
+    const sheepTopSpeed = region ? 6.8 : 5.2;
     function followLeader(p, t, now, delta) {
       const s = player.position;
       const last = trail.at(-1);
@@ -4349,7 +4976,7 @@
       const distance = Math.hypot(dx, dz), near = Math.hypot(p.x - s.x, p.z - s.z);
       let trotting = false;
       // 멀수록 빨리, 가까워지면 천천히 — 속도를 부드럽게 올리고 내린다(갑자기 서거나 튀지 않게)
-      const chase = (near > 1.36 || trail.length > 3) && distance > .38 ? clamp((near - 1.1) * 1.6, .9, 5.2) : 0;
+      const chase = (near > 1.36 || trail.length > 3) && distance > .38 ? clamp((near - 1.1) * 1.6, .9, sheepTopSpeed) : 0;
       sheepSpeed += (chase - sheepSpeed) * Math.min(1, delta * (chase > sheepSpeed ? 4.5 : 6.5));
       if (sheepSpeed > .04 && distance > .05) {
         const step = Math.min(distance, delta * sheepSpeed);
@@ -4566,7 +5193,7 @@
       for (const { ring } of elements.values()) { hiddenObjs.push([ring, ring.visible]); ring.visible = false; }
       camera.position.set(focus.x + 1.45, focus.y + 1.32, focus.z + 2.05);
       camera.lookAt(focus.x, focus.y + .48, focus.z);
-      renderer.render(scene, camera);
+      renderScene();
       const out = document.createElement('canvas');
       out.width = 220; out.height = 150;
       const cropW = Math.min(canvas.width, canvas.height * out.width / out.height);
@@ -4574,7 +5201,7 @@
       out.getContext('2d').drawImage(canvas, (canvas.width - cropW) / 2, (canvas.height - cropH) / 2, cropW, cropH, 0, 0, out.width, out.height);
       camera.position.copy(oldPos); camera.quaternion.copy(oldQuat);
       for (const [obj, vis] of hiddenObjs) obj.visible = vis;
-      renderer.render(scene, camera);
+      renderScene();
       return out.toDataURL('image/jpeg', .78);
     }
 
@@ -4589,8 +5216,10 @@
       const requested = waitForTarget;
       const allowed = handlers.canInteract?.() !== false;
       const step = allowed ? route[0] : null;
+      const running = region && joystick?.pointer != null && Math.hypot(joystick.x, joystick.y) >= .97;
+      const walkSpeed = running ? 4.08 : 2.55;
       // 이동: 원하는 속도로 부드럽게 가속·감속(0.1초 남짓), 방향도 천천히 돈다
-      const maxSpeed = adventure ? 2.55 : 3.45;
+      const maxSpeed = adventure ? walkSpeed : 3.45;
       let wantX = 0, wantZ = 0;
       const sheepX = player.position.x, sheepZ = player.position.z;
       const stickOn = joystick && Math.hypot(joystick.x, joystick.y) > .14 && allowed;
@@ -4645,6 +5274,12 @@
           if (foot !== footIndex) { footIndex = foot; if (walking && now > nextStepSound) { handlers.onFootstep?.(); nextStepSound = now + 240; } }
         }
       }
+      if (seated && walking) seated = kneeling = false;
+      if (seated && guide) {
+        const pose = leader.userData.gait;
+        pose.rig.position.y = -.55;
+        pose.feet.forEach(foot => { foot.position.z = .42; });
+      }
       if (step && requested !== 'photo' && requested !== 'activity') kneeling = false;
       const sleep = kneeling;
       if (world.rearPath) world.rearPath.visible = options.progress?.[options.place] === 'done';
@@ -4673,16 +5308,27 @@
       if (!reduced) animateWings(player, t);
       applyDiscoverFrame(u, t, now);
       updateScentEffect(now);
+      if (region) {
+        const next = world.viewpoints.find(({ pos }) => Math.hypot(pos[0] - p.x, pos[1] - p.z) < 2.0 &&
+          Math.abs(world.height(...pos) - p.y) < .8);
+        if (vista !== next) { vista = next; vistaSince = now; }
+        const show = !!vista && !walking && now - vistaSince > 380;
+        if (show && vistaBlend < .027 && activePointer == null) {
+          const yaw = Math.atan2(p.x + region.origin[0], p.z + region.origin[1]);
+          azWant = az + Math.atan2(Math.sin(yaw - az), Math.cos(yaw - az));
+        }
+        vistaBlend = reduced ? Number(show) : lerp(vistaBlend, Number(show), Math.min(1, delta * 1.8));
+      }
       if (!applyInspectCamera(now, delta)) {
         const gazing = reaction?.kind === 'star' && now - reaction.start < 2800;
         const cameraYaw = az;
-        const lead = room ? .25 : adventure ? 1.8 : 1.36;
+        const lead = room ? .25 : adventure ? 1.8 + vistaBlend * 3.2 : 1.36;
         spot.set(p.x - (adventure ? Math.sin(cameraYaw) : 0) * lead, p.y + (room ? .62 : gazing ? 3.55 : adventure ? 1.58 : 1.28),
           p.z - (adventure ? Math.cos(cameraYaw) * lead : lead));
         target.lerp(spot, firstFrame || reduced ? 1 : Math.min(1, delta * 3.6));
         az = lerp(az, azWant, Math.min(1, delta * 7));
-        const distance = room ? 4.9 : adventure ? 9.6 : 8;
-        camPosition.set(target.x + Math.sin(az) * distance, target.y + (room ? 4.1 : gazing ? 2.1 : adventure ? 4.45 : 3.85), target.z + Math.cos(az) * distance);
+        const distance = room ? 4.9 : adventure ? 9.6 + vistaBlend * 10.6 : 8;
+        camPosition.set(target.x + Math.sin(az) * distance, target.y + (room ? 4.1 : gazing ? 2.1 : adventure ? 4.45 + vistaBlend * 12.0 : 3.85), target.z + Math.cos(az) * distance);
         camera.position.copy(camPosition);
         aim.copy(target);
         camera.lookAt(aim); camera.updateMatrixWorld();
@@ -4691,6 +5337,7 @@
         group.visible = side * camera.position[axis] < world.bounds[axis] - .13;
       }
       firstFrame = false;
+      const actions = [];
       for (const v of elements.values()) {
         const { marker, obj, label, item, ring } = v;
         const distance = Math.hypot(marker.pos[0] - p.x, marker.pos[1] - p.z);
@@ -4715,22 +5362,39 @@
           obj.rotation.z = Math.sin((now - reaction.start) * .046) * .16 * Math.max(0, 1 - (now - reaction.start) / 460);
         }
         const resident = world.residents?.get(marker.id);
-        label.hidden = !!inspectState || !visible || marker.lit || !project(label, obj.position, resident ? (marker.actor ? 2.05 * resident.actor.scale.y : .62) : v.sign ? 1.45 : .76);
+        const door = marker.type === 'house-door';
+        const actionable = allowed && !inspectState && visible && canActivate(v, p);
+        const labelY = resident ? (marker.actor ? 2.05 * resident.actor.scale.y : .62) : v.sign ? 1.45 : .76;
+        label.hidden = !(actionable || (door && allowed && !inspectState && visible)) || !project(label, obj.position, labelY);
+        ring.visible ||= actionable && marker.type !== 'reflection';
+        ring.material.opacity = actionable ? 1 : marker.discovered ? .32 : .58;
         ring.scale.setScalar(reduced ? 1 : 1 + Math.sin(t * 2.8 + obj.position.x) * .084);
+        if (actionable) {
+          elementPos.copy(obj.position); elementPos.y += labelY; elementPos.project(camera);
+          const penalty = elementPos.z > 1 || elementPos.z < -1 ? 5 : Math.min(5, Math.abs(elementPos.x));
+          v.actionRank = distance + penalty * 1.25;
+          actions.push(v);
+        }
         if (item && !reduced && marker.type !== 'reflection') { item.rotation.y = t * 1.6; item.position.y = .35 + Math.sin(t * 2.8) * .11; }
         if (distance >= enterDistance + .3) v.near = false;
-        if ((step || walking || requested) && !marker.lit && !v.near && distance <= enterDistance && (!requested || requested === marker.id) && allowed) {
+        if (door && (step || walking || requested) && !marker.lit && !v.near && distance <= enterDistance && (!requested || requested === marker.id) && allowed) {
           v.near = true;
           waitForTarget = null;
           route = []; goal.visible = false;
           leaderVel.set(0, 0);
-          if (marker.moving) followOrigin = obj.position.clone();
-          if (marker.type === 'exit') handlers.onExit?.(marker.place);
-          else handlers.onReach?.(marker.id);
+          handlers.onReach?.(marker.id);
           if (stopped) return;
           break;
         }
       }
+      nearbyActions = actions.sort((a, b) => a.actionRank - b.actionRank);
+      if (!manualAction || !nearbyActions.some(entry => entry.marker.id === chosenAction)) {
+        manualAction = false;
+        chosenAction = nearbyActions[0]?.marker.id || '';
+      }
+      renderActions();
+      world.update?.(p.x, p.z);
+      pathPlay?.update(p, now, t);
       checkNearbyDiscover(p);
       handlers.onExploreTick?.(now);
       if (waypoint) {
@@ -4764,7 +5428,7 @@
         }
       }
       if (climate) weatherFrame(climate, p, t, small || resolution < pixelRatio);
-      renderer.render(scene, camera);
+      renderScene();
       if (elapsed > 0 && elapsed < 250) { frames++; frameTime += elapsed; }
       if (!lastMetric) lastMetric = now;
       if (now - lastMetric > 1400) {
@@ -4784,20 +5448,28 @@
       climate?.rain?.material.dispose();
       for (const id of elements.keys()) removeMarker(id);
       groundRing.dispose(); crystal.dispose(); discoverPropMat.dispose();
-      disposeFigure(scene); world.models?.dispose(); world.ground.material.dispose(); world.dome?.material.dispose();
+      disposeFigure(scene); world.models?.dispose();
+      if (world.dispose) world.dispose();
+      else world.ground.material.dispose();
+      world.dome?.material.dispose();
       scene.traverse(obj => { if (obj.isPoints || world.fx.some(f => f.cloud === obj)) obj.material.dispose(); });
       renderer.dispose(); renderer.forceContextLoss(); wrap.remove();
     };
-    return { setMarkers, spawnPickup, react, say, setCarry, kneel, setWaypoint, setEscort, revealAbility, restoreAbility, moveAnimal, moveInfo,
+    return { setMarkers, scenicMarkers, playAt, spawnPickup, react, say, setCarry, kneel, setWaypoint, setEscort, revealAbility, restoreAbility, moveAnimal, moveInfo,
       inspect, endInspect, touchProp, sheepReact, snapProp, routeInfo, scentAngle, showScent,
-      showResident(id, visible) { const resident = world.residents?.get(id); if (resident) resident.hidden = !visible; }, position: () => [walkPosition().x, walkPosition().z], tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo() {
+      showResident(id, visible) { const resident = world.residents?.get(id); if (resident) resident.hidden = !visible; }, position: () => [walkPosition().x, walkPosition().z], tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo(viewpoint) {
       const old = camera.position.clone();
       const oldQuaternion = camera.quaternion.clone();
       const p = player.position, oldFacing = player.rotation.y;
       const masks = Array.from(elements.values(), ({ obj }) => [obj, obj.visible]);
       if (leader) masks.push([leader, leader.visible]);
       for (const [obj] of masks) obj.visible = false;
-      if (layout.christmas) {
+      if (viewpoint) {
+        const pos = walkPosition();
+        aim.set(pos.x - Math.sin(az) * 6, pos.y + .4, pos.z - Math.cos(az) * 6);
+        camera.position.set(pos.x + Math.sin(az) * 15, pos.y + 12.6, pos.z + Math.cos(az) * 15);
+        camera.lookAt(aim);
+      } else if (layout.christmas) {
         camera.position.set(p.x + 4.15, p.y + 2.9, p.z + 4.1);
         camera.lookAt(p.x - .05, p.y + .9, p.z - 1.38);
       } else {
@@ -4805,7 +5477,7 @@
         camera.lookAt(p.x, p.y + .98, p.z);
         player.rotation.y = .17;
       }
-      renderer.render(scene, camera);
+      renderScene();
       const output = document.createElement('canvas');
       output.width = 330; output.height = 360;
       const crop = Math.min(canvas.width, canvas.height * output.width / output.height);
@@ -4814,13 +5486,14 @@
       camera.position.copy(old); camera.quaternion.copy(oldQuaternion);
       player.rotation.y = oldFacing;
       for (const [obj, visible] of masks) obj.visible = visible;
-      renderer.render(scene, camera);
+      renderScene();
       return output.toDataURL('image/jpeg', .83);
     }, focus(id) {
       const marker = elements.get(id)?.marker;
       if (marker) moveTo(...marker.pos, id);
-    }, destroy, metrics: () => ({ ...metrics }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors,
-      destinationRoute, time: climate?.time, weather: climate?.weather, stalls: climate?.stalls, rainDraw: () => climate?.rain?.geometry.drawRange.count || 0, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance } };
+    }, destroy, metrics: () => ({ ...metrics, peakCalls }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors,
+      destinationRoute, time: climate?.time, weather: climate?.weather, stalls: climate?.stalls, rainDraw: () => climate?.rain?.geometry.drawRange.count || 0, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance, region, viewpoints: world.viewpoints, vistaBlend: () => vistaBlend, seated: () => seated, speed: () => leaderSpeed, animals: pathPlay?.animals,
+      turnCamera(radians) { azWant = radians; } } };
   }
 
   // ---------- 걸음새 (Claude) ----------
