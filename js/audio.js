@@ -470,11 +470,15 @@
   const vcache = {};
   window.VOICES_EXTRA = [
     'tr-1', 'tr-2', 'tr-3', 'tr-4', 'tr-5', 'tr-6', 'init-1', 'code-1',
-    'lamb-1', 'lamb-2', 'field-1', 'field-2', 'field-3', 'field-4', 'field-5', 'field-6', 'field-7'
+    'lamb-1', 'lamb-2', 'field-1', 'field-2', 'field-3', 'field-4', 'field-5', 'field-6', 'field-7',
+    'place-1-0', 'place-1-1', 'place-1-2', 'place-1-3', 'place-1-4', 'place-1-5', 'place-1-6',
+    'place-2-0', 'place-2-1', 'place-2-2', 'place-2-3', 'place-2-4', 'place-2-5', 'place-2-6',
+    'place-3-0', 'place-3-1', 'place-3-2', 'place-3-3', 'place-3-4', 'place-3-5', 'place-3-6',
+    'place-4-0', 'place-4-1', 'place-4-2', 'place-4-3', 'place-4-4', 'place-end'
   ];
   function preload(name) {
     if (!ctx) return Promise.resolve(null);
-    if (/^(tr|init|code|lamb|field)-/.test(name) && !window.VOICES_EXTRA.includes(name)) return Promise.resolve(null);
+    if (/^(tr|init|code|lamb|field|place)-/.test(name) && !window.VOICES_EXTRA.includes(name)) return Promise.resolve(null);
     if (!vcache[name]) {
       vcache[name] = fetch('audio/' + name + '.mp3').then(r => r.ok ? r.arrayBuffer() : null)
         .then(b => b && new Promise((res, rej) => ctx.decodeAudioData(b, res, rej))).catch(() => null);
@@ -492,7 +496,10 @@
     try { g.gain.setTargetAtTime(0, ctx.currentTime, 0.08); s.stop(ctx.currentTime + 0.4); } catch (e) { /* 무시 */ }
   }
   async function voice(name) {
-    if (!on() || !ctx || ctx.state !== 'running') return null;
+    if (!on()) return null;
+    if (!ctx) init();
+    if (ctx && ctx.state !== 'running') { try { await ctx.resume(); } catch (e) { /* 무시 */ } }
+    if (!ctx || ctx.state !== 'running') return null;
     const request = ++voiceRequest;
     const buf = await preload(name);
     if (!buf || request !== voiceRequest || !on() || ctx.state !== 'running') return null;

@@ -613,3 +613,22 @@ html.no-motion .field-wool-unit.bump { animation: none; }
 .field-wardrobe-actions .btn, .field-wardrobe-card.btn { margin: 0; min-height: 42px; padding: 7px 10px; }
 .field-wardrobe-actions .btn { flex: 1; }
 .field-wardrobe-card { width: 100%; font-size: 13px; }
+.field-wardrobe-options [data-wear-slot="craft"] { flex: 1.45; white-space: nowrap; }
+.field-craft-only .field-wardrobe-actions { display: none; }
+.field-wardrobe-sheet.field-craft-only[open] {
+  grid-template-rows: auto auto auto minmax(80px, 1fr) auto auto;
+}
+.field-craft-list { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+.field-craft-recipe {
+  display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 7px;
+  padding: 7px 8px; border: 1px solid #ffffff24; border-radius: 9px; background: #ffffff08;
+}
+.field-craft-icon { font-size: 21px; text-align: center; }
+.field-craft-recipe strong { display: block; color: #fff1d4; font-size: 13px; }
+.field-craft-recipe small { display: block; color: #dfd1e9; font-size: 11px; line-height: 1.4; }
+.field-craft-recipe button.btn { min-height: 42px; padding: 5px 7px; margin: 0; font-size: 12px; white-space: nowrap; }
+.field-craft-recipe button:disabled { opacity: .57; }
+@media (prefers-reduced-motion: no-preference) {
+  :root:not(.no-motion) .field-craft-spin { animation: field-craft-spin .9s ease-in-out; }
+}
+@keyframes field-craft-spin { from { transform: rotateY(0); } to { transform: rotateY(360deg); } }

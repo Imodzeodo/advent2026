@@ -414,6 +414,7 @@
     if (id === 'APPOINT') return '그밤-등불지기-임명장.png';
     if (id === 'EXPLORE') return '그밤-탐험-도전장.png';
     if (id === 'JOURNEY') return '그밤-27일의-여정.png';
+    if (id === 'WALKED') return '그밤-그길을-함께-걸었어.png';
     if (id === 'WARDROBE') return '그밤-내-양-옷장.png';
     if (id === 'FIELD') return '그밤-나의-들판.png';
     if (id === 'PATROL') return `그밤-순찰-${Core.nowKST().date}.png`;
@@ -681,7 +682,7 @@
     return cv;
   }
 
-  async function drawDiscoverNote(item, sheep, thumbUrl, sheepLine = '') {
+  async function drawDiscoverNote(item, sheep, thumbUrl, sheepLine = '', shareCode = '') {
     const W = 1080, H = 1350, x = W / 2;
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
@@ -695,54 +696,147 @@
     ctx.fillText(item.title, x, 224, 920);
     // 3D 스냅숏 또는 아이콘 프레임
     ctx.save();
-    rr(ctx, 170, 272, 740, 440, 28);
+    rr(ctx, 170, 268, 740, 424, 28);
     ctx.fillStyle = '#242342'; ctx.fill();
     ctx.strokeStyle = '#f2cc8499'; ctx.lineWidth = 4; ctx.stroke();
     ctx.clip();
     const snap = thumbUrl ? await loadImg(thumbUrl).catch(() => null) : null;
     if (snap) {
-      const ratio = Math.max(740 / snap.width, 440 / snap.height);
+      const ratio = Math.max(740 / snap.width, 424 / snap.height);
       const dw = snap.width * ratio, dh = snap.height * ratio;
-      ctx.drawImage(snap, 170 + (740 - dw) / 2, 272 + (440 - dh) / 2, dw, dh);
+      ctx.drawImage(snap, 170 + (740 - dw) / 2, 268 + (424 - dh) / 2, dw, dh);
     } else {
       ctx.font = `700 180px ${SANS}`; ctx.fillStyle = '#ffe5a8';
-      ctx.fillText(item.icon || '✦', x, 550);
+      ctx.fillText(item.icon || '✦', x, 540);
     }
     ctx.restore();
     // 2줄 사실 설명
-    ctx.fillStyle = '#f8ecd4'; ctx.font = `500 38px ${SANS}`;
+    ctx.fillStyle = '#f8ecd4'; ctx.font = `500 37px ${SANS}`;
     const factLines = wrap(ctx, item.fact, 880).slice(0, 4);
-    factLines.forEach((line, i) => ctx.fillText(line, x, 790 + i * 58));
-    let y = 790 + factLines.length * 58 + 26;
+    factLines.forEach((line, i) => ctx.fillText(line, x, 756 + i * 54));
+    let y = 756 + factLines.length * 54 + 22;
     if (item.ref) {
       const vs = window.Bible?.verses(item.ref) || [];
-      ctx.fillStyle = '#ffe09e'; ctx.font = `700 32px ${SERIF}`;
+      ctx.fillStyle = '#ffe09e'; ctx.font = `700 31px ${SERIF}`;
       ctx.fillText(Bible.full(item.ref), x, y, 880);
       if (vs[0]?.text) {
-        ctx.fillStyle = '#dfd2ea'; ctx.font = `400 28px ${SERIF}`;
+        ctx.fillStyle = '#dfd2ea'; ctx.font = `400 27px ${SERIF}`;
         const vLines = wrap(ctx, '“' + vs[0].text + '”', 860).slice(0, 2);
-        vLines.forEach((line, i) => ctx.fillText(line, x, y + 44 + i * 42));
+        vLines.forEach((line, i) => ctx.fillText(line, x, y + 40 + i * 38));
       }
     }
     // 내 양의 한마디
     const portrait = sheep && await portraitImg(sheep.species, sheep);
+    const boxY = shareCode ? 1052 : 1085;
     ctx.save();
-    rr(ctx, 110, 1085, 860, 138, 22);
+    rr(ctx, 110, boxY, 860, 134, 22);
     ctx.fillStyle = '#2d2848cc'; ctx.fill();
     ctx.strokeStyle = '#f0cc8544'; ctx.lineWidth = 2; ctx.stroke();
     ctx.restore();
-    if (portrait) ctx.drawImage(portrait, 130, 1097, 114, 114);
+    if (portrait) ctx.drawImage(portrait, 130, boxY + 11, 112, 112);
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffd991'; ctx.font = `700 27px ${SANS}`;
-    ctx.fillText((sheep?.name || '내 양') + '의 한마디', 264, 1138);
-    ctx.fillStyle = '#f6e9d5'; ctx.font = `500 29px ${SANS}`;
+    ctx.fillText((sheep?.name || '내 양') + '의 한마디', 264, boxY + 50);
+    ctx.fillStyle = '#f6e9d5'; ctx.font = `500 28px ${SANS}`;
     const sLines = wrap(ctx, sheepLine || item.sheep || '', 670).slice(0, 2);
-    sLines.forEach((line, i) => ctx.fillText(line, 264, 1178 + i * 38));
+    sLines.forEach((line, i) => ctx.fillText(line, 264, boxY + 88 + i * 36));
     ctx.textAlign = 'center';
+    if (shareCode) {
+      ctx.save();
+      rr(ctx, 290, 1202, 500, 52, 26);
+      ctx.fillStyle = '#3b315ee6'; ctx.fill();
+      ctx.strokeStyle = '#ffd99188'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = '#ffe5a8'; ctx.font = `700 27px ${SANS}`;
+      ctx.fillText(`🤝 나눔 코드 · ${shareCode}`, x, 1237, 460);
+    }
     ctx.fillStyle = '#dfc6a4'; ctx.font = `500 28px ${SANS}`;
-    ctx.fillText([Core.data.nickname || '친구', sheep?.name].filter(Boolean).join(' · '), x, 1295, 900);
+    ctx.fillText([Core.data.nickname || '친구', sheep?.name].filter(Boolean).join(' · '), x, 1296, 900);
+    ctx.restore();
     return cv;
   }
 
-  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawDiscoverNote, drawPatrol, drawGift, drawGrowth, drawWardrobe, drawExploreChallenge, drawJourney, share, toBlob, fileName, STYLE, cardNo };
+  async function drawWalkedTogether(summary = {}) {
+    const W = 1080, H = 1350, x = W / 2;
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, W, H, STYLE.end.frame, 1225);
+    const sheep = summary.sheep || window.Field?.mainCare()?.sheep || { name: '내 양', species: 'cotton', level: 10 };
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffe3a3'; ctx.font = `700 34px ${SANS}`;
+    ctx.fillText('그 밤을 향하여 · 성탄 엔딩', x, 114);
+    ctx.fillStyle = '#fff6e0'; ctx.font = `700 68px ${SERIF}`;
+    ctx.fillText('그 길을 함께 걸었어', x, 198, 920);
+
+    // 마구간 앞 내 양 장면 프레임
+    ctx.save();
+    rr(ctx, 90, 236, 900, 420, 28);
+    ctx.fillStyle = '#191833'; ctx.fill();
+    ctx.strokeStyle = '#ffd99188'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.clip();
+    const snap = summary.stableShot ? await loadImg(summary.stableShot).catch(() => null) : null;
+    const portrait = await portraitImg(sheep.species, sheep);
+    if (snap) {
+      const ratio = Math.max(900 / snap.width, 420 / snap.height);
+      const dw = snap.width * ratio, dh = snap.height * ratio;
+      ctx.drawImage(snap, 90 + (900 - dw) / 2, 236 + (420 - dh) / 2, dw, dh);
+    } else {
+      const g = ctx.createRadialGradient(x, 380, 10, x, 380, 320);
+      g.addColorStop(0, 'rgba(255,224,140,.42)'); g.addColorStop(1, 'rgba(25,24,51,0)');
+      ctx.fillStyle = g; ctx.fillRect(90, 236, 900, 420);
+      if (portrait) ctx.drawImage(portrait, x - 165, 255, 330, 330);
+    }
+    ctx.fillStyle = grad(ctx, 0, 520, 0, 656, ['rgba(12,10,28,0)', 'rgba(12,10,28,.85)']);
+    ctx.fillRect(90, 520, 900, 136);
+    ctx.fillStyle = '#fff5d6'; ctx.font = `700 34px ${SERIF}`;
+    ctx.fillText('“그 밤을 향하여 — 함께 걸어 줘서 고마워”', x, 622, 840);
+    ctx.restore();
+
+    // 내 양 이름·입은 옷 모습 배너
+    ctx.save();
+    rr(ctx, 90, 678, 900, 88, 20);
+    ctx.fillStyle = '#2a2448cc'; ctx.fill();
+    ctx.strokeStyle = '#f2cc8455'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+    if (portrait) ctx.drawImage(portrait, 108, 684, 76, 76);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ffe09e'; ctx.font = `700 30px ${SANS}`;
+    ctx.fillText(`${sheep.name || '내 양'} · ${summary.speciesName || '양'}`, 200, 718, 760);
+    ctx.fillStyle = '#e9ddf2'; ctx.font = `400 25px ${SANS}`;
+    ctx.fillText(`차림: ${summary.wearText || '복슬복슬 기본 털'}`, 200, 750, 760);
+
+    // 기록 한 장 (6칸 그리드)
+    const cells = [
+      ['함께한 날 수', `${summary.days ?? 1}일`],
+      ['모은 발견 수', `${summary.found ?? 0}/${summary.total ?? 52}`],
+      ['주제별 완성', `${summary.themesDone ?? 0}/6 주제`],
+      ['만든 꾸미기', summary.craftedText || '0개'],
+      ['냄새 맡은 횟수', `${summary.sniffCount ?? 0}번`],
+      ['가장 많이 들른 장소', summary.topPlace || '밤의 성전 뜰']
+    ];
+    cells.forEach(([label, val], idx) => {
+      const col = idx % 2, row = Math.floor(idx / 2);
+      const cx = 90 + col * 460, cy = 786 + row * 136, cw = 440, ch = 120;
+      ctx.save();
+      rr(ctx, cx, cy, cw, ch, 18);
+      ctx.fillStyle = '#211d3bcc'; ctx.fill();
+      ctx.strokeStyle = '#ffd99144'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.restore();
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#d8c7ea'; ctx.font = `500 24px ${SANS}`;
+      ctx.fillText(label, cx + 26, cy + 44, cw - 52);
+      ctx.fillStyle = '#fff4d4'; ctx.font = `700 32px ${SANS}`;
+      ctx.fillText(String(val), cx + 26, cy + 90, cw - 52);
+    });
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f2d9b1'; ctx.font = `600 30px ${SANS}`;
+    ctx.fillText([Core.data.nickname || '친구', Core.data.ban, sheep.name].filter(Boolean).join(' · '), x, 1268, 900);
+    ctx.restore();
+    return cv;
+  }
+
+  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawDiscoverNote, drawWalkedTogether, drawPatrol, drawGift, drawGrowth, drawWardrobe, drawExploreChallenge, drawJourney, share, toBlob, fileName, STYLE, cardNo };
 })();
