@@ -84,7 +84,7 @@
     if (!matCache.has(key)) {
       matCache.set(key, opt.basic
         ? new T.MeshBasicMaterial({ color, transparent: !!opt.transparent, opacity: opt.opacity ?? 1, depthWrite: !opt.transparent })
-        : new T.MeshStandardMaterial({ color, flatShading: true, roughness: opt.rough ?? 0.95, metalness: opt.metal ?? 0, emissive: opt.emissive || '#000000', emissiveIntensity: opt.ei ?? 1, transparent: !!opt.transparent, opacity: opt.opacity ?? 1,
+        : new T.MeshStandardMaterial({ color, vertexColors: !!opt.vertexColors, flatShading: true, roughness: opt.rough ?? 0.95, metalness: opt.metal ?? 0, emissive: opt.emissive || '#000000', emissiveIntensity: opt.ei ?? 1, transparent: !!opt.transparent, opacity: opt.opacity ?? 1,
             side: opt.doubleSided ? T.DoubleSide : T.FrontSide }));
     }
     return matCache.get(key);
@@ -100,6 +100,43 @@
     geo.computeVertexNormals();
     const m = new T.Mesh(geo, material);
     return m;
+  }
+
+  function addScenery(scene, batches, materialFor, wind) {
+    const opaque = [], swaying = [];
+    for (const [key, parts] of batches) {
+      const material = materialFor(key);
+      if (material.emissive.getHex() || material.transparent || material.roughness !== .95 ||
+          material.metalness !== 0 || material.side !== T.FrontSide) {
+        scene.add(merged(parts, material));
+        parts.forEach(g => g.dispose());
+        continue;
+      }
+      const { r, g, b } = material.color;
+      for (const part of parts) {
+        const colors = new Float32Array(part.attributes.position.count * 3);
+        for (let i = 0; i < colors.length; i += 3) {
+          colors[i] = r; colors[i + 1] = g; colors[i + 2] = b;
+        }
+        part.setAttribute('color', new T.BufferAttribute(colors, 3));
+        (wind && part.userData.wind ? swaying : opaque).push(part);
+      }
+    }
+    if (opaque.length) scene.add(merged(opaque, mat('#ffffff', { vertexColors: true })));
+    if (swaying.length) {
+      const material = mat('#ffffff', { vertexColors: true }).clone();
+      const clock = { value: 0 };
+      material.onBeforeCompile = shader => {
+        shader.uniforms.windTime = clock;
+        shader.vertexShader = 'uniform float windTime;\n' + shader.vertexShader.replace('#include <begin_vertex>',
+          '#include <begin_vertex>\ntransformed.x += .075 * sin(windTime * 2.1 + position.x * .52 + position.z * .44);' +
+          '\ntransformed.z += .055 * cos(windTime * 2.7 + position.z * .78);');
+      };
+      scene.add(merged(swaying, material));
+      wind.clock = clock;
+      wind.material = material;
+    }
+    [...opaque, ...swaying].forEach(g => g.dispose());
   }
 
   /* ---------- 양 만들기 ---------- */
@@ -149,7 +186,16 @@
     ['초콜릿 염색', 'dye', 5, 'dye', '#87564a', '●'],
     ['남색 염색', 'dye', 5, 'dye', '#68728a', '●'],
     ['검정 염색', 'dye', 5, 'dye', '#3f3c47', '●'],
-    ['은빛 염색', 'dye', 7, 'dye', '#c8d9ea', '✧']
+    ['은빛 염색', 'dye', 7, 'dye', '#c8d9ea', '✧'],
+    ['털실 목도리', 'neck', null, 'scarf', '#579376', '🧣'],
+    ['포근한 강보 망토', 'back', null, 'swaddle', '#d6aa83', '🧣'],
+    ['포도빛 리본', 'neck', null, 'ribbon', '#8e4a9d', '🎀'],
+    ['나무 이름표 목걸이', 'neck', null, 'wood-tag', '#ab704c', '🪵'],
+    ['작은 등잔 등불', 'back', null, 'oil-lamp', '#d48857', '🪔'],
+    ['향 주머니', 'neck', null, 'sachet', '#819258', '🌿'],
+    ['목동 띠', 'neck', null, 'shepherd-band', '#986448', '🪨'],
+    ['별빛 랜턴', 'back', null, 'star-lantern', '#657baf', '🏮'],
+    ['작은 물동이 모자', 'head', null, 'water-jug', '#bb785c', '🏺']
   ].map(([name, slot, price, kind, color, symbol, label]) => Object.freeze({ name, slot, price, kind, color, symbol, label: label || name }));
   Object.freeze(wardrobe);
   const WEAR = new Map(wardrobe.map(item => [item.name, item]));
@@ -162,7 +208,7 @@
   }
   const wearKey = wear => Object.values(normalizeWear(wear)).join('|');
   const stageOf = lv => lv >= 10 ? 3 : lv >= 5 ? 2 : lv >= 2 ? 1 : 0;
-  const CAPES = new Set(['cape', 'mantle', 'dark-cape']);
+  const CAPES = new Set(['cape', 'mantle', 'dark-cape', 'swaddle']);
 
   function gearShape(points, thickness = .055) {
     const outline = new T.Shape();
@@ -424,11 +470,59 @@
         put(box, gold, 0, -.352, .22, .224, .036, .196);
         break;
       }
+      case 'water-jug':
+        cylinder(.16, .23, .11, 9, cloth, 0, .02, -.02);
+        put(new T.SphereGeometry(1, 10, 6), cloth, 0, .22, -.02, .262, .244, .23);
+        cylinder(.15, .105, .18, 9, cloth, 0, .413, -.02);
+        ring(.133, .033, mat('#e5ab7e'), 0, .504, -.02);
+        ring(.122, .03, cloth, .219, .29, -.025, 0, 1.14);
+        cylinder(.11, .11, .018, 9, dark, 0, .486, -.02);
+        break;
+      case 'wood-tag':
+        collar(mat('#886344'), .035);
+        charm([[-.18, .105], [.13, .105], [.20, 0], [.13, -.105], [-.18, -.105]], cloth);
+        for (const y of [-.16, -.215]) put(box, mat('#593e38'), -.032, y, .265, .16, .012, .01);
+        put(facets, gold, .123, -.188, .265, .026, .026, .015);
+        break;
+      case 'sachet':
+        collar(cream, .032);
+        put(facets, cloth, 0, -.23, .244, .129, .15, .08);
+        ring(.074, .018, cream, 0, -.137, .244);
+        put(facets, mat('#bbd17e'), 0, -.046, .248, .035, .09, .025, 0, 0, -.55);
+        break;
+      case 'shepherd-band':
+        collar(cloth, .069);
+        put(box, gold, 0, -.105, .247, .17, .12, .05);
+        put(box, mat('#694334'), 0, -.104, .276, .115, .068, .02);
+        stem([.10, -.10, .22], [.15, -.29, .23], .029, cloth);
+        put(facets, mat('#9b9892'), .15, -.29, .23, .075, .059, .055);
+        break;
+      case 'oil-lamp': {
+        const fire = mat('#ffcb68', { emissive: '#ff932e', ei: 1.45 });
+        cylinder(.19, .14, .12, 10, cloth, 0, -.05, -.06);
+        cylinder(.155, .155, .022, 10, mat('#7e4f3d'), 0, .014, -.06);
+        put(facets, cloth, 0, -.015, -.26, .106, .067, .177);
+        put(facets, fire, 0, .115, -.265, .057, .117, .059, 0, 0, -.18);
+        ring(.09, .027, cloth, 0, -.015, .14);
+        break;
+      }
+      case 'star-lantern': {
+        const lit = mat('#ffdc87', { emissive: '#ffc05c', ei: 1.22 });
+        put(box, lit, 0, .12, 0, .27, .288, .265);
+        for (const x of [-.148, .148]) for (const z of [-.147, .147])
+          put(box, cloth, x, .115, z, .034, .36, .035);
+        put(box, cloth, 0, -.057, 0, .326, .059, .33);
+        cylinder(0, .241, .17, 4, cloth, 0, .376, 0).rotateY(Math.PI / 4);
+        star(.092, gold, 0, .136, .147);
+        star(.092, gold, 0, .136, -.147);
+        break;
+      }
       case 'cape':
       case 'mantle':
+      case 'swaddle':
       case 'dark-cape': {
         const royal = item.kind === 'cape', velvet = item.kind === 'mantle';
-        const hem = royal ? mat('#a88ad6') : velvet ? cream : mat('#657499');
+        const hem = royal ? mat('#a88ad6') : velvet || item.kind === 'swaddle' ? cream : mat('#657499');
         const cut = [
           [.40, -.12, .27, .05], [.20, .008, .49, .18], [-.10, .038, .59, .28],
           [-.36, -.040, .65, .33], [-.62, -.20, .65, .33], [-.801, -.49, .56, .12]
@@ -558,7 +652,25 @@
         }
         break;
     }
+    if (window.DISCOVER_CRAFT?.[item.name]) mergeCraftedGear(model);
     return model;
+  }
+
+  function mergeCraftedGear(model) {
+    model.updateMatrixWorld();
+    const batches = new Map(), original = new Set();
+    model.traverse(part => {
+      if (!part.isMesh) return;
+      if (!batches.has(part.material)) batches.set(part.material, []);
+      batches.get(part.material).push(part.geometry.clone().applyMatrix4(part.matrixWorld));
+      original.add(part.geometry);
+    });
+    model.clear();
+    for (const [material, parts] of batches) {
+      model.add(merged(parts, material));
+      parts.forEach(part => part.dispose());
+    }
+    original.forEach(part => part.dispose());
   }
 
   // 모자 크기는 장식 끝이 아니라 머리에 닿는 면과 전체 실루엣을 함께 고려한다.
@@ -566,7 +678,7 @@
     pomhat: [.80, .245], earhat: [.75, .264], straw: [.61, .249], hood: [.78, .276],
     starband: [.83, .248], petals: [.76, .258], daisies: [.77, .258], 'wedding-wreath': [.78, .255],
     crown: [.84, .231, .61], 'silver-crown': [.82, .233, .60], hairpin: [.86, .244],
-    feather: [.82, .251], antlers: [.56, .247, .95], paper: [.74, .250]
+    feather: [.82, .251], antlers: [.56, .247, .95], paper: [.74, .250], 'water-jug': [.77, .24]
   };
   const EYE_FIT = { round: [.155, 0, .064], shades: [.18, .032, .032], hearts: [.163, .016, .082] };
   const CAPE_FIT = { lift: .005, z: -.055, height: .87, depth: .96 };
@@ -687,6 +799,11 @@
       case 'angel':
         model.scale.set(.92 * wide, .92, .92);
         model.position.set(0, top - .021, -.31);
+        break;
+      case 'oil-lamp':
+      case 'star-lantern':
+        model.scale.setScalar(.9);
+        model.position.set(0, rear + .13, -.51);
         break;
       case 'staff':
         model.scale.set(.91 * wide, .87, .90);
@@ -964,12 +1081,12 @@
       add(place(cyl, 0.1, 1.15, 0, 0.12, 0.18, 0.12), wood);
     } else if (id === '등불 기둥') {
       add(merged([place(box, 0, 0.8, 0, 0.1, 1.6, 0.1), place(box, 0.22, 1.58, 0, 0.5, 0.06, 0.06)], woodD));
-      const lamp = add(place(box, 0.42, 1.38, 0, 0.2, 0.26, 0.2), mat('#ffd27a', { emissive: '#ffbf4a', ei: 2 }));
+      const strength = ctx.lampStrength ?? 1;
+      add(place(box, 0.42, 1.38, 0, 0.2, 0.26, 0.2), mat('#ffd27a', { emissive: '#ffbf4a', ei: 2 * strength }));
       add(place(new T.ConeGeometry(1, 1, 4), 0.42, 1.56, 0, 0.17, 0.1, 0.17, 0, Math.PI / 4, 0), mat('#3a2a1a'));
-      const glow = glowSprite('#ffc860', 2.6, 0.6); glow.position.set(0.42, 1.38, 0); g.add(glow);
+      const glow = glowSprite('#ffc860', 2.6, 0.6 * strength); glow.position.set(0.42, 1.38, 0); g.add(glow);
       const light = new T.PointLight('#ffc260', 6, 7, 1.6); light.position.set(0.42, 1.3, 0); g.add(light);
       g.userData.flicker = { light, glow, base: 6, soft: true };
-      void lamp;
     } else if (id === '하늘 등') {
       const lan = new T.Group(); g.add(lan);
       lan.add(new T.Mesh(place(new T.CylinderGeometry(0.36, 0.24, 0.72, 8), 0, 0, 0), mat('#ffd890', { emissive: '#ff9a3a', ei: 1.9 })));
@@ -2017,7 +2134,7 @@
     container.appendChild(canvas);
     const direction = new T.Vector3(.33, .24, .91).normalize();
     const reduced = calm();
-    let figure, bounds, angle = -.2, pointer = null, lastX = 0, last = 0, idleAfter = 0, raf;
+    let figure, bounds, angle = -.2, pointer = null, lastX = 0, last = 0, idleAfter = 0, raf, spinStart = 0;
     const resize = () => {
       const width = container.clientWidth || 320, height = container.clientHeight || 255;
       renderer.setSize(width, height, false);
@@ -2054,7 +2171,9 @@
       last = now;
       if (!canvas.isConnected || document.hidden) return;
       if (!reduced && pointer === null && now > idleAfter) angle += dt * .35;
-      figure.rotation.y = angle;
+      const turn = spinStart ? clamp((now - spinStart) / 900, 0, 1) : 0;
+      figure.rotation.y = angle + Math.PI * 2 * turn * turn * (3 - 2 * turn);
+      if (turn === 1) spinStart = 0;
       if (!reduced) animateWings(figure, now / 1000);
       renderer.render(scene, camera);
     };
@@ -2063,7 +2182,11 @@
     canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
     raf = requestAnimationFrame(frame);
-    return { update, destroy() {
+    return { update, spin() {
+      if (reduced) return;
+      spinStart = performance.now();
+      idleAfter = spinStart + 1500;
+    }, destroy() {
       cancelAnimationFrame(raf); observer.disconnect();
       disposeFigure(figure); renderer.dispose(); renderer.forceContextLoss?.(); canvas.remove();
     } };
@@ -2088,10 +2211,113 @@
     parts.forEach(part => part.dispose()); stone.dispose();
   }
 
-  function exploreWorld(scene, kit, seed, layout) {
+  const DAYLIGHT = {
+    night: { horizon: '#3b3a63', sky: '#0c1438', sun: '#c4d4ff', angle: [-17, 23, 11], light: 1.12, fog: [22, 53], lamp: 1.3 },
+    predawn: { horizon: '#786989', sky: '#332e57', sun: '#b7c4ef', angle: [21, 6, -13], light: 1.25, fog: [17, 48], lamp: 1.05 },
+    dawn: { horizon: '#c99e8e', sky: '#5d7293', sun: '#ffcfaa', angle: [21, 9, -12], light: 1.65, fog: [17, 50], lamp: .64 },
+    day: { horizon: '#98b6c3', sky: '#537da7', sun: '#fff0dc', angle: [-5, 25, 8], light: 2.12, fog: [24, 62], lamp: .12 },
+    dusk: { horizon: '#bb8c77', sky: '#332e57', sun: '#ffc492', angle: [-21, 8, 11], light: 1.55, fog: [19, 54], lamp: .91 },
+  };
+  const SCENE_TIMES = {
+    '3-0': 'dawn', '3-1': 'day', '3-2': 'day', '3-4': 'dusk', '3-5': 'day', '3-6': 'day',
+  };
+  function exploreClimate(place, time, reduced) {
+    const christmas = place === 'end' || /^4-/.test(place);
+    const day = window.Core?.nowKST().date || new Date().toISOString().slice(0, 10);
+    const roll = Math.floor(seeded(hashStr(day + '/' + place))() * 12);
+    return { time: christmas ? 'night' : SCENE_TIMES[place] || time || 'night',
+      weather: christmas ? 'clear' : ['rain', 'wind', 'market'][roll] || 'clear', reduced };
+  }
+  function outdoorWeather(scene, climate, height, blocks, edge, protectedPoints, addPeople) {
+    const { weather, reduced } = climate;
+    if (weather === 'clear' || weather === 'wind') return [];
+    const market = weather === 'market';
+    const cube = new T.BoxGeometry(), cone = new T.ConeGeometry(1, 1, 7), ball = new T.IcosahedronGeometry(1, 0);
+    const batches = new Map();
+    function part(geo, color, ...transform) {
+      if (!batches.has(color)) batches.set(color, []);
+      batches.get(color).push(place(geo, ...transform));
+    }
+    const stalls = [], shelters = [];
+    climate.stalls = stalls;
+    const lane = edge > 15 ? [8.6, 11.8, 14.6] : [4.8, 6.1];
+    const candidates = (edge > 15 ? [11.6, 7.1, 3.1, -.5, -4.4, -8.1] : [-.6, 2.6, -3.9, 5.5, -6.4])
+      .flatMap(z => lane.flatMap(x => [[x, z], [-x, z]]));
+    for (const [x, z] of candidates) {
+      if (stalls.length >= (market ? 2 : 1)) break;
+      if (protectedPoints.some(([px, pz]) => Math.hypot(px - x, pz - z) < 2.45) ||
+          blocks.some(([bx, bz, r]) => Math.hypot(bx - x, bz - z) < r + 1.68) ||
+          stalls.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 3.5)) continue;
+      const y = height(x, z);
+      stalls.push([x, z]);
+      for (const dx of [-1.29, 1.29]) for (const dz of [-.74, .74])
+        part(cube, '#795442', x + dx, y + 1.07, z + dz, .11, 2.14, .11);
+      for (let i = 0; i < 6; i++) {
+        const color = i % 2 ? '#caa873' : market ? '#964c59' : '#647c82';
+        part(cube, color, x + (i - 2.5) * .46, y + 2.07, z, .46, .09, 1.86, .11);
+      }
+      if (market) {
+        part(cube, '#996b49', x, y + .81, z + .42, 2.55, .18, .66);
+        for (let i = 0; i < 3; i++) part(cone, '#bb815b', x + (i - 1) * .72, y + 1.07, z + .41, .18, .35, .18, Math.PI);
+      }
+    }
+    if (stalls.length) for (let i = 0; i < 3; i++) {
+      const [x, z] = stalls[i % stalls.length];
+      const px = x + (i - 1) * .69, pz = z - .25, y = height(px, pz);
+      shelters.push([px, pz]);
+      if (!addPeople) continue;
+      part(cone, ['#92735e', '#7f647f', '#557a73'][i], px, y + .49, pz, .25, .96, .24);
+      part(ball, '#bd906e', px, y + 1.05, pz, .15, .19, .15);
+      part(cone, '#d8bc97', px, y + 1.19, pz, .19, .2, .17);
+    }
+    addScenery(scene, batches, mat);
+    cube.dispose(); cone.dispose(); ball.dispose();
+    if (!market) {
+      scene.fog.near *= .73;
+      scene.fog.far *= .77;
+      const puddles = [];
+      const puddleShape = new T.CircleGeometry(1, 15);
+      const puddleMat = new T.MeshBasicMaterial({ color: '#a0bfd0', opacity: .29, transparent: true, depthWrite: false });
+      for (const [x, z] of [[-2.6, 3.6], [2.2, 1.4], [-4.3, -1.1], [2.8, -4.4], [-3.2, -7.2]]) {
+        puddles.push(place(puddleShape, x, height(x, z) + .06, z, .84, .47, 1, -Math.PI / 2));
+      }
+      scene.add(merged(puddles, puddleMat));
+      puddles.forEach(g => g.dispose()); puddleShape.dispose();
+      climate.puddles = puddleMat;
+      if (!reduced) {
+        const maximum = 106, points = new Float32Array(maximum * 6);
+        const geo = new T.BufferGeometry().setAttribute('position', new T.BufferAttribute(points, 3).setUsage(T.DynamicDrawUsage));
+        const rain = new T.LineSegments(geo, new T.LineBasicMaterial({ color: '#c5d9eb', transparent: true, opacity: .62, depthWrite: false }));
+        rain.frustumCulled = false;
+        scene.add(rain);
+        climate.rain = rain;
+        const random = seeded(hashStr(climate.time + '/rain'));
+        climate.drops = Array.from({ length: maximum }, () => [(random() - .5) * 16, (random() - .5) * 15, random() * 8]);
+      }
+    }
+    return shelters;
+  }
+  function weatherFrame(climate, p, t, lowQuality) {
+    if (climate.clock) climate.clock.value = t;
+    if (!climate.rain) return;
+    const { geometry } = climate.rain, positions = geometry.attributes.position;
+    const count = lowQuality ? 32 : climate.drops.length;
+    geometry.setDrawRange(0, count * 2);
+    for (let i = 0; i < count; i++) {
+      const [x, z, offset] = climate.drops[i], y = (offset - t * 8 % 8 + 8) % 8;
+      positions.setXYZ(i * 2, p.x + x + y * .12, p.y + y - 1.8, p.z + z);
+      positions.setXYZ(i * 2 + 1, p.x + x + y * .12 + .044, p.y + y - 1.44, p.z + z);
+    }
+    positions.needsUpdate = true;
+    climate.puddles.opacity = .25 + .10 * Math.sin(t * 3.2) ** 2;
+  }
+
+  function exploreWorld(scene, kit, seed, layout,
+    climate = { time: layout.time || 'night', weather: 'clear', reduced: true }, protectedPoints = []) {
     const rand = seeded(hashStr(seed));
-    const dusk = layout.time === 'dusk', dawn = layout.time === 'dawn';
-    const night = !dusk && !dawn;
+    const { time } = climate, daylight = DAYLIGHT[time];
+    const dawn = time === 'dawn', night = time === 'night', day = time === 'day';
+    const wind = climate.weather === 'wind' && !climate.reduced ? climate : null;
     const paved = ['temple', 'sanctuary', 'roof', 'gate'].includes(kit);
     const stable = kit === 'stable';
     const hillside = ['hillpath', 'galilee', 'elizabeth'].includes(kit);
@@ -2116,17 +2342,19 @@
     const box = new T.BoxGeometry(1, 1, 1), rock = new T.IcosahedronGeometry(1, 0);
     const col = new T.CylinderGeometry(1, 1, 1, 8), cone = new T.ConeGeometry(1, 1, 5);
     const stone = mat(paved ? '#aaa7ac' : '#938779'), edge = mat('#d4c1a7'), dark = mat('#726e88');
-    const wood = mat('#785145'), windowLight = mat('#ffbd68', { emissive: '#ff962e', ei: 1.3 });
+    const wood = mat('#785145'), windowLight = mat(day ? '#af926f' : '#ffbd68', { emissive: day ? '#000000' : '#ff962e', ei: daylight.lamp });
     const door = mat('#513d55'), olive = mat(dry ? '#80785b' : '#607a5c'), juniper = mat('#3f6262');
-    const terra = mat('#925f63'), bricks = mat('#c28a6a');
+    const terra = mat('#925f63'), bricks = mat('#c28a6a'), fabric = mat('#ae766b');
     const batch = (shape, material, ...transform) => {
       if (!batches.has(material)) batches.set(material, []);
-      batches.get(material).push(place(shape, ...transform));
+      const part = place(shape, ...transform);
+      part.userData.wind = material === olive || material === juniper || material === fabric;
+      batches.get(material).push(part);
     };
     const cube = (material, x, y, z, w, h, d, rx, ry, rz) => batch(box, material, x, y, z, w, h, d, rx, ry, rz);
     const stop = (x, z, r) => blocks.push([x, z, r]);
     const at = (item, x, z, angle = 0) => {
-      const prop = buildItem(item, {});
+      const prop = buildItem(item, { lampStrength: day ? .12 : daylight.lamp / DAYLIGHT.night.lamp });
       prop.position.set(x, height(x, z), z); prop.rotation.y = angle;
       prop.traverse(child => { if (child.isLight) child.visible = false; });
       scene.add(prop);
@@ -2164,6 +2392,11 @@
         cube(wood, x + side * w * .41, y + h * .36, z + 1.8 * s, .12, h * .73, .12);
         cube(terra, x + side * w * .25, y + h * .76, z + 1.53 * s, w * .51, .10, 1.2 * s, .16);
       }
+      if (wind && z > -10 && !tavern) {
+        const dx = w * .34, faceZ = z + 1.16 * s;
+        cube(wood, x + dx, y + h * .88, faceZ, .85 * s, .045, .04);
+        cube(fabric, x + dx, y + h * .88 - .23 * s, faceZ, .69 * s, .47 * s, .041, -.07);
+      }
       if (z > -9) for (let i = -1; i <= 1; i++) stop(x + i * w * .26, z, .99 * s);
     };
     const pillar = (x, z, h) => {
@@ -2173,20 +2406,20 @@
       stop(x, z, .47);
     };
 
-    const sky = new T.Color(night ? '#252451' : dusk ? '#825c87' : '#516a9d');
-    scene.fog = new T.Fog(sky, 17, 62);
+    const sky = new T.Color(night ? '#252451' : daylight.horizon);
+    scene.fog = new T.Fog(sky, ...daylight.fog);
     scene.background = sky;
     const dome = new T.Mesh(new T.SphereGeometry(82, 16, 10), new T.ShaderMaterial({
       side: T.BackSide, depthWrite: false,
-      uniforms: { horizon: { value: sky.clone().lerp(new T.Color(dusk ? '#c9897d' : dawn ? '#e8b892' : '#685077'), .55) },
-        high: { value: new T.Color(night ? '#100f37' : dawn ? '#4a6294' : '#34325c') } },
+      uniforms: { horizon: { value: night ? sky.clone().lerp(new T.Color('#685077'), .55) : sky },
+        high: { value: new T.Color(night ? '#100f37' : daylight.sky) } },
       vertexShader: 'varying vec3 vSky; void main(){ vSky = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
       fragmentShader: 'varying vec3 vSky; uniform vec3 horizon, high; void main(){ float h = smoothstep(-0.04, 0.64, normalize(vSky).y); gl_FragColor = vec4(mix(horizon, high, h), 1.0); #include <colorspace_fragment> }'.replace('#include <colorspace_fragment>', '\n#include <colorspace_fragment>\n')
     }));
     dome.renderOrder = -3; scene.add(dome);
     scene.add(new T.HemisphereLight(stable ? '#f4ddc0' : dawn ? '#ccd9ff' : '#c6caff', stable ? '#805a3f' : '#756169', night ? 1.33 : 1.7));
-    const sun = new T.DirectionalLight(stable ? '#ffdfb5' : dusk ? '#ffd1a4' : '#f4e9e8', 1.6);
-    sun.position.set(-5, 10, 5); scene.add(sun);
+    const sun = new T.DirectionalLight(night ? (stable ? '#ffdfb5' : '#f4e9e8') : daylight.sun, night ? 1.6 : daylight.light);
+    sun.position.set(...(night ? [-5, 10, 5] : daylight.angle)); scene.add(sun);
     const groundGeo = new T.PlaneGeometry(64, 54, 48, 40).rotateX(-Math.PI / 2).translate(0, 0, -8).toNonIndexed();
     const p = groundGeo.attributes.position, colors = new Float32Array(p.count * 3);
     const earth = new T.Color(stable ? '#755039' : paved ? '#958b95' : dry ? '#a8795d' : ['nazareth', 'workshop', 'well', 'inn'].includes(kit) ? '#876f71' : '#697454');
@@ -2219,7 +2452,8 @@
       starPos.push(Math.cos(a) * 50, 9 + rand() * 25, Math.sin(a) * 50);
     }
     const starsGeo = new T.BufferGeometry().setAttribute('position', new T.Float32BufferAttribute(starPos, 3));
-    scene.add(new T.Points(starsGeo, new T.PointsMaterial({ color: '#fff0d0', size: 1.8, sizeAttenuation: false, opacity: .77, transparent: true, fog: false })));
+    if (!day) scene.add(new T.Points(starsGeo, new T.PointsMaterial({ color: '#fff0d0', size: 1.8, sizeAttenuation: false, opacity: .77, transparent: true, fog: false })));
+    else starsGeo.dispose();
 
     for (let i = 0; i < 14; i++) {
       const x = -31 + i * 4.65, z = -21 - rand() * 13;
@@ -2504,10 +2738,8 @@
       stop(x, z, .48);
     }
 
-    for (const [m, list] of batches) {
-      scene.add(merged(list, m));
-      list.forEach(g => g.dispose());
-    }
+    addScenery(scene, batches, material => material, wind);
+    outdoorWeather(scene, climate, height, blocks, EXPLORE_EDGE, protectedPoints, true);
     box.dispose(); col.dispose();
     if (!birds.length) cone.dispose();
     rock.dispose();
@@ -2655,20 +2887,21 @@
     } };
   }
 
-  function adventureWorld(scene, seed, layout, adventure) {
+  function adventureWorld(scene, seed, layout, adventure, climate, protectedPoints) {
     const rand = seeded(seed), { visual, zones } = adventure;
     const temple = visual === 'temple' || visual === 'sanctuary';
     const roof = visual === 'house' || visual === 'roofs';
     const desert = visual === 'desert', galilee = visual === 'galilee', workshop = visual === 'workshop';
     const openCountry = desert || galilee;
-    const night = layout.time === 'night', dawn = layout.time === 'dawn', day = layout.time === 'day';
-    const predawn = layout.time === 'predawn', variant = layout.adventureVariant;
-    const tone = night ? '#3b3a63' : day ? '#98b6c3' : dawn ? '#c99e8e' : predawn ? '#786989' : '#bb8c77';
+    const { time } = climate, daylight = DAYLIGHT[time];
+    const night = time === 'night', dawn = time === 'dawn', day = time === 'day';
+    const predawn = time === 'predawn', variant = layout.adventureVariant;
+    const wind = climate.weather === 'wind' && !climate.reduced ? climate : null;
     const models = adventureModels();
     const actors = [], residents = new Map(), blocks = [], batches = new Map(), fx = [], birds = [], features = new Map();
     const cube = new T.BoxGeometry(), pebble = new T.IcosahedronGeometry(1, 0);
     const circle = new T.CylinderGeometry(1, 1, 1, 8);
-    const pot = new T.CylinderGeometry(.76, 1, 1, 8);
+    const pot = new T.CylinderGeometry(.76, 1, 1, 8), hangingCloth = new T.BoxGeometry();
     const slope = x => clamp(Math.floor(Math.max(0, -x) * 2) * .5, 0, 6);
     const terrainHeight = (x, z) => {
       if (temple) return slope(z + 12) * .24;
@@ -2691,7 +2924,9 @@
     const elevation = (z, hook) => height(0, z) + hook;
     function batch(geometry, color, ...shape) {
       if (!batches.has(color)) batches.set(color, []);
-      batches.get(color).push(place(geometry, ...shape));
+      const part = place(geometry, ...shape);
+      part.userData.wind = color === '#687d59' || color === '#536b62' || geometry === hangingCloth;
+      batches.get(color).push(part);
     }
     const box = (color, ...shape) => batch(cube, color, ...shape);
     const rock = (color, ...shape) => batch(pebble, color, ...shape);
@@ -2699,18 +2934,18 @@
     const stop = (x, z, radius) => blocks.push([x, z, radius]);
     const wall = temple ? (day ? '#c6ae8d' : '#978fa0') : '#ab866f', cap = temple ? (night ? '#b4a8ae' : '#dfc4a0') : '#d3ad85';
     const wood = '#694452', ochre = '#b27750', fabric = night ? '#8d4c60' : '#a35255';
-    const flameMat = mat('#ffca6c', { emissive: '#ff932d', ei: 1.05 });
+    const flameMat = mat('#ffca6c', { emissive: '#ff932d', ei: daylight.lamp });
     const roofLine = temple ? '#655a6c' : '#634e64';
     const ambient = new T.HemisphereLight(night ? '#bfc6ff' : '#fff0dc', '#86656b', night ? 1.45 : 1.85);
     scene.add(ambient);
-    const sun = new T.DirectionalLight(night ? '#c4d4ff' : '#ffcf96', night ? 1.12 : 2.12);
-    sun.position.set(-17, 23, 11); scene.add(sun);
-    const horizon = new T.Color(tone);
+    const sun = new T.DirectionalLight(daylight.sun, daylight.light);
+    sun.position.set(...daylight.angle); scene.add(sun);
+    const horizon = new T.Color(daylight.horizon);
     scene.background = horizon;
-    scene.fog = new T.Fog(horizon, 22, 53);
+    scene.fog = new T.Fog(horizon, ...daylight.fog);
     const dome = new T.Mesh(new T.SphereGeometry(88, 20, 12), new T.ShaderMaterial({
       side: T.BackSide, depthWrite: false,
-      uniforms: { horizon: { value: horizon }, zenith: { value: new T.Color(night ? '#0c1438' : day ? '#537da7' : dawn ? '#5d7293' : '#332e57') } },
+      uniforms: { horizon: { value: horizon }, zenith: { value: new T.Color(daylight.sky) } },
       vertexShader: 'varying vec3 sky; void main(){ sky=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
       fragmentShader: 'varying vec3 sky; uniform vec3 horizon,zenith; void main(){gl_FragColor=vec4(mix(horizon,zenith,smoothstep(-.06,.65,normalize(sky).y)),1.);\n#include <colorspace_fragment>\n}'
     }));
@@ -2766,7 +3001,7 @@
       round(ochre, x, h, z, .21, .115, .21);
       if (!bright) return;
       if (night || predawn) {
-        const light = glowSprite('#ffc482', 1.18, .60);
+        const light = glowSprite('#ffc482', 1.18, .46 * daylight.lamp);
         light.position.set(x, h + .22, z); scene.add(light);
       }
       batch(pebble, '@flame', x, h + .15, z, .114, .24, .114);
@@ -2808,7 +3043,7 @@
       box(wood, x, y + .89, front, .78, 1.73, .13);
       for (const side of [-1, 1]) {
         box(wood, x + side * width * .3, y + 1.84, front + .015, .58, .61, .12);
-        box(night || dawn ? '@flame' : '#af926f', x + side * width * .3, y + 1.84, front + .089, .42, .43, .035);
+        box(night || predawn || dawn ? '@flame' : '#af926f', x + side * width * .3, y + 1.84, front + .089, .42, .43, .035);
         box(wood, x + side * width * .3, y + 1.85, front + .111, .043, .47, .028);
         box(cap, x + side * width * .3, y + 1.48, front + .10, .73, .10, .30);
       }
@@ -2823,7 +3058,7 @@
       for (let i = 0; i < 7; i++) {
         const px = x + (i - 3) * .404, stripe = i % 2 ? color : cap;
         box(stripe, px, y + 2.35, z, .409, .105, 1.72, -.115);
-        box(stripe, px, y + 2.23, z + .86, .407, .24, .083);
+        batch(hangingCloth, stripe, px, y + 2.23, z + .86, .407, .24, .083);
       }
       box(wood, x, y + .93, z + .50, 2.57, .14, .75);
       jar(x - .68, z + .47, .65, 1.01); basket(x + .29, z + .55, .67, 1.01);
@@ -2849,7 +3084,7 @@
       const y = height(x, z);
       for (const side of [-1, 1]) box(wood, x + side * 1.89, y + 1.04, z, .085, 2.08, .085);
       box(wood, x, y + 1.94, z, 3.79, .033, .027);
-      for (let i = 0; i < 4; i++) box([cap, '#7f9d9a', fabric, '#dfc3ab'][i], x - 1.35 + i * .8, y + 1.57 + .04 * i, z, .62, .79 - .08 * i, .043, .07, 0, .06 * (i - 1));
+      for (let i = 0; i < 4; i++) batch(hangingCloth, [cap, '#7f9d9a', fabric, '#dfc3ab'][i], x - 1.35 + i * .8, y + 1.57 + .04 * i, z, .62, .79 - .08 * i, .043, .07, 0, .06 * (i - 1));
     }
     function stairway(z, width) {
       for (let i = 0; i < 6; i++) {
@@ -3083,11 +3318,9 @@
       }
       features.set(target.feature, obj);
     }
-    for (const [color, parts] of batches) {
-      scene.add(merged(parts, color === '@flame' ? flameMat : mat(color)));
-      parts.forEach(g => g.dispose());
-    }
-    cube.dispose(); pebble.dispose(); circle.dispose(); pot.dispose();
+    addScenery(scene, batches, color => color === '@flame' ? flameMat : mat(color), wind);
+    cube.dispose(); pebble.dispose(); circle.dispose(); pot.dispose(); hangingCloth.dispose();
+    const shelters = outdoorWeather(scene, climate, height, blocks, ADVENTURE_EDGE, protectedPoints, climate.weather === 'market' || openCountry || variant === 'dream');
     function addActor(actor, pos, move, arm, key, yaw = .45) {
       actor.position.set(pos[0], height(...pos), pos[1]); actor.rotation.y = yaw; scene.add(actor);
       const resident = { actor, pos, move, arm, key, yaw, phase: rand() * 10 };
@@ -3106,7 +3339,8 @@
     const pedestrians = desert || variant === 'dream' ? [] : galilee ? streets.slice(0, 4) : streets;
     pedestrians.forEach((pos, i) => {
       const { actor, arm } = models.person(i === 2 ? '마을 아이' : '마을 사람', i, i < 4);
-      addActor(actor, pos, i % 3 !== 1 ? 1.1 + (i % 3) * .55 : 0, arm);
+      const shelter = climate.weather === 'rain' && !openCountry && shelters[i];
+      addActor(actor, shelter || pos, shelter ? 0 : i % 3 !== 1 ? 1.1 + (i % 3) * .55 : 0, arm);
     });
     for (const [i, pair] of (adventure.fauna || (temple ? [['비둘기', [-2.4, 10]], ['비둘기', [-3, 8]], ['비둘기', [4.9, -8]], ['고양이', [2.6, 13.1]], ['나귀', [7.1, 11.5]], ['닭', [11.6, 5.4]]] :
       [['닭', [-2.5, 12]], ['닭', [-4.7, 10]], ['염소', [3.1, 9.5]], ['나귀', [-6.6, 14]], ['고양이', [3.4, -10]], ['비둘기', [-5.2, -12]]])).entries()) {
@@ -3550,8 +3784,19 @@
     wrap.append(canvas, hud); container.append(wrap);
 
     const scene = new T.Scene(), camera = new T.PerspectiveCamera(53, 1, .1, 105);
-    const world = room ? interiorWorld(scene, room) : options.adventure ? adventureWorld(scene, seed, layout, adventure) :
-      exploreWorld(scene, options.kit || options.place, seed, layout);
+    const reduced = calm();
+    const climate = room ? null : exploreClimate(options.place, layout.time, reduced);
+    const protectedPoints = [options.spawn || adventure?.spawn || [0, 6.2],
+      ...Object.values(adventure?.targets || {}).map(target => target.pos),
+      ...(options.markers || []).map(marker => marker.pos), ...(options.houses || []).map(house => house.pos)].filter(Boolean);
+    const world = room ? interiorWorld(scene, room) : options.adventure ? adventureWorld(scene, seed, layout, adventure, climate, protectedPoints) :
+      exploreWorld(scene, options.kit || options.place, seed, layout, climate, protectedPoints);
+    if (climate?.weather === 'market') {
+      const onZone = handlers.onZone;
+      const marketSound = () => window.Sound?.ambience('모험 장터');
+      marketSound();
+      handlers = { ...handlers, onZone() { onZone?.(); marketSound(); } };
+    }
     if (adventure && !world.models) Object.assign(world, { models: adventureModels(), actors: [], residents: new Map(), features: new Map() });
     for (const house of options.houses || []) if (house.standAlone) addExploreShelter(scene, world, house);
     const guide = adventure && world.models.person('여행자', 2, true);
@@ -3580,7 +3825,7 @@
     lantern.visible = false;
     lantern.position.set(-.5, .82, .5); player.add(lantern);
     let carrying = '', carryLabel, kneeling = false, foundLamb;
-    let fireStrength = world.campfire && layout.time === 'night' ? .3 : 1;
+    let fireStrength = world.campfire && climate?.time === 'night' ? .3 : 1;
     if (options.progress?.[options.place] === 'done') fireStrength = 1;
     function setCarry(symbol) {
       if (symbol === carrying) return;
@@ -3611,7 +3856,6 @@
     }
     const goal = new T.Mesh(new T.RingGeometry(.23, .29, 18).rotateX(-Math.PI / 2), mat('#ffc880', { basic: true }));
     goal.visible = false; scene.add(goal);
-    const reduced = calm();
     const azBase = azStart ?? ([-.18, .19, -.31, .25][layout.angle || 0] || 0);
     let az = azBase, azWant = azBase, activePointer, route = [], waitForTarget = null;
     let raf, lastFrame, stopped = false, reaction = null, talking, doveAt, followOrigin, markerWidth = 0, markerHeight = 0;
@@ -4519,6 +4763,7 @@
           sprite.removeFromParent(); sprite.material.map.dispose(); sprite.material.dispose(); effectSprites.delete(sprite);
         }
       }
+      if (climate) weatherFrame(climate, p, t, small || resolution < pixelRatio);
       renderer.render(scene, camera);
       if (elapsed > 0 && elapsed < 250) { frames++; frameTime += elapsed; }
       if (!lastMetric) lastMetric = now;
@@ -4534,6 +4779,9 @@
       if (stopped) return;
       stopped = true; cancelAnimationFrame(raf); observer.disconnect();
       clearScent();
+      climate?.material?.dispose();
+      climate?.puddles?.dispose();
+      climate?.rain?.material.dispose();
       for (const id of elements.keys()) removeMarker(id);
       groundRing.dispose(); crystal.dispose(); discoverPropMat.dispose();
       disposeFigure(scene); world.models?.dispose(); world.ground.material.dispose(); world.dome?.material.dispose();
@@ -4572,7 +4820,7 @@
       const marker = elements.get(id)?.marker;
       if (marker) moveTo(...marker.pos, id);
     }, destroy, metrics: () => ({ ...metrics }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors,
-      destinationRoute, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance } };
+      destinationRoute, time: climate?.time, weather: climate?.weather, stalls: climate?.stalls, rainDraw: () => climate?.rain?.geometry.drawRange.count || 0, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance } };
   }
 
   // ---------- 걸음새 (Claude) ----------
@@ -4680,5 +4928,59 @@
     return loading;
   }
 
-  window.Field3D = { supported, load, mount, mountExplore, portrait, wearIcon, turntable, wardrobe, normalizeWear, SLOTS, stageOf };
+  let endingRenderer;
+  async function endingSnapshot(options = {}) {
+    if (!supported()) return null;
+    await load();
+    const { place = 'end', kit = 'stable', seed = 20261225, layout = { time: 'night', angle: 2, christmas: kit === 'stable' },
+      sheep = { species: 'cotton', level: 10 }, kneeling = false, width = 640, height = 420 } = options;
+    if (!endingRenderer) {
+      endingRenderer = new T.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+      endingRenderer.outputColorSpace = T.SRGBColorSpace;
+      endingRenderer.toneMapping = T.ACESFilmicToneMapping;
+      endingRenderer.toneMappingExposure = 1.46;
+    }
+    endingRenderer.setPixelRatio(1);
+    endingRenderer.setSize(width, height, false);
+    const scene = new T.Scene(), camera = new T.PerspectiveCamera(50, width / height, .1, 105);
+    const world = exploreWorld(scene, kit || place, seed, { ...layout, christmas: kit === 'stable' || layout.christmas });
+    const models = adventureModels();
+    const guide = models.person('여행자', 2, true)?.actor;
+    const pz = kit === 'stable' ? -3.8 : -1.2;
+    const px = kit === 'stable' ? -1.05 : -.85;
+    if (guide && !kneeling) {
+      guide.position.set(px, world.height(px, pz), pz);
+      guide.rotation.y = Math.PI * .9;
+      scene.add(guide);
+    }
+    const player = buildSheep(sheep.species || 'cotton', sheep.level || 6, sheep.wear, seed, sheep.wool ?? 1);
+    const sx = kit === 'stable' ? (kneeling ? .12 : .38) : .65;
+    const sz = kit === 'stable' ? (kneeling ? -4.35 : -4.1) : -.95;
+    player.position.set(sx, world.height(sx, sz), sz);
+    player.rotation.y = kit === 'stable' ? (kneeling ? .18 : Math.PI * .92) : -.28;
+    if (kneeling && player.userData?.body) {
+      player.userData.body.position.y = -.33;
+      if (player.userData.head) player.userData.head.rotation.x = .17;
+      legSwingExplore(player.userData.legs, 0, 0, true);
+    }
+    scene.add(player);
+    if (kit === 'stable') {
+      camera.position.set(kneeling ? 2.15 : 2.65, world.height(0, -4) + (kneeling ? 1.85 : 2.15), kneeling ? -.85 : -.35);
+      camera.lookAt(0, world.height(0, -5.8) + (kneeling ? .68 : .85), -5.6);
+    } else {
+      const az = ([-.18, .19, -.31, .25][layout.angle || 0] || .15);
+      camera.position.set(Math.sin(az) * 6.2, world.height(0, -2) + 2.55, pz + Math.cos(az) * 5.6);
+      camera.lookAt(0, world.height(0, -3.5) + .95, -3.8);
+    }
+    endingRenderer.render(scene, camera);
+    const url = endingRenderer.domElement.toDataURL('image/jpeg', .84);
+    disposeFigure(scene);
+    models.dispose();
+    world.ground.material.dispose();
+    world.dome?.material.dispose();
+    scene.traverse(obj => { if (obj.isPoints || world.fx.some(f => f.cloud === obj)) obj.material.dispose(); });
+    return url;
+  }
+
+  window.Field3D = { supported, load, mount, mountExplore, portrait, wearIcon, turntable, wardrobe, normalizeWear, SLOTS, stageOf, endingSnapshot };
 })();

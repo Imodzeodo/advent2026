@@ -87,6 +87,14 @@
   const WEAR_LABELS = { head: '머리', face: '얼굴', neck: '목', back: '등', dye: '염색' };
   const wardrobe = window.Field3D?.wardrobe || [];
   const wearByName = new Map(wardrobe.map(item => [item.name, item]));
+  const craftRecipes = new Map(Object.entries(window.DISCOVER_CRAFT || {}).map(([name, ids]) => {
+    const materials = ids.map(id => ({
+      ...window.DISCOVERIES[id].bag,
+      place: Object.values(window.EXPLORE).find(area => area.discover?.items.some(entry => entry.id === id))?.title
+    }));
+    return [name, materials];
+  }));
+  const hasCraftMaterial = (bag, name) => Number.isSafeInteger(bag?.[name]?.count) && bag[name].count > 0;
   const normalizeWear = wear => window.Field3D?.normalizeWear(wear) ||
     Object.fromEntries(Object.keys(WEAR_LABELS).map(slot => [slot, null]));
   const wornNames = wear => Object.values(normalizeWear(wear)).filter(Boolean);
@@ -2112,7 +2120,7 @@
       if (!sheep) return;
       let saved = normalizeWear(sheep.wear);
       const draft = { ...saved };
-      let slot = 'head', studio = null;
+      let slot = 'head', studio = null, spinPending = false;
       const modal = sheet('👗 옷장', `<div class="field-wardrobe-studio"><div class="field-wardrobe-name">
         <strong>${esc(sheep.name)}</strong><small>${esc(spec(sheep.species).name)}</small></div>
         <div class="field-wardrobe-preview" aria-label="${esc(sheep.name)} 착용 미리보기"></div>
@@ -2142,25 +2150,74 @@
         if (studio) studio.update(outfit());
         else host.innerHTML = `<img alt="" class="field-wardrobe-fallback" src="${svgURL(portraitSVG(sheep.species, outfit()))}">`;
       }
+      function craftOptions() {
+        const data = field(), bag = data.explore?.discoverBag;
+        return Array.from(craftRecipes, ([name, materials]) => {
+          const item = wearByName.get(name);
+          const ready = materials.every(({ name }) => hasCraftMaterial(bag, name));
+          const owned = !!data.crafted?.[name];
+          return `<article class="field-craft-recipe">
+            <span class="field-craft-icon" aria-hidden="true">${esc(item.symbol)}</span>
+            <div><strong>${esc(item.label)}</strong>${materials.map(({ name, icon, place }) =>
+              `<small>${esc(icon)} ${esc(name)} · ${hasCraftMaterial(bag, name) ? '가방에 있어' : esc(place)}</small>`).join('')}</div>
+            <button class="btn ghost" type="button" data-craft-item="${esc(name)}" aria-label="${esc(name)} ${owned ? '다시 만들기' : '만들기'}"
+              ${ready ? '' : 'disabled'}>${owned ? '다시 만들기' : '만들기'}</button>
+          </article>`;
+        }).join('');
+      }
+      function makeOutfit(name) {
+        const data = field(), bag = data.explore?.discoverBag, materials = craftRecipes.get(name);
+        const wearer = data.sheep.find(entry => entry.id === sheep.id);
+        const item = wearByName.get(name);
+        if (!wearer || !materials?.every(({ name }) => hasCraftMaterial(bag, name))) return;
+        for (const { name } of materials) if (--bag[name].count === 0) delete bag[name];
+        (data.crafted ||= {})[name] = date();
+        data.items[name] = 1;
+        const equipped = wearer.wear[item.slot] === name || available(name) > 0;
+        if (equipped) {
+          wearer.wear = { ...normalizeWear(wearer.wear), [item.slot]: name };
+          saved = normalizeWear(wearer.wear);
+          draft[item.slot] = name;
+        }
+        Core.save();
+        Sound.sfx('gift');
+        render();
+        if (equipped) {
+          updateFigure();
+          if (studio) studio.spin();
+          else {
+            spinPending = true;
+            host.querySelector('img')?.classList.add('field-craft-spin');
+          }
+        }
+        refresh(`${josa(item.label, '을를')} 만들었어. ${equipped ? '아래에서 카드로 저장할 수 있어!' : '다른 양이 입고 있어.'}`);
+        share.focus({ preventScroll: true });
+      }
       function refresh(message = '') {
+        const making = slot === 'craft';
         const item = wearByName.get(draft[slot]);
         const oil = Core.data.oil || 0;
         const missing = Object.values(draft).filter(name => !canWear(name));
         const scroll = grid.scrollTop;
-        tabs.innerHTML = wearTabs(slot);
-        grid.innerHTML = wardrobe.filter(entry => entry.slot === slot).map(entry => wearButton(entry, {
+        tabs.innerHTML = wearTabs(slot, true);
+        grid.classList.toggle('field-craft-list', making);
+        grid.innerHTML = making ? craftOptions() : wardrobe.filter(entry => entry.slot === slot).map(entry => wearButton(entry, {
           attr: 'data-wear', pressed: item === entry,
-          detail: canWear(entry.name) ? '보유' : entry.price == null ? '탐험에서 얻기' : entry.price + '방울'
+          detail: canWear(entry.name) ? '보유' : craftRecipes.has(entry.name) ? '만들기에서 얻기' : entry.price == null ? '탐험에서 얻기' : entry.price + '방울'
         })).join('');
         grid.scrollTop = scroll;
         buy.hidden = !item || canWear(item.name) || item.price == null;
+        remove.hidden = making;
+        save.hidden = making && !dirty();
+        modal.classList.toggle('field-craft-only', save.hidden);
         buy.disabled = buy.hidden || oil < item.price;
         buy.textContent = buy.hidden ? '사기' : `사기 · ${item.price}방울`;
         remove.disabled = !item;
         save.disabled = !dirty() || missing.length > 0;
         share.disabled = dirty();
-        status.textContent = message || (missing.length ? '미리 입어 보는 중 · 가진 옷만 저장할 수 있어.' : `기름 ${oil}방울`);
-        upgradeWearIcons(modal);
+        status.textContent = message || (missing.length ? '미리 입어 보는 중 · 가진 옷만 저장할 수 있어.' :
+          making ? '탐험에서 ‘해 보기’로 모은 물건을 써.' : `기름 ${oil}방울`);
+        if (!making) upgradeWearIcons(modal);
       }
       tabs.onclick = event => {
         const button = event.target.closest('[data-wear-slot]');
@@ -2171,6 +2228,8 @@
         tabs.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
       };
       grid.onclick = event => {
+        const craft = event.target.closest('[data-craft-item]');
+        if (craft) { makeOutfit(craft.dataset.craftItem); return; }
         const button = event.target.closest('[data-wear]');
         if (!button) return;
         draft[slot] = button.dataset.wear;
@@ -2208,6 +2267,7 @@
           host.querySelector('.field-wardrobe-fallback')?.remove();
           modal.querySelector('.field-wardrobe-hint').hidden = false;
           updateFigure();
+          if (spinPending) studio.spin();
         }).catch(() => {});
       }
     }
@@ -2490,8 +2550,9 @@
     return sprite(objects[id]);
   }
 
-  function wearTabs(slot) {
-    return `<div class="field-wear-tabs" role="group" aria-label="꾸미기 종류">${Object.entries(WEAR_LABELS).map(([key, label]) =>
+  function wearTabs(slot, craft = false) {
+    const labels = craft ? { ...WEAR_LABELS, craft: '🧵 만들기' } : WEAR_LABELS;
+    return `<div class="field-wear-tabs" role="group" aria-label="꾸미기 종류">${Object.entries(labels).map(([key, label]) =>
       `<button type="button" data-wear-slot="${key}" aria-pressed="${key === slot}">${label}</button>`).join('')}</div>`;
   }
 

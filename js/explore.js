@@ -61,11 +61,166 @@
     const field = Field.ensure();
     if (!field.explore || Array.isArray(field.explore) || typeof field.explore !== 'object') field.explore = {};
     const log = field.explore;
-    for (const key of ['found', 'quests', 'rewards', 'photos', 'adventures', 'discoveries', 'discoverBag', 'discoverUnlock', 'themeRewards']) {
+    for (const key of ['found', 'quests', 'rewards', 'photos', 'adventures', 'discoveries', 'discoverBag', 'discoverUnlock', 'themeRewards', 'narrated', 'visits', 'friendHints']) {
       if (!log[key] || Array.isArray(log[key]) || typeof log[key] !== 'object') log[key] = {};
     }
     if (!log.discoverOil || typeof log.discoverOil !== 'object') log.discoverOil = { date: '', count: 0 };
+    if (!log.friendCodeDay || typeof log.friendCodeDay !== 'object') log.friendCodeDay = { date: '', count: 0 };
+    if (!Number.isSafeInteger(log.sniffCount) || log.sniffCount < 0) log.sniffCount = 0;
     return log;
+  }
+
+  function ensureV68Styles() {
+    if (document.getElementById('explore-v68-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'explore-v68-styles';
+    style.textContent = `
+      .explore-narr-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        margin-left: 6px; padding: 2px 8px; border-radius: 999px;
+        border: 1px solid rgba(255, 217, 145, .45); background: rgba(255, 217, 145, .14);
+        color: #ffe3a3; font-size: 13px; line-height: 1.2; vertical-align: middle; cursor: pointer;
+      }
+      .explore-narr-btn:active { transform: scale(.95); }
+      .explore-narr-caption {
+        margin: 0 0 8px; padding: 9px 14px; border-radius: 14px;
+        background: rgba(16, 14, 36, .92); border: 1px solid rgba(255, 217, 145, .5);
+        color: #fff6e0; font-size: 13.5px; line-height: 1.45; text-align: center;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, .38); pointer-events: none;
+        transition: opacity .25s ease;
+      }
+      .explore-narr-caption i { font-style: normal; margin-right: 5px; color: #ffd991; }
+      .notebook-friend-box {
+        margin: 8px 0 12px; padding: 10px 12px; border-radius: 14px;
+        background: rgba(34, 29, 62, .75); border: 1px solid rgba(255, 217, 145, .28);
+      }
+      .notebook-friend-top {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+      }
+      .notebook-friend-toggle {
+        padding: 5px 11px; border-radius: 999px; border: 1px solid rgba(255, 217, 145, .45);
+        background: rgba(255, 217, 145, .14); color: #ffe5a8; font-size: 12.5px; font-weight: 700; cursor: pointer;
+      }
+      .notebook-friend-quota { font-size: 12px; color: #d6c8eb; }
+      .notebook-friend-form {
+        display: flex; gap: 6px; margin-top: 8px; align-items: center;
+      }
+      .notebook-friend-form[hidden] { display: none !important; }
+      .notebook-friend-input {
+        flex: 1; min-width: 0; padding: 7px 10px; border-radius: 10px;
+        border: 1px solid rgba(255, 217, 145, .4); background: rgba(15, 13, 32, .85);
+        color: #fff5dc; font-size: 13.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      }
+      .notebook-friend-submit {
+        padding: 7px 14px; border-radius: 10px; border: none;
+        background: #e5b869; color: #231829; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;
+      }
+      .notebook-friend-msg {
+        margin: 6px 0 0; font-size: 12.5px; color: #ffe3a3; line-height: 1.4;
+      }
+      .notebook-code-bar {
+        display: flex; align-items: center; justify-content: space-between; gap: 6px;
+        margin-top: 6px; padding: 5px 9px; border-radius: 10px;
+        background: rgba(255, 217, 145, .1); border: 1px dashed rgba(255, 217, 145, .35);
+        font-size: 12px; color: #ffe3a3;
+      }
+      .notebook-code-copy {
+        padding: 2px 8px; border-radius: 8px; border: 1px solid rgba(255, 217, 145, .4);
+        background: rgba(255, 217, 145, .16); color: #fff4d4; font-size: 11.5px; font-weight: 700; cursor: pointer;
+      }
+      .notebook-friend-hint {
+        display: block; margin-top: 5px; padding: 4px 8px; border-radius: 8px;
+        background: rgba(255, 217, 145, .16); color: #ffe3a3; font-size: 12px; font-weight: 700;
+      }
+      .explore-ending-btn {
+        margin-top: 8px; width: 100%;
+      }
+      .walked-ending {
+        display: flex; flex-direction: column; gap: 9px; padding-bottom: 18px;
+      }
+      .walked-stage-card {
+        position: relative; border-radius: 18px; overflow: hidden;
+        background: linear-gradient(180deg, #12112a 0%, #261f47 100%);
+        border: 1px solid rgba(255, 217, 145, .42); box-shadow: 0 8px 22px rgba(0, 0, 0, .42);
+      }
+      .walked-visual {
+        position: relative; width: 100%; height: 182px; background: #15132c;
+        display: flex; align-items: center; justify-content: center; overflow: hidden;
+      }
+      .walked-visual img {
+        width: 100%; height: 100%; object-fit: cover; display: block;
+      }
+      .walked-flat-art {
+        position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+      }
+      .walked-flat-bg { position: absolute; inset: 0; opacity: .78; }
+      .walked-flat-bg svg { width: 100%; height: 100%; object-fit: cover; }
+      .walked-flat-sheep {
+        position: relative; z-index: 2; width: 104px; height: 94px;
+        filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .6));
+      }
+      .walked-overlay-top {
+        position: absolute; top: 8px; left: 10px; right: 10px; z-index: 3;
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      }
+      .walked-step-pill {
+        padding: 3px 9px; border-radius: 999px; background: rgba(13, 12, 30, .82);
+        border: 1px solid rgba(255, 217, 145, .45); color: #ffe3a3; font-size: 11.5px; font-weight: 700;
+      }
+      .walked-skip-btn {
+        padding: 3px 9px; border-radius: 999px; background: rgba(13, 12, 30, .82);
+        border: 1px solid rgba(255, 255, 255, .28); color: #f3e8ff; font-size: 11.5px; cursor: pointer;
+      }
+      .walked-caption-box {
+        padding: 9px 12px; background: rgba(18, 15, 38, .94); text-align: center;
+      }
+      .walked-caption-box h2 {
+        margin: 0 0 3px; font-size: 16.5px; color: #fff4d8;
+      }
+      .walked-caption-box p {
+        margin: 0; font-size: 12.5px; color: #dfd3f2; line-height: 1.38;
+      }
+      .walked-dots {
+        display: flex; justify-content: center; gap: 5px; flex-wrap: wrap; margin-top: 7px;
+      }
+      .walked-dot {
+        padding: 2.5px 7.5px; border-radius: 999px; border: 1px solid rgba(255, 217, 145, .28);
+        background: rgba(255, 255, 255, .06); color: #cbbde0; font-size: 11px; cursor: pointer;
+      }
+      .walked-dot.active {
+        background: rgba(255, 217, 145, .24); border-color: #ffd991; color: #fff6e0; font-weight: 700;
+      }
+      .walked-record-card {
+        padding: 11px 12px; border-radius: 16px;
+        background: linear-gradient(180deg, rgba(35, 30, 64, .92), rgba(22, 19, 44, .95));
+        border: 1px solid rgba(255, 217, 145, .38);
+      }
+      .walked-record-head {
+        display: flex; align-items: center; gap: 10px; padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 217, 145, .2); margin-bottom: 8px;
+      }
+      .walked-sheep-avatar {
+        width: 54px; height: 54px; border-radius: 14px; background: rgba(15, 13, 32, .7);
+        border: 1px solid rgba(255, 217, 145, .35); object-fit: contain; flex-shrink: 0;
+      }
+      .walked-sheep-meta h3 { margin: 0 0 2px; font-size: 15px; color: #fff4d6; }
+      .walked-sheep-meta p { margin: 0; font-size: 12px; color: #e2d4f4; line-height: 1.3; }
+      .walked-record-grid {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;
+      }
+      .walked-stat {
+        padding: 7px 9px; border-radius: 10px; background: rgba(15, 13, 32, .65);
+        border: 1px solid rgba(255, 217, 145, .18);
+      }
+      .walked-stat small { display: block; font-size: 11px; color: #cbbde0; margin-bottom: 1px; }
+      .walked-stat b { display: block; font-size: 13px; color: #fff4d8; word-break: keep-all; }
+      .walked-thanks-banner {
+        margin-top: 8px; padding: 8px 10px; border-radius: 12px;
+        background: rgba(255, 217, 145, .13); border: 1px solid rgba(255, 217, 145, .38);
+        color: #fff6e0; font-size: 13.5px; font-weight: 700; text-align: center;
+      }
+    `;
+    document.head.appendChild(style);
   }
   const foundKey = (id, marker) => id + '/' + marker;
   function discoverCount(id, log = Core.data.field?.explore) {
@@ -124,6 +279,7 @@
 
   let session;
   function replace(content, className = '') {
+    ensureV68Styles();
     session?.dispose?.();
     session = null;
     Sound.stopVoice?.();
@@ -133,6 +289,7 @@
     return app.firstElementChild;
   }
   const backButton = label => `<button type="button" class="explore-back" aria-label="${label}" title="${label}">←</button>`;
+  const canWatchEnding = () => !!(Core.PREVIEW_ALL || date() >= Core.XMAS || Core.data.done?.end);
 
   function map() {
     if (!Field.has()) return App.home();
@@ -190,10 +347,12 @@
         const places = list.filter(ep => window.EXPLORE[ep.id].region === i);
         return places.length ? `<h2>${region}</h2>${places.map(ep => `<button type="button" data-place="${ep.id}">${esc(Core.dateLabel(ep.date))} · ${esc(window.EXPLORE[ep.id].title)}${placeStatus(ep) ? `<small>${placeStatus(ep)}</small>` : ''}</button>`).join('')}` : '';
       }).join('')}</div>
-      ${traveled ? '<button type="button" class="btn ghost explore-challenge">탐험 도전장 저장·공유</button>' : ''}`, 'explore-map');
+      ${traveled ? '<button type="button" class="btn ghost explore-challenge">탐험 도전장 저장·공유</button>' : ''}
+      ${canWatchEnding() ? '<button type="button" class="btn ghost explore-ending-btn" data-walked-ending>🌟 성탄 엔딩 · 그 길을 함께 걸었어</button>' : ''}`, 'explore-map');
     root.querySelector('.explore-back').onclick = () => Field.page();
     root.querySelector('[data-notebook]')?.addEventListener('click', () => openNotebook(root, Field.mainCare()?.sheep));
     root.querySelector('[data-album]').onclick = album;
+    root.querySelector('[data-walked-ending]')?.addEventListener('click', () => ending());
     root.querySelector('.explore-challenge')?.addEventListener('click', () =>
       Field.showCard(root, '탐험 도전장', () => Card.drawExploreChallenge(tally), 'EXPLORE', '탐험 도전장', `내 탐험 기록은 ★ ${tally.stars}곳. 이길 수 있어?`));
     root.querySelectorAll('[data-place]').forEach(button => button.onclick = () => enter(button.dataset.place));
@@ -238,8 +397,10 @@
       ${!photos.length ? '<p class="explore-map-event">포토 스팟에 다가가 사진을 찍어 봐.</p>' : ''}
       <div class="explore-album-grid">${epList().filter(ep => photos.some(([id]) => id === ep.id)).map(ep =>
         `<figure><img data-photo="${ep.id}" alt="${esc(window.EXPLORE[ep.id].title)}에서 찍은 양 사진"><figcaption><b>${esc(window.EXPLORE[ep.id].title)}</b><small>${esc(Core.dateLabel(ep.date))}</small></figcaption></figure>`).join('')}</div>
-      ${photos.length && (date() >= Core.XMAS || Core.data.done.end) ? '<button class="btn" type="button" data-journey>27일의 여정 저장·공유</button>' : ''}`, 'explore-album');
+      ${photos.length && (date() >= Core.XMAS || Core.data.done.end) ? '<button class="btn" type="button" data-journey>27일의 여정 저장·공유</button>' : ''}
+      ${canWatchEnding() ? '<button class="btn ghost explore-ending-btn" type="button" data-walked-ending>🌟 성탄 엔딩 · 그 길을 함께 걸었어</button>' : ''}`, 'explore-album');
     root.querySelector('.explore-back').onclick = map;
+    root.querySelector('[data-walked-ending]')?.addEventListener('click', () => ending());
     root.querySelector('[data-journey]')?.addEventListener('click', () => {
       const sequence = epList().map(ep => [ep.id, progress().photos[ep.id]]);
       Field.showCard(root, '27일의 여정', () => Card.drawJourney(sequence, photoURL), 'JOURNEY', '내 양과 함께한 27일의 여정');
@@ -683,16 +844,47 @@
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 150"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="220" height="150" rx="14" fill="url(#g)"/><circle cx="110" cy="74" r="44" fill="#fff2cc22"/><text x="110" y="92" text-anchor="middle" font-size="54">${item.icon || '✦'}</text></svg>`;
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
+  const CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  function encodeDiscoverCode(itemId) {
+    const keys = Object.keys(window.DISCOVERIES || {});
+    const idx = keys.indexOf(itemId);
+    if (idx < 0) return '';
+    let h = hash('geubam-share:' + itemId);
+    let out = 'GB' + CODE_CHARS[idx % CODE_CHARS.length] + CODE_CHARS[Math.floor(idx / CODE_CHARS.length) % CODE_CHARS.length];
+    for (let i = 0; i < 3; i++) {
+      out += CODE_CHARS[h % CODE_CHARS.length];
+      h = Math.floor(h / CODE_CHARS.length);
+    }
+    return out;
+  }
+  function decodeDiscoverCode(raw) {
+    const clean = String(raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (clean.length < 6 || clean.length > 8) return null;
+    for (const id of Object.keys(window.DISCOVERIES || {})) {
+      if (encodeDiscoverCode(id) === clean) return id;
+    }
+    return null;
+  }
+  function placeForDiscovery(itemId) {
+    const eps = epList();
+    const byNew = eps.find(ep => window.EXPLORE[ep.id]?.discover?.newIds?.includes(itemId));
+    if (byNew) return byNew.id;
+    const byItem = eps.find(ep => window.EXPLORE[ep.id]?.discover?.items?.some(e => e.id === itemId));
+    return byItem?.id || '1-0';
+  }
+
   async function discoverThumbURL(itemId) {
     const item = window.DISCOVERIES?.[itemId];
     const saved = await photoFile('discover', itemId);
     return saved || (item ? fallbackThumbSVG(item) : '');
   }
   function openNotebook(root, sheep, placeId = null) {
+    ensureV68Styles();
     const log = progress(), seen = log.discoveries || {}, day = date();
     const all = window.DISCOVERIES || {}, themes = window.DISCOVER_THEMES || [];
     const total = Object.keys(all).length, found = Object.keys(seen).filter(k => all[k]).length;
     const oilUsed = log.discoverOil?.date === day ? log.discoverOil.count : 0;
+    const friendQuotaUsed = () => log.friendCodeDay?.date === day ? (log.friendCodeDay.count || 0) : 0;
     const hasPlace = !!(placeId && window.EXPLORE[placeId]?.discover);
     let tab = hasPlace ? 'place' : 'themes';
 
@@ -705,10 +897,13 @@
         const zone = area?.adventure?.crossings.filter(([, z]) => entry?.pos[1] < z).length;
         const hint = entry?.indoor ? (entry.house ? entry.house + ' 안' : '집 안') : entry && area
           ? (area.adventure?.zones[zone] || (entry.pos[1] < 0 ? area.title + ' 안쪽' : area.title + ' 입구')) + ' 근처' : '';
-        return `<article class="notebook-card locked">🔒 아직 만나지 못한 발견 · ${meta.icon} ${meta.label}${hint ? `<small class="notebook-hint">${esc(hint)}</small>` : ''}</article>`;
+        const friendPlaceId = log.friendHints?.[itemId];
+        const friendPlace = friendPlaceId && window.EXPLORE[friendPlaceId]?.title;
+        return `<article class="notebook-card locked${friendPlace ? ' has-friend-hint' : ''}" data-locked-item="${esc(itemId)}">🔒 아직 만나지 못한 발견 · ${meta.icon} ${meta.label}${hint ? `<small class="notebook-hint">${esc(hint)}</small>` : ''}${friendPlace ? `<small class="notebook-friend-hint" data-friend-hint="${esc(itemId)}">🤝 친구가 먼저 찾았어: ${esc(friendPlace)}</small>` : ''}</article>`;
       }
       const meta = KIND_META[item.kind] || KIND_META.look;
       const react = sheepReaction(item, sheep);
+      const shareCode = encodeDiscoverCode(itemId);
       return `<article class="notebook-card" data-note-item="${esc(itemId)}">
         <img class="notebook-thumb" data-note-thumb="${esc(itemId)}" src="${esc(fallbackThumbSVG(item))}" alt="${esc(item.title)}">
         <div class="notebook-body">
@@ -716,7 +911,11 @@
           <p>${esc(item.fact)}</p>
           ${item.ref ? `<div class="notebook-verse">📖 ${esc(Bible.full(item.ref))}</div>` : ''}
           <div class="notebook-sheep">🐑 <b>${esc(sheep?.name || '내 양')}</b>: ${esc(react.line)}</div>
-          <button type="button" class="notebook-share-btn" data-share-note="${esc(itemId)}">📤 오늘 알게 된 것 카드</button>
+          <div class="notebook-code-bar">
+            <span>🤝 나눔 코드 <b data-share-code="${esc(itemId)}">${esc(shareCode)}</b></span>
+            <button type="button" class="notebook-code-copy" data-copy-code="${esc(shareCode)}">코드 복사</button>
+          </div>
+          <button type="button" class="notebook-share-btn" data-share-note="${esc(itemId)}">📤 오늘 알게 된 것 카드 · ${esc(shareCode)}</button>
         </div>
       </article>`;
     }
@@ -746,25 +945,123 @@
       <span>모은 발견 <b>${found}/${total}</b></span>
       <span>오늘 발견 기름 ${Math.min(5, oilUsed)}/5</span>
     </div>
+    <div class="notebook-friend-box">
+      <div class="notebook-friend-top">
+        <button type="button" class="notebook-friend-toggle" data-friend-code-toggle>🤝 친구 코드 넣기</button>
+        <span class="notebook-friend-quota" data-friend-code-quota>오늘 남은 힌트 ${Math.max(0, 3 - friendQuotaUsed())}/3</span>
+      </div>
+      <div class="notebook-friend-form" data-friend-code-form hidden>
+        <input type="text" class="notebook-friend-input" data-friend-code-input maxlength="8" placeholder="나눔 코드 (예: GB...)" autocomplete="off">
+        <button type="button" class="notebook-friend-submit" data-friend-code-submit>확인</button>
+      </div>
+      <p class="notebook-friend-msg" data-friend-code-msg hidden></p>
+    </div>
     ${hasPlace ? `<div class="notebook-tabs"><button type="button" data-nb-tab="place" class="active">이 장소</button><button type="button" data-nb-tab="themes">주제별 (6)</button></div>` : ''}
     <div data-nb-content>${bodyHTML()}</div>
     <button type="button" class="btn" data-continue>닫기</button>`, 'discover-notebook-dialog');
+
+    async function copyShareCode(code, btn) {
+      let copied = false;
+      try {
+        if (window.Note?.copyText) copied = await window.Note.copyText(code);
+        else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(code); copied = true; }
+      } catch { copied = false; }
+      if (btn) {
+        const old = btn.textContent;
+        btn.textContent = copied ? '복사됨 ✓' : code;
+        setTimeout(() => { if (btn.isConnected) btn.textContent = old; }, 1600);
+      }
+      window.Player?.toast?.(`나눔 코드 ${code} 복사 완료!`);
+    }
 
     function hydrate() {
       dialog.querySelectorAll('img[data-note-thumb]').forEach(img => {
         const key = img.dataset.noteThumb;
         discoverThumbURL(key).then(url => { if (img.isConnected && url) img.src = url; });
       });
+      dialog.querySelectorAll('[data-copy-code]').forEach(btn => btn.onclick = () => copyShareCode(btn.dataset.copyCode, btn));
       dialog.querySelectorAll('[data-share-note]').forEach(btn => btn.onclick = async () => {
         const key = btn.dataset.shareNote, item = all[key];
+        const shareCode = encodeDiscoverCode(key);
         const thumb = await discoverThumbURL(key);
         const react = sheepReaction(item, sheep);
         dialog.close(); dialog.remove();
-        Field.showCard(root, '오늘 알게 된 것', () => Card.drawDiscoverNote(item, sheep, thumb, react.line),
-          'DISCOVER-' + key, item.title, `오늘 알게 된 것 · ${item.title}: ${item.fact}`);
+        const cardModal = Field.showCard(root, `오늘 알게 된 것 · 코드 ${shareCode}`, () => Card.drawDiscoverNote(item, sheep, thumb, react.line, shareCode),
+          'DISCOVER-' + key, item.title, `오늘 알게 된 것 · ${item.title}: ${item.fact} (나눔 코드: ${shareCode})`);
+        if (cardModal) {
+          const codeBar = document.createElement('div');
+          codeBar.className = 'notebook-code-bar';
+          codeBar.style.margin = '8px 0 10px';
+          codeBar.innerHTML = `<span>🤝 친구와 발견 나누기 코드 <b>${esc(shareCode)}</b></span><button type="button" class="notebook-code-copy" data-modal-copy="${esc(shareCode)}">코드 복사</button>`;
+          const firstBtn = cardModal.querySelector('button.btn');
+          if (firstBtn) firstBtn.before(codeBar);
+          else cardModal.appendChild(codeBar);
+          codeBar.querySelector('[data-modal-copy]')?.addEventListener('click', e => copyShareCode(shareCode, e.currentTarget));
+        }
       });
     }
     hydrate();
+
+    const toggleBtn = dialog.querySelector('[data-friend-code-toggle]');
+    const formEl = dialog.querySelector('[data-friend-code-form]');
+    const inputEl = dialog.querySelector('[data-friend-code-input]');
+    const submitBtn = dialog.querySelector('[data-friend-code-submit]');
+    const msgEl = dialog.querySelector('[data-friend-code-msg]');
+    const quotaEl = dialog.querySelector('[data-friend-code-quota]');
+
+    function showFriendMsg(text) {
+      if (!msgEl) return;
+      msgEl.textContent = text;
+      msgEl.hidden = !text;
+    }
+
+    toggleBtn?.addEventListener('click', () => {
+      formEl.hidden = !formEl.hidden;
+      if (!formEl.hidden) inputEl?.focus();
+    });
+
+    function submitFriendCode() {
+      const raw = inputEl?.value?.trim() || '';
+      if (!raw) return showFriendMsg('친구에게 받은 나눔 코드를 입력해 줘.');
+      const targetId = decodeDiscoverCode(raw);
+      if (!targetId || !all[targetId]) {
+        Sound.sfx('boop');
+        return showFriendMsg('없는 나눔 코드야. 카톡이나 카드에 적힌 코드를 확인해 봐.');
+      }
+      if (seen[targetId]) {
+        return showFriendMsg(`이미 내가 찾은 발견이야! (${all[targetId].title})`);
+      }
+      if (log.friendHints[targetId]) {
+        const pTitle = window.EXPLORE[log.friendHints[targetId]]?.title || '';
+        return showFriendMsg(`이미 힌트를 받았어 · 🤝 친구가 먼저 찾았어: ${pTitle}`);
+      }
+      if (friendQuotaUsed() >= 3) {
+        Sound.sfx('boop');
+        return showFriendMsg('오늘 친구 코드는 3개까지 넣을 수 있어. 내일 또 넣어 봐!');
+      }
+      if (log.friendCodeDay.date !== day) log.friendCodeDay = { date: day, count: 0 };
+      log.friendCodeDay.count++;
+      const hintPlaceId = placeForDiscovery(targetId);
+      log.friendHints[targetId] = hintPlaceId;
+      Core.save();
+      Sound.sfx('gem');
+      const hintPlaceTitle = window.EXPLORE[hintPlaceId]?.title || hintPlaceId;
+      if (quotaEl) quotaEl.textContent = `오늘 남은 힌트 ${Math.max(0, 3 - friendQuotaUsed())}/3`;
+      if (tab === 'place' && hasPlace && !window.EXPLORE[placeId].discover.items.some(e => e.id === targetId)) {
+        tab = 'themes';
+        dialog.querySelectorAll('[data-nb-tab]').forEach(b => b.classList.toggle('active', b.dataset.nbTab === 'themes'));
+      }
+      dialog.querySelector('[data-nb-content]').innerHTML = bodyHTML();
+      hydrate();
+      showFriendMsg(`🤝 친구가 먼저 찾았어: ${hintPlaceTitle} (그 장소에서 냄새 길잡이로 찾아봐!)`);
+      const targetCard = dialog.querySelector(`[data-locked-item="${targetId}"]`);
+      targetCard?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+      if (inputEl) inputEl.value = '';
+    }
+
+    submitBtn?.addEventListener('click', submitFriendCode);
+    inputEl?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submitFriendCode(); } });
+
     dialog.querySelectorAll('[data-nb-tab]').forEach(btn => btn.onclick = () => {
       tab = btn.dataset.nbTab;
       dialog.querySelectorAll('[data-nb-tab]').forEach(b => b.classList.toggle('active', b === btn));
@@ -1240,6 +1537,7 @@
       const pick = pool.sort((a, b) => a.route.meters - b.route.meters)[0];
       if (!pick) return feedback('양이 더 자라면 닿을 수 있는 곳이 남았어.');
       lastSniff = now;
+      log.sniffCount = (log.sniffCount || 0) + 1;
       if (pick.entry.hidden) log.discoverUnlock[id + '/smell-' + pick.entry.id] = true;
       clearTimeout(scentTimer);
       scent = { ...pick, origin: here(), updated: now, until: now + 10000 };
@@ -1465,15 +1763,18 @@
     const exits = [list[index - 1], list[index + 1]].map((ep, i) => ep && ({
       id: 'exit/' + ep.id, type: 'exit', place: ep.id, title: window.EXPLORE[ep.id].title, pos: [i ? 6.9 : -6.9, 7.45]
     })).filter(Boolean);
-    log.lastPlace = id; Core.save();
+    log.lastPlace = id;
+    log.visits[id] = (log.visits[id] || 0) + 1;
+    Core.save();
     Sound.music('night');
     if (!enhanced) Sound.ambience('나의 들판');
-    const root = replace(`<header class="explore-head">${backButton('지도로')}<div><h1>${esc(area.title)}</h1><p data-place-caption>${esc(Core.dateLabel(ep.date))} · ${esc(regions[area.region])}</p></div><button class="explore-sub" type="button" data-field-return>들판</button></header>
+    const narrLine = area.narration || window.PLACE_NARRATION?.[id] || '';
+    const root = replace(`<header class="explore-head">${backButton('지도로')}<div><h1>${esc(area.title)}${narrLine ? ' <button type="button" class="explore-narr-btn" data-place-voice aria-label="장소 소개 다시 듣기" title="장소 소개 다시 듣기">🔈</button>' : ''}</h1><p data-place-caption>${esc(Core.dateLabel(ep.date))} · ${esc(regions[area.region])}</p></div><button class="explore-sub" type="button" data-field-return>들판</button></header>
       ${hasDiscover ? `<section class="discover-bar" aria-label="발견 현황">
         <div class="discover-bar-left"><span class="discover-count" data-discover-count>발견 0/0</span><span class="scent-compass" aria-label="냄새 방향과 거리" data-scent-compass hidden><i aria-hidden="true">↑</i><small></small></span><span class="discover-new-badge" data-discover-new hidden></span></div>
         <button type="button" class="discover-nearby" data-nearby hidden>✨ <span></span></button>
       </section>` : ''}
-      <div class="explore-location-main"><div class="explore-stage" aria-label="${esc(area.title)}" data-kit="${area.kit}"><p class="explore-loading">장소를 불러오는 중…</p><div class="explore-room-veil" aria-hidden="true" hidden></div>
+      <div class="explore-location-main">${narrLine ? `<p class="explore-narr-caption" data-narr-caption hidden aria-live="polite"><i aria-hidden="true">🔈</i><span>${esc(narrLine)}</span></p>` : ''}<div class="explore-stage" aria-label="${esc(area.title)}" data-kit="${area.kit}"><p class="explore-loading">장소를 불러오는 중…</p><div class="explore-room-veil" aria-hidden="true" hidden></div>
       ${enhanced ? '<button type="button" data-quest-map class="adventure-zone"><i aria-hidden="true">◇</i> <span data-zone></span></button>' : ''}</div>
       ${hasDiscover ? '<section class="discover-inspect" data-inspect hidden aria-live="polite"></section>' : ''}
       <p class="explore-status" role="status">${hasDiscover ? `조이스틱이나 바닥을 톡 눌러 ${esc(Core.josa(sheep.name, '이랑'))} 천천히 둘러봐.` : enhanced ? '조이스틱이나 바닥을 톡 눌러 이동해. 오른쪽 화면을 밀면 둘러볼 수 있어.' : `바닥을 톡 누르면 ${esc(Core.josa(sheep.name, '이가'))} 걸어가.`}</p>
@@ -1492,21 +1793,49 @@
       ${giftLink}
       ${!Core.data.done[id] ? '<span>이야기를 더 보면 새 대화가 열려.</span>' : ''}</footer>`}
       ${enhanced ? giftLink : ''}
+      ${(christmas || canWatchEnding() && id === '4-4') ? '<button class="btn ghost explore-ending-btn" type="button" data-walked-ending>🌟 성탄 엔딩 · 그 길을 함께 걸었어</button>' : ''}
       <button class="btn" type="button" data-field-next hidden>🐑 내 양 돌보러 가기</button>`, 'explore-location' + (enhanced ? ' adventure-location' : ''));
     const stage = root.querySelector('.explore-stage'), status = root.querySelector('.explore-status');
     const fallback = root.querySelector('.explore-flat'), timer = root.querySelector('[data-timer]');
     const next = root.querySelector('[data-field-next]');
     const veil = root.querySelector('.explore-room-veil'), caption = root.querySelector('[data-place-caption]');
+    const narrEl = root.querySelector('[data-narr-caption]');
     const outdoorCaption = caption.textContent;
     let view, dead = false, flat = false, shown = [], task;
     let room = null, changingRoom = false;
-    let interval = 0, hintTimers = [], curtain = null, photoBusy = false;
+    let interval = 0, hintTimers = [], curtain = null, photoBusy = false, narrTimer = 0;
     const observer = new MutationObserver(() => { if (!root.isConnected) dispose(); });
     observer.observe(root.parentElement, { childList: true });
     const fieldBack = () => Field.page({ tonight: id });
     root.querySelector('.explore-back').onclick = map;
     root.querySelector('[data-field-return]').onclick = fieldBack;
+    root.querySelector('[data-walked-ending]')?.addEventListener('click', () => ending());
     next.onclick = fieldBack;
+    function playPlaceNarration() {
+      if (!narrLine || dead) return;
+      clearTimeout(narrTimer);
+      if (narrEl) {
+        narrEl.innerHTML = `<i aria-hidden="true">🔈</i><span>${esc(narrLine)}</span>`;
+        narrEl.hidden = false;
+      }
+      const vName = area.voice || ('place-' + id);
+      if (Sound.on) {
+        Sound.preload?.(vName);
+        Promise.resolve(Sound.voice?.(vName)).then(dur => {
+          if (dur && dur > 1 && !dead && narrEl && !narrEl.hidden) {
+            clearTimeout(narrTimer);
+            narrTimer = setTimeout(() => { if (narrEl) narrEl.hidden = true; }, Math.round(dur * 1000) + 500);
+          }
+        }).catch(() => {});
+      }
+      narrTimer = setTimeout(() => { if (narrEl) narrEl.hidden = true; }, 4600);
+    }
+    root.querySelector('[data-place-voice]')?.addEventListener('click', () => playPlaceNarration());
+    if (narrLine && !log.narrated[id]) {
+      log.narrated[id] = day;
+      Core.save();
+      playPlaceNarration();
+    }
     const melody = root.querySelector('[data-melody]'), finalAlbum = root.querySelector('[data-final-album]');
     if (melody) melody.onclick = playHint;
     if (finalAlbum) finalAlbum.onclick = album;
@@ -1521,7 +1850,7 @@
       refresh, getView: () => view, isFlat: () => flat }) : null;
     function dispose() {
       if (dead) return;
-      dead = true; observer.disconnect(); clearInterval(interval); hintTimers.forEach(clearTimeout);
+      dead = true; observer.disconnect(); clearInterval(interval); clearTimeout(narrTimer); hintTimers.forEach(clearTimeout);
       discovery?.dispose();
       adventure?.dispose();
       view?.destroy(); view = null;
@@ -1976,6 +2305,245 @@
     }
   }
 
+  const WALKED_STOPS = [
+    { key: 'temple', label: '성전', ids: ['1-0', '1-2', '1-3', '1-4'], rep: '1-0', kit: 'temple', scene: '성전뜰', line: '성전 뜰에서 첫 등불을 밝히며 시작된 걸음' },
+    { key: 'hill', label: '산골', ids: ['1-1', '1-5', '1-6', '3-2'], rep: '1-1', kit: 'roof', scene: '지붕', line: '유대 산골 지붕 위에서 새벽별을 올려다보던 밤' },
+    { key: 'nazareth', label: '나사렛', ids: ['2-0', '2-1', '2-2', '2-3', '2-4', '2-5', '3-0'], rep: '2-1', kit: 'nazareth', scene: '나사렛길', line: '나사렛 골목과 나무 향기 가득하던 작업장' },
+    { key: 'well', label: '우물', ids: ['2-6', '3-1'], rep: '3-1', kit: 'well', scene: '길', line: '맑은 물이 고인 우물가에서 잠시 쉬어 가던 길' },
+    { key: 'elizabeth', label: '엘리사벳 집', ids: ['3-3', '3-4', '3-5', '3-6'], rep: '3-3', kit: 'elizabeth', scene: '유대집', line: '반가운 인사와 노래가 울려 퍼지던 엘리사벳의 집' },
+    { key: 'bethlehem', label: '베들레헴', ids: ['4-0', '4-1'], rep: '4-0', kit: 'gate', scene: '베들레헴', line: '사람들로 북적이던 다윗의 동네 베들레헴 성문과 골목' },
+    { key: 'field', label: '들판', ids: ['4-2', '4-3'], rep: '4-2', kit: 'field', scene: '들판', line: '모닥불 곁에서 밤새 양 떼를 지키며 깨어 있던 들판' },
+    { key: 'stable', label: '마구간', ids: ['4-4', 'end'], rep: 'end', kit: 'stable', scene: '마구간', line: '큰 별 아래 따뜻한 빛이 새어 나오던 마구간 구유 앞' }
+  ];
+
+  function hasVisitedPlace(epId, log) {
+    if (!log) return false;
+    if (log.visits?.[epId] > 0 || log.narrated?.[epId] || log.lastPlace === epId) return true;
+    if (log.quests?.[epId] || log.photos?.[epId] || log.adventures?.[epId]) return true;
+    if (Object.keys(log.found || {}).some(k => k.startsWith(epId + '/'))) return true;
+    if (Object.values(log.discoveries || {}).some(d => d && d.place === epId)) return true;
+    return false;
+  }
+
+  function buildEndingSummary(log, record, sheep) {
+    const all = window.DISCOVERIES || {};
+    const themes = window.DISCOVER_THEMES || [];
+    const total = Object.keys(all).length || 52;
+    const seen = log.discoveries || {};
+    const found = Object.keys(seen).filter(k => all[k]).length;
+    const doneThemes = themes.filter(t => {
+      const ids = Object.keys(all).filter(k => all[k].theme === t.id);
+      return ids.length > 0 && ids.every(k => seen[k]);
+    });
+    const days = Math.max(1, record.mainCareDays || record.careDays || Object.keys(Core.data.done || {}).filter(k => k !== '0').length || 1);
+    const craftedSet = new Set();
+    if (record.crafted && typeof record.crafted === 'object') {
+      const keys = Array.isArray(record.crafted) ? record.crafted : Object.keys(record.crafted).filter(k => record.crafted[k]);
+      keys.forEach(k => craftedSet.add(k));
+    }
+    if (window.DISCOVER_CRAFT && record.items) {
+      for (const name of Object.keys(window.DISCOVER_CRAFT)) {
+        if (record.items[name]) craftedSet.add(name);
+      }
+    }
+    for (const k of Object.keys(record.woolGifts || {})) {
+      if (record.woolGifts[k]) craftedSet.add({ scarf: '따뜻한 목도리', cushion: '작업장 방석', swaddle: '아기 포대기', blanket: '구유 이불' }[k] || k);
+    }
+    const craftedList = [...craftedSet];
+    const craftedText = craftedList.length ? `${craftedList.length}개 (${craftedList.slice(0, 2).join('·')}${craftedList.length > 2 ? ' 등' : ''})` : '0개';
+    const unlockSniffs = Object.keys(log.discoverUnlock || {}).filter(k => k.includes('/smell-')).length;
+    const sniffCount = Math.max(log.sniffCount || 0, unlockSniffs);
+
+    const visitScores = {};
+    for (const ep of epList()) {
+      const id = ep.id;
+      let score = Number(log.visits?.[id] || 0) * 3;
+      if (log.narrated?.[id]) score += 1;
+      if (log.photos?.[id]) score += 2;
+      if (log.quests?.[id]) score += 2;
+      score += Object.values(seen).filter(d => d && d.place === id).length;
+      if (score > 0) visitScores[id] = score;
+    }
+    const topId = Object.entries(visitScores).sort((a, b) => b[1] - a[1])[0]?.[0] || log.lastPlace || '1-0';
+    const topPlace = window.EXPLORE[topId]?.title || '밤의 성전 뜰';
+    const sp = Field.spec(sheep.species);
+    const worn = Object.values(sheep.wear || {}).filter(Boolean);
+    const wearText = worn.length ? worn.join(' · ') : '복슬복슬 기본 털';
+    return {
+      sheep,
+      speciesName: sp?.name || '양',
+      wearText,
+      days,
+      found,
+      total,
+      themesDone: doneThemes.length,
+      themesLabel: doneThemes.length ? `${doneThemes.length}/6 (${doneThemes.map(t => t.icon).join('')})` : '0/6',
+      craftedCount: craftedList.length,
+      craftedText,
+      sniffCount,
+      topPlace,
+      topPlaceId: topId
+    };
+  }
+
+  async function ending() {
+    if (!Field.has()) return App.home();
+    if (!window.SHEEP_DEX) await Field.prepareDex();
+    Sound.ambience('마구간');
+    Sound.music('silent');
+    const log = progress(), record = Field.ensure(), care = Field.mainCare();
+    const baseSheep = care?.sheep || record.sheep[0];
+    const sheep = { ...baseSheep, wool: baseSheep.shornOn === date() ? 0 : 1 };
+    const visited = WALKED_STOPS.filter(s => s.ids.some(id => hasVisitedPlace(id, log)));
+    const stops = visited.length ? visited : WALKED_STOPS;
+    const summary = buildEndingSummary(log, record, sheep);
+    const use3D = Field3D.supported() && typeof Field3D.endingSnapshot === 'function';
+    const shots = {};
+    let portraitUrl = '';
+    try { portraitUrl = await Field.portrait(sheep.species, sheep); } catch { portraitUrl = ''; }
+
+    const root = replace(`<header class="explore-head">${backButton('지도로')}<div><h1>그 길을 함께 걸었어</h1><p>성탄 엔딩 · ${esc(Core.josa(sheep.name, '과와'))} 걸어온 길</p></div></header>
+      <div class="walked-ending">
+        <section class="walked-stage-card" aria-live="polite">
+          <div class="walked-overlay-top">
+            <span class="walked-step-pill" data-walked-pill>여정 1/${stops.length}</span>
+            <button type="button" class="walked-skip-btn" data-walked-skip>마구간으로 ›</button>
+          </div>
+          <div class="walked-visual" data-walked-visual></div>
+          <div class="walked-caption-box">
+            <h2 data-walked-title>${esc(stops[0].label)}</h2>
+            <p data-walked-line>${esc(stops[0].line)}</p>
+            <div class="walked-dots" role="tablist" aria-label="지나온 장소 장면">
+              ${stops.map((s, i) => `<button type="button" class="walked-dot${i === 0 ? ' active' : ''}" data-walked-idx="${i}">${i + 1}. ${esc(s.label)}</button>`).join('')}
+              <button type="button" class="walked-dot" data-walked-idx="final">🌟 구유 앞</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="walked-record-card" aria-label="함께 걸은 기록 한 장">
+          <div class="walked-record-head">
+            ${portraitUrl ? `<img class="walked-sheep-avatar" src="${esc(portraitUrl)}" alt="${esc(sheep.name)}">` : `<div class="walked-sheep-avatar"><svg viewBox="-42 -56 84 75">${Field.sheepArt(sheep)}</svg></div>`}
+            <div class="walked-sheep-meta">
+              <h3>🐑 ${esc(sheep.name)} <small>(${esc(summary.speciesName)})</small></h3>
+              <p>입은 옷 · ${esc(summary.wearText)}</p>
+            </div>
+          </div>
+          <div class="walked-record-grid">
+            <div class="walked-stat"><small>함께한 날 수</small><b data-stat="days">${summary.days}일</b></div>
+            <div class="walked-stat"><small>모은 발견 수</small><b data-stat="found">${summary.found}/${summary.total}</b></div>
+            <div class="walked-stat"><small>주제별 완성</small><b data-stat="themes">${esc(summary.themesLabel)}</b></div>
+            <div class="walked-stat"><small>만든 꾸미기</small><b data-stat="crafted">${esc(summary.craftedText)}</b></div>
+            <div class="walked-stat"><small>냄새 맡은 횟수</small><b data-stat="sniff">${summary.sniffCount}번</b></div>
+            <div class="walked-stat"><small>가장 많이 들른 장소</small><b data-stat="topPlace">${esc(summary.topPlace)}</b></div>
+          </div>
+          <div class="walked-thanks-banner" data-walked-thanks>그 밤을 향하여 — 함께 걸어 줘서 고마워</div>
+        </section>
+
+        <button type="button" class="btn" data-walked-save>📷 사진으로 저장</button>
+        <button type="button" class="btn ghost" data-walked-replay>🎬 지나온 장소 다시 이어 보기</button>
+      </div>`, 'explore-walked-ending');
+
+    const visualEl = root.querySelector('[data-walked-visual]');
+    const pillEl = root.querySelector('[data-walked-pill]');
+    const titleEl = root.querySelector('[data-walked-title]');
+    const lineEl = root.querySelector('[data-walked-line]');
+    const skipBtn = root.querySelector('[data-walked-skip]');
+    const dotBtns = [...root.querySelectorAll('[data-walked-idx]')];
+    let stepTimer = 0, disposed = false, currentIdx = 0;
+
+    session = {
+      id: 'ending',
+      dispose() {
+        disposed = true;
+        clearTimeout(stepTimer);
+      }
+    };
+
+    async function getStopShot(key, spec) {
+      if (shots[key]) return shots[key];
+      if (!use3D) return null;
+      try {
+        const area = window.EXPLORE[spec.rep] || window.EXPLORE.end;
+        const url = await Field3D.endingSnapshot({
+          place: spec.rep,
+          kit: spec.kit,
+          seed: area?.seed || 20261225,
+          layout: { ...(area?.layout || { time: 'night', angle: 2 }), christmas: spec.kit === 'stable' },
+          sheep,
+          kneeling: !!spec.kneeling
+        });
+        if (url) shots[key] = url;
+        return url;
+      } catch {
+        return null;
+      }
+    }
+
+    function renderFlatScene(sceneName) {
+      Art.setChapter(4);
+      return `<div class="walked-flat-art">
+        <div class="walked-flat-bg">${Art.render(sceneName || '마구간')}</div>
+        <svg class="walked-flat-sheep" viewBox="-42 -56 84 75" aria-label="${esc(sheep.name)}">${Field.sheepArt(sheep)}</svg>
+      </div>`;
+    }
+
+    async function showStep(idx, autoAdvance = false) {
+      if (disposed || !root.isConnected) return;
+      clearTimeout(stepTimer);
+      currentIdx = idx;
+      dotBtns.forEach(b => b.classList.toggle('active', b.dataset.walkedIdx === String(idx)));
+      if (idx === 'final') {
+        pillEl.textContent = '성탄의 밤 · 마구간 앞';
+        titleEl.textContent = '그 밤을 향하여 — 함께 걸어 줘서 고마워';
+        lineEl.textContent = `${Core.josa(sheep.name, '이가')} 마구간 구유 앞에 조용히 앉았어.`;
+        skipBtn.hidden = true;
+        const shot = await getStopShot('final', { rep: 'end', kit: 'stable', kneeling: true });
+        if (disposed || currentIdx !== 'final') return;
+        summary.stableShot = shot || null;
+        visualEl.innerHTML = shot
+          ? `<img src="${esc(shot)}" alt="마구간 앞에 앉은 ${esc(sheep.name)}">`
+          : renderFlatScene('마구간');
+        Sound.sfx('star');
+        return;
+      }
+      const stop = stops[idx];
+      if (!stop) return;
+      skipBtn.hidden = false;
+      pillEl.textContent = `지나온 길 ${idx + 1}/${stops.length}`;
+      titleEl.textContent = `${stop.label} · ${window.EXPLORE[stop.rep]?.title || stop.label}`;
+      lineEl.textContent = stop.line;
+      const shot = await getStopShot(stop.key, stop);
+      if (disposed || currentIdx !== idx) return;
+      visualEl.innerHTML = shot
+        ? `<img src="${esc(shot)}" alt="${esc(stop.label)} 장면">`
+        : renderFlatScene(stop.scene);
+      if (autoAdvance) {
+        stepTimer = setTimeout(() => {
+          if (disposed) return;
+          if (idx + 1 < stops.length) showStep(idx + 1, true);
+          else showStep('final', false);
+        }, 1500);
+      }
+    }
+
+    root.querySelector('.explore-back').onclick = map;
+    skipBtn.onclick = () => showStep('final', false);
+    dotBtns.forEach(btn => btn.onclick = () => {
+      const v = btn.dataset.walkedIdx;
+      showStep(v === 'final' ? 'final' : Number(v), false);
+    });
+    root.querySelector('[data-walked-replay]').onclick = () => showStep(0, true);
+    root.querySelector('[data-walked-save]').onclick = async () => {
+      if (!summary.stableShot && use3D) {
+        summary.stableShot = await getStopShot('final', { rep: 'end', kit: 'stable', kneeling: true });
+      }
+      Field.showCard(root, '그 길을 함께 걸었어', () => Card.drawWalkedTogether(summary),
+        'WALKED', '그 길을 함께 걸었어', '그 밤을 향하여 — 함께 걸어 줘서 고마워');
+    };
+
+    await showStep(0, true);
+  }
+
   function words() {
     const log = Core.data.field?.explore;
     return epList().flatMap(ep => window.EXPLORE[ep.id].markers
@@ -1983,7 +2551,8 @@
       .map(marker => ({ title: window.EXPLORE[ep.id].title, ref: marker.ref })));
   }
   window.Explore = {
-    map, enter, isOpen, complete, counts, todayEvent, words, newCount, discoverCount,
+    map, enter, ending, isOpen, complete, counts, todayEvent, words, newCount, discoverCount,
+    encodeDiscoverCode, decodeDiscoverCode,
     notebook: (placeId = null) => openNotebook(document.querySelector('#app main') || document.body, Field.mainCare()?.sheep, placeId),
     title: id => window.EXPLORE[id]?.title,
     get current() { return Core.PREVIEW_ALL ? session : null; }

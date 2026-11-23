@@ -1408,6 +1408,27 @@
       title: '큰 별', kind: 'look', theme: 'christmas', prop: 'greatstar', cue: 'worship', icon: '⭐',
       fact: '동방에서 온 사람들은 별을 따라왔어.',
       ref: '마 2:2', sheep: '저 별 진짜 밝다! 밤하늘에서 눈을 못 떼겠어.'
+    },
+    'well-stone-lid': {
+      title: '우물 돌 뚜껑', kind: 'look', theme: 'work', prop: 'millstone', cue: 'water', icon: '🪨',
+      fact: '우물 입구를 큰 돌로 덮어 두었다가, 양 떼가 모이면 돌을 굴려 물을 먹였어.',
+      ref: '창 29:2-3', sheep: '돌이 꽤 커 보여! 양들이 다 모일 때까지 우물을 지켜 줬나 봐.'
+    },
+    'well-trough': {
+      title: '우물가 물통', kind: 'look', theme: 'field', prop: 'mikveh', cue: 'water', icon: '🪣',
+      fact: '우물 옆엔 가축이 마실 물통이 있었어. 리브가는 물동이 물을 여기 붓고 낙타들에게 물을 주었지.',
+      ref: '창 24:20', sheep: '첨벙! 나도 목마를 때 저 물통에서 시원하게 마시고 싶어.'
+    },
+    'rope-grooves': {
+      title: '줄에 닳은 홈', kind: 'touch', theme: 'work', prop: 'well', anim: 'scribe', cue: 'craft', icon: '🪢',
+      fact: '오래 쓴 우물 돌 테두리엔 두레박 줄에 닳아 생긴 홈이 남아 있대.',
+      touchLine: '돌 테두리에 깊게 파인 두레박 줄 자국을 손끝으로 만져 봤어.',
+      sheep: '단단한 돌이 닳을 만큼 오랫동안 물을 길어 올렸구나.'
+    },
+    'well-meetings': {
+      title: '우물가의 만남', kind: 'look', theme: 'road', prop: 'water', cue: 'water', icon: '💧',
+      fact: '성경엔 우물가에서 만난 이야기가 많아. 리브가, 라헬, 그리고 예수님을 만난 사마리아 여인.',
+      ref: '창 24:15; 창 29:9-10; 요 4:7', sheep: '물을 길으러 왔다가 반가운 이야기를 나누는 자리가 됐네.'
     }
   };
 
@@ -1656,6 +1677,7 @@
         spot('millstone', 4.5, -17.2, { indoor: true, house: '요셉과 마리아의 집' }),
         spot('loom-spindle', 5.0, -17.2, { indoor: true, house: '요셉과 마리아의 집' }),
         spot('mud-brick', -11.2, 4.8),
+        spot('well-trough', 6.8, -2.4),
         spot('olive-press', 11.6, -3.2, { ability: 'smell', hidden: true })
       ]
     },
@@ -1676,19 +1698,21 @@
       ]
     },
     '3-1': {
-      newIds: ['well-bucket', 'stone-jar'],
+      newIds: ['well-stone-lid', 'well-trough', 'rope-grooves', 'well-meetings'],
       storyPeople: [
         { id: 'maria', actor: '마리아', pos: [-3.5, -4.6], lines: cues['3-1'].lines }
       ],
       items: [
-        spot('well-bucket', -0.4, -3.5),
+        spot('well-stone-lid', 0.2, -2.3),
+        spot('well-trough', 4.8, -0.6),
+        spot('rope-grooves', 1.4, -5.5),
+        spot('well-meetings', 0.4, 4.4),
+        spot('well-bucket', 5.2, -3.8),
+        spot('water-carry', -5.2, 3.2),
         spot('stone-jar', -5.4, -5.5, { indoor: true, house: '우물가 집' }),
-        spot('water-carry', 1.6, -2.1),
         spot('water-jar', -5.0, -5.5, { indoor: true, house: '우물가 집' }),
         spot('oil-lamp', -5.8, -5.5, { indoor: true, house: '우물가 집' }),
-        spot('clay-oven', -5.2, -5.2, { indoor: true, house: '우물가 집' }),
-        spot('small-village', -3.2, 2.8),
-        spot('wild-flowers', 3.6, 1.4, { ability: 'smell', hidden: true })
+        spot('wild-flowers', 5.2, 1.6, { ability: 'smell', hidden: true })
       ]
     },
     '3-2': {
@@ -1875,9 +1899,55 @@
     }
   };
 
+  const placeNarration = {
+    '1-0': '여기는 예루살렘 성전 뜰이야. 밤에도 등불을 지키는 사람이 있어.',
+    '1-1': '유대 산골, 사가랴의 집이야. 지붕이 평평해서 올라가 볼 수 있어.',
+    '1-2': '오늘은 제사장들이 제비를 뽑는 날이야. 누가 향을 피우게 될까?',
+    '1-3': '성소 앞이야. 사람들이 밖에서 조용히 기도하고 있어.',
+    '1-4': '성전으로 오르는 돌계단이야. 사람들이 웅성거리고 있어.',
+    '1-5': '산골 집으로 돌아가는 길이야. 돌담과 올리브나무가 이어져.',
+    '1-6': '새벽 지붕이야. 아직 별이 남아 있어.',
+    '2-0': '바위와 먼지뿐인 광야 길이야. 물주머니를 잘 챙겨.',
+    '2-1': '갈릴리의 작은 마을, 나사렛이야. 골목이 좁고 조용해.',
+    '2-2': '목수 요셉의 작업장이야. 나무 냄새가 나.',
+    '2-3': '밤의 작업장이야. 등잔 하나가 켜져 있어.',
+    '2-4': '갈릴리 언덕이야. 바람이 풀밭을 쓸고 지나가.',
+    '2-5': '나사렛에 잔치가 있나 봐. 노랫소리가 들려.',
+    '2-6': '마을 우물이야. 아침저녁으로 사람들이 물을 길러 와.',
+    '3-0': '마리아의 집 앞이야. 먼 길을 떠날 준비를 해.',
+    '3-1': '맑은 물이 고인 우물이야. 잠깐 쉬어 가자.',
+    '3-2': '유대 산골로 가는 오르막길이야. 꽤 멀어.',
+    '3-3': '엘리사벳의 집 마당이야. 누군가 반갑게 기다리고 있어.',
+    '3-4': '노래가 바람을 타고 언덕을 넘어가.',
+    '3-5': '산비탈 포도밭이야. 돌담 사이로 포도나무가 줄지어 있어.',
+    '3-6': '아기가 태어난 집이야. 이웃들이 모두 모였어.',
+    '4-0': '베들레헴 성문이야. 다윗 왕이 태어난 마을이지.',
+    '4-1': '사람들로 꽉 찬 베들레헴 골목이야. 빈방이 있을까?',
+    '4-2': '베들레헴 밖 들판이야. 어디선가 새끼 양 소리가 들려.',
+    '4-3': '목자들의 모닥불이야. 밤새 번갈아 깨어 있어.',
+    '4-4': '마구간 틈으로 빛이 새어 나와.',
+    end: '큰 별 아래, 구유야. 우리가 기다리던 그 밤이야.'
+  };
+
   for (const [id, spec] of Object.entries(week1Discover)) {
-    if (window.EXPLORE[id]) window.EXPLORE[id].discover = spec;
+    if (window.EXPLORE[id]) {
+      window.EXPLORE[id].discover = spec;
+      window.EXPLORE[id].narration = placeNarration[id] || '';
+      window.EXPLORE[id].voice = 'place-' + id;
+    }
   }
+  window.PLACE_NARRATION = placeNarration;
   window.DISCOVER_THEMES = DISCOVER_THEMES;
   window.DISCOVERIES = DISCOVERIES;
+  window.DISCOVER_CRAFT = {
+    '털실 목도리': ['loom-spindle'],
+    '포근한 강보 망토': ['swaddle-wrap'],
+    '포도빛 리본': ['winepress'],
+    '나무 이름표 목걸이': ['carpenter-plane'],
+    '작은 등잔 등불': ['oil-lamp', 'olive-press'],
+    '향 주머니': ['incense-altar'],
+    '목동 띠': ['sling'],
+    '별빛 랜턴': ['watch-fire'],
+    '작은 물동이 모자': ['well-bucket']
+  };
 })();
