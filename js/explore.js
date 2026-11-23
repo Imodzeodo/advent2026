@@ -58,8 +58,21 @@
     }));
   }
   const REGION_LAYOUTS = [
-    { title: '예루살렘 성전', bounds: [57, 49], sites: [
+    { title: '예루살렘 성전', bounds: [82, 75], sites: [
       ['temple', '성전 뜰', -28, -12], ['sanctuary', '성소 앞', 28, -12],
+      ['outer-court', '이방인의 뜰', 0, 24, 11],
+      ['south-steps', '남쪽 큰 계단과 정결례 웅덩이', 0, 42, 7, '남쪽 큰 계단'],
+      ['sheep-gate', '양문과 베데스다 못', 5, -49, 11, '양문·베데스다'],
+      ['wall-walk', '성벽 위 길', 43, -47, 10],
+      ['lower-town', '아랫마을 골목', -18, 49, 9],
+      ['siloam', '실로암 못', -10, 65, 7],
+      ['olives', '감람산 비탈', 68, 10, 13, '감람산'],
+    ], routes: [
+      [[-28, -12], [-28, 0], [0, 0], [28, 0], [28, -12]],
+      [[0, 0], [0, 42], [-10, 49], [-18, 49], [-18, 60], [-10, 65]],
+      [[0, 0], [0, -39], [5, -49], [16, -49], [43, -47]],
+      [[43, -47], [55, -43], [55, -5], [59, 8], [68, 10]],
+      [[28, 0], [51, 0], [55, -5]],
     ] },
     { title: '유대 산골', bounds: [58, 55], sites: [
       ['roof', '사가랴의 집', -29, -27], ['hillpath', '산골 길', 28, -27],
@@ -80,12 +93,15 @@
   const regionCell = 6;
   function makeRegion(id, log) {
     const currentKey = siteKey(id);
-    const index = REGION_LAYOUTS.findIndex(region => region.sites.some(([key]) => key === currentKey));
+    const fromRoof = id === '1-1';
+    const index = fromRoof ? 0 : REGION_LAYOUTS.findIndex(region => region.sites.some(([key]) => key === currentKey));
     if (index < 0) return null;
-    const { title, bounds, sites: layout } = REGION_LAYOUTS[index];
+    const { title, bounds: normalBounds, sites: normalSites, routes } = REGION_LAYOUTS[index];
+    const bounds = fromRoof ? [108, normalBounds[1]] : normalBounds;
+    const layout = fromRoof ? [['roof', '사가랴의 집', -79, -12], ...normalSites] : normalSites;
     const [, , ox, oz] = layout.find(([key]) => key === currentKey);
     const visibleEpisodes = openList();
-    const sites = layout.map(([key, name, x, z]) => {
+    const sites = layout.map(([key, name, x, z, extension, label]) => {
       const primary = key === currentKey;
       const ep = primary ? Core.epById(id) : visibleEpisodes.findLast(ep => siteKey(ep.id) === key);
       const episode = ep?.id;
@@ -96,7 +112,11 @@
       const houses = area ? placeDoors(episode, area).map(house => ({
         ...house, id: markerId(house.id), pos: translate(house.pos), episode
       })) : [];
-      return { key, name, label: key === 'elizabeth' ? '엘리사벳 집' : name, x, z, primary, episode, area, offset, translate, markerId, houses, edge: area?.adventure ? 23.5 : 8 };
+      if (key === 'lower-town') houses.push({
+        id: 'house/lower-town', title: '아랫마을 돌집', style: 'nazareth', pos: translate([-4.9, .56]), episode: id
+      });
+      return { key, name, label: label || (key === 'elizabeth' ? '엘리사벳 집' : name), x, z, primary, episode, area,
+        offset, translate, markerId, houses, extension: !!extension, edge: extension || (area?.adventure || index === 0 ? 23.5 : 8) };
     });
     const main = sites.find(site => site.primary);
     const visited = new Set(Array.isArray(log.regionWalk[index]) ? log.regionWalk[index] : []);
@@ -117,16 +137,28 @@
       Core.save();
     }
     const roads = [...new Set(sites.map(site => site.x))].sort((a, b) => a - b);
-    const paths = [[[roads[0], 0], [roads.at(-1), 0]], ...sites.map(site => [[site.x, 0], [site.x, site.z]])];
+    const paths = routes ? routes.flatMap(points => points.slice(1).map((point, i) => [points[i], point])) :
+      [[[roads[0], 0], [roads.at(-1), 0]], ...sites.map(site => [[site.x, 0], [site.x, site.z]])];
+    if (fromRoof) paths.push([[-79, -12], [-79, 0]], [[-79, 0], [-28, 0]]);
     if (index === 2) paths.push([[51, 0], [36, -24]], [[36, -24], [16, -27]]);
     const placesToPlay = [
       [['pigeons', -3, 5.5]], [['chickens', -9, 3], ['bush', -20, 4]],
       [['stones', 26, 0], ['bush', 37, 4]], [['game', -4, 7], ['chickens', 10, 4]],
     ][index].map(([type, x, z]) => ({ type, pos: [x - ox, z - oz] }));
-    return { index, title, bounds, sites, main, origin: [ox, oz], canonical, nearSite, visited, visit, save, paths, placesToPlay };
+    const sources = sites.filter(site => site.area?.discover).map(site => ({ site, taggedOnly: false }));
+    // Shared discoveries stay in their districts when another episode takes over the starting site.
+    if (index === 0) {
+      const registered = new Set(sources.map(({ site }) => site.episode));
+      for (const { id: episode } of visibleEpisodes.filter(ep => /^1-[0-4]$/.test(ep.id)).reverse()) {
+        if (registered.has(episode)) continue;
+        const area = window.EXPLORE[episode];
+        sources.push({ site: { episode, area, markerId: key => episode + ':' + key }, taggedOnly: true });
+      }
+    }
+    return { index, title, bounds, sites, sources, main, origin: [ox, oz], canonical, nearSite, visited, visit, save, paths, placesToPlay };
   }
 
-  function regionMapMarkup(region, position, scent, log) {
+  function regionMapMarkup(region, position, scent, log, entries) {
     region.visit(position);
     region.save();
     const { title, bounds: [w, h], sites, paths, visited, canonical } = region;
@@ -153,9 +185,16 @@
     </svg>
     <p class="region-map-key">● 지금 위치 ${scent ? ' · 🟠 양이 맡은 냄새' : ''}</p>
     <ul class="region-places">${sites.map(site => {
-      const dc = site.episode ? discoverCount(site.episode, log) : null;
+      const dc = region.index === 0 && (site.extension || site.episode)
+        ? countAtSite(site, entries, log)
+        : site.episode ? discoverCount(site.episode, log) : null;
       return `<li><b>${esc(site.name)}</b><span>${dc ? `발견 ${dc.n}/${dc.max}` : '아직 이야기가 열리지 않았어'}</span></li>`;
     }).join('')}</ul>`;
+  }
+
+  function countAtSite(site, entries, log) {
+    const items = new Set(entries.filter(entry => entry.location === site).map(entry => entry.id));
+    return { n: [...items].filter(key => log.discoveries[key]).length, max: items.size };
   }
 
   function progress() {
@@ -1441,20 +1480,33 @@
     const places = region?.sites.filter(site => site.area?.discover) || [{
       episode: id, primary: true, area, houses, translate: pos => pos, markerId: key => key
     }];
-    const entries = places.flatMap(site => {
-      const roomCount = new Map();
-      return site.area.discover.items.map(entry => {
-        const { episode, houses } = site;
+    const sources = region?.sources || places.map(site => ({ site, taggedOnly: false }));
+    const placed = new Set(), roomCount = new Map();
+    const entries = [...sources].sort((a, b) => Number(!!b.site.primary) - Number(!!a.site.primary)).flatMap(({ site, taggedOnly }) => {
+      const { episode } = site;
+      return site.area.discover.items.flatMap(entry => {
+        if (taggedOnly && !entry.site) return [];
+        const location = entry.site ? region?.sites.find(point => point.key === entry.site) : site;
+        if (!location || entry.site && !location.extension && !location.area) return [];
         const key = site.markerId(entry.residentKey || ('disc/' + entry.id));
-        if (!entry.indoor || !houses.length) return { ...entry, site, episode, key, pos: site.translate(entry.pos) };
+        const placement = location.key + '/' + entry.id;
+        if (entry.site && placed.has(placement)) return [];
+        if (entry.site) placed.add(placement);
+        const houses = location.houses;
+        if (!entry.indoor || !houses.length) return [{ ...entry, site, location, episode, key, pos: location.translate(entry.pos) }];
         const house = houses.find(h => h.title === entry.house) || houses[0];
         const count = roomCount.get(house.id) || 0;
         roomCount.set(house.id, count + 1);
-        return { ...entry, site, episode, key, room: house, pos: slots[count] };
+        return [{ ...entry, site, location, episode, key, room: house, pos: slots[count] }];
       });
     });
-    let activeSite = region?.main;
-    const localEntries = () => entries.filter(entry => entry.episode === (getRoom()?.episode || activeSite?.episode || id));
+    let activeSite = region?.main, noticedFlock = false, noticedOven = false;
+    const localEntries = () => {
+      const room = getRoom();
+      if (room?.id === 'house/lower-town') return entries.filter(entry => entry.room === room);
+      if (activeSite?.extension && !room) return entries.filter(entry => entry.location === activeSite);
+      return entries.filter(entry => entry.episode === (room?.episode || activeSite?.episode || id));
+    };
 
     const here = () => getView()?.position() || adv.spawn;
     const proximity = pos => Math.hypot(here()[0] - pos[0], here()[1] - pos[1]);
@@ -1733,7 +1785,9 @@
           for (const kind of ['jump', 'push']) if (isUnlocked(kind, site.episode)) view.restoreAbility(kind, site.markerId(kind));
         }
       }
-      const dc = discoverCount(getRoom()?.episode || activeSite?.episode || id, log);
+      const room = getRoom();
+      const dc = !room && activeSite?.extension ? countAtSite(activeSite, entries, log) :
+        discoverCount(room?.episode || activeSite?.episode || id, log);
       if (countEl) countEl.textContent = `발견 ${dc.n}/${dc.max}`;
       if (newEl) {
         newEl.hidden = !dc.newLeft || !!(region && !getRoom() && !activeSite?.primary);
@@ -1745,8 +1799,7 @@
       if (bagButton) bagButton.querySelector('small').textContent = bagTotal;
       if (next) next.hidden = discoverCount(id, log).n < 1;
 
-      const room = getRoom();
-      const markers = discoveryMarkers(entries.filter(entry => entry.room === (room || undefined) && (!isFlat() || entry.episode === id)));
+      const markers = discoveryMarkers(entries.filter(entry => entry.room === (room || undefined) && (!isFlat() || room || entry.episode === id)));
       if (room) return markers;
       for (const npc of spec.storyPeople || []) {
         markers.push({ id: npc.id, type: 'person', actor: npc.actor, pos: npc.pos, title: npc.actor, symbol: '💬', storyNpc: npc });
@@ -1815,7 +1868,7 @@
     root.querySelector('[data-quest-map]')?.addEventListener('click', () => {
       const room = getRoom(), view = getView();
       if (region && view) return card(region.title, '', {
-        extra: regionMapMarkup(region, room?.pos || here(), scent && (room?.pos || scent.pos), log), button: '지도 닫기'
+        extra: regionMapMarkup(region, room?.pos || here(), scent && (room?.pos || scent.pos), log, entries), button: '지도 닫기'
       });
       const unfound = entries.filter(e => !log.discoveries[e.id] && !e.hidden && e.room === (room || undefined));
       const dlg = card('이 장소 둘러보기', '', {
@@ -1837,6 +1890,7 @@
       sceneChanged() {
         clearCompass();
         zone = -1;
+        if (region?.index === 0 && !getRoom()) activeSite = null;
         onNearby(null);
         soundZone(getView()?.moveInfo().zone || 0);
       },
@@ -1854,11 +1908,25 @@
         if (site?.primary) soundZone(getView().moveInfo().zone);
         else {
           if (zoneText) zoneText.textContent = site?.name || region.title;
-          Sound.ambience(site?.area?.adventure?.ambience[0] || '모험 산길');
+          const ambience = { 'outer-court': '모험 장터', 'south-steps': '모험 뜰', 'sheep-gate': '모험 우물',
+            'lower-town': '모험 뜰', siloam: '모험 우물' };
+          Sound.ambience(site?.area?.adventure?.ambience[0] || ambience[site?.key] || '모험 산길');
         }
-        const dc = discoverCount(site?.episode || id, log);
+        const dc = site?.extension ? countAtSite(site, entries, log) : discoverCount(site?.episode || id, log);
         countEl.textContent = `발견 ${dc.n}/${dc.max}`;
         newEl.hidden = !site?.primary || !dc.newLeft;
+        if (site?.key === 'sheep-gate' && !noticedFlock) {
+          noticedFlock = true;
+          const route = getView().routeInfo(site.translate([-5.7, -2.55]));
+          const line = '메에! 저 양들 곁에 가 보고 싶어!';
+          if (route.reachable && route.meters > .6) getView().showScent(route.path, line);
+          else getView().sheepReact('animal', line);
+          Sound.sfx('sheep');
+          feedback(`${sheep.name}: ${line}`);
+        } else if (site?.key === 'lower-town' && !noticedOven) {
+          noticedOven = true;
+          feedback('화덕에서 갓 구운 빵 냄새가 나.');
+        }
       },
       zoneChanged() {
         const info = getView()?.moveInfo();
@@ -1915,8 +1983,9 @@
     const enhanced = hasDiscover || !!area.adventure;
     const region = hasDiscover ? makeRegion(id, log) : null;
     if (region) window.addEventListener('pagehide', region.save);
-    const houses = region?.main.houses || placeDoors(id, area);
-    const regionHouses = region ? region.sites.flatMap(site => site.houses) : houses;
+    const mainHouses = region?.main.houses || placeDoors(id, area);
+    const regionHouses = region ? region.sites.flatMap(site => site.houses) : mainHouses;
+    const houses = region?.index === 0 ? regionHouses.filter(house => house.episode === id) : mainHouses;
     const outsideDoors = regionHouses.map(house => ({
       id: house.id, type: 'house-door', pos: house.pos, title: house.title + ' 문', symbol: '🚪', house
     }));
