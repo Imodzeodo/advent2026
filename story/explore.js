@@ -1168,6 +1168,32 @@
       ref: '눅 1:10', touchLine: '뜰에 모인 사람들이 조용히 두 손을 모았어.', sheep: '나도 발소리를 줄이고 옆에 가만히 서 있을게.'
     },
 
+    'sheep-gate': {
+      title: '양문', kind: 'look', theme: 'temple', prop: 'sheepGate', cue: 'animal', icon: '🐑',
+      fact: "성전 북쪽에 '양문'이라는 성문이 있었어. 제물로 쓸 양들이 이 문으로 들어왔대.",
+      ref: '느 3:1; 요 5:2'
+    },
+    bethesda: {
+      title: '베데스다 못', kind: 'look', theme: 'temple', prop: 'bethesda', cue: 'water', icon: '💧',
+      fact: '양문 곁에 행각 다섯이 둘러싼 베데스다 못이 있었어.', ref: '요 5:2'
+    },
+    'mount-of-olives': {
+      title: '감람산', kind: 'look', theme: 'temple', prop: 'fig', cue: 'road', icon: '🌿',
+      fact: '성전 맞은편 동쪽 산이야. 예수님은 여기 앉아 성전을 바라보며 제자들과 이야기하셨어.', ref: '막 13:3'
+    },
+    siloam: {
+      title: '실로암 못', kind: 'touch', theme: 'temple', prop: 'water', anim: 'water', cue: 'water', icon: '🏺',
+      fact: '예루살렘 남쪽의 못이야. 예수님이 눈먼 사람에게 여기 가서 씻으라고 하셨지.', ref: '요 9:7'
+    },
+    'gentiles-court': {
+      title: '이방인의 뜰', kind: 'look', theme: 'temple', prop: 'colonnade', cue: 'worship', icon: '🏛️',
+      fact: '성전 바깥 가장 넓은 뜰이야. 유대인이 아닌 사람도 여기까지는 들어올 수 있었어.'
+    },
+    'warning-stone': {
+      title: '경고 돌 표지', kind: 'look', theme: 'temple', prop: 'warningStone', cue: 'worship', icon: '🪨',
+      fact: '안쪽 뜰 앞에는 이방인은 더 들어가지 말라는 경고 돌 표지가 있었어.'
+    },
+
     // 집과 살림
     'flat-roof': {
       title: '평평한 지붕과 난간', kind: 'look', theme: 'home', prop: 'roof', cue: 'road', icon: '🏡',
@@ -1436,28 +1462,31 @@
   const spot = (id, x, z, extra = {}) => ({ id, pos: [x, z], ...extra });
   const week1Discover = {
     '1-0': {
-      newIds: ['solomon-colonnade', 'money-changer', 'oil-lamp'],
+      newIds: ['solomon-colonnade', 'gentiles-court', 'warning-stone'],
       storyPeople: [
         { id: 'guard', actor: '성전 문지기', pos: [-3.15, 13.75], lines: cues['1-0'].lines },
         { id: 'merchant', actor: '등잔 상인', pos: [9.2, 14.3], lines: [[null, '깨어 있는 사람에겐 반값이지. 밤이 기니 등잔 기름부터 챙겨.']] }
       ],
       items: [
+        spot('gentiles-court', -2.8, -2.6, { site: 'outer-court' }),
+        spot('warning-stone', 2.7, -7.4, { site: 'outer-court' }),
         spot('oil-lamp', 1.8, 13.4, { indoor: true }),
-        spot('solomon-colonnade', -4.4, -6.2),
-        spot('money-changer', 7.4, 14.5),
-        spot('ascent-steps', 2.4, -10.5),
-        spot('mikveh', 13.8, 1.4),
-        spot('water-jar', 10.6, -2.5, { indoor: true }),
-        spot('mud-brick', -12.6, 8.4),
+        spot('solomon-colonnade', 6.3, 3.4, { site: 'outer-court' }),
+        spot('money-changer', 5, -.8, { site: 'outer-court' }),
+        spot('ascent-steps', 1.8, 1.6, { site: 'south-steps' }),
+        spot('mikveh', -4.1, 3.1, { site: 'south-steps' }),
+        spot('water-jar', 0, 0, { site: 'lower-town', indoor: true }),
+        spot('mud-brick', -.65, 19.5),
         spot('traveler-pack', -17.2, -3.5, { ability: 'smell', hidden: true })
       ]
     },
     '1-1': {
-      newIds: ['flat-roof', 'empty-cradle', 'millstone'],
+      newIds: ['millstone', 'empty-cradle', 'money-changer'],
       storyPeople: [
         { id: 'elizabeth', actor: '엘리사벳', pos: [-4.1, 8.4], lines: cues['1-1'].lines }
       ],
       items: [
+        spot('money-changer', 5, -.8, { site: 'outer-court' }),
         spot('millstone', -1.8, 10.4, { indoor: true }),
         spot('empty-cradle', -3.6, 13.1, { indoor: true }),
         spot('flat-roof', -1.80, -20.34),
@@ -1470,19 +1499,20 @@
       ]
     },
     '1-2': {
-      newIds: ['priest-linen', 'temple-trumpet', 'dove-seller'],
+      newIds: ['dove-seller', 'sheep-gate', 'bethesda'],
       storyPeople: [
         { id: 'zach', actor: '사가랴', pos: [-3.65, -10.3], lines: people.zachariah[1] }
       ],
       items: [
-        spot('dove-seller', -7.4, 14.6),
+        spot('sheep-gate', -5.8, 1, { site: 'sheep-gate' }),
+        spot('bethesda', 2.3, 2.55, { site: 'sheep-gate' }),
+        spot('dove-seller', -5, 1.8, { site: 'outer-court' }),
         spot('priest-linen', -3.5, -5.2),
         spot('temple-trumpet', 4.4, -14.8),
-        spot('solomon-colonnade', 4.3, -3.6),
-        spot('money-changer', 7.4, 14.3),
-        spot('ascent-steps', -2.4, -10.4),
-        spot('mikveh', 13.8, 1.4),
-        spot('water-jar', 10.6, -2.5, { indoor: true }),
+        spot('money-changer', 5, -.8, { site: 'outer-court' }),
+        spot('ascent-steps', 1.8, 1.6, { site: 'south-steps' }),
+        spot('mikveh', -4.1, 3.1, { site: 'south-steps' }),
+        spot('water-jar', 0, 0, { site: 'lower-town', indoor: true }),
         spot('oil-lamp', -10.8, 15.8, { indoor: true })
       ]
     },
@@ -1495,31 +1525,31 @@
       items: [
         spot('incense-altar', 0, -16.5),
         spot('menorah', -3.1, -17.2),
-        spot('waiting-court', -3.4, 9.2),
+        spot('waiting-court', -3.4, 9.2, { site: 'sanctuary' }),
         spot('priest-linen', 4.2, -9.2),
         spot('temple-trumpet', -4.6, -14.8),
-        spot('solomon-colonnade', -4.3, -2.8),
-        spot('mikveh', 13.8, 1.4),
+        spot('solomon-colonnade', 6.3, 3.4, { site: 'outer-court' }),
+        spot('mikveh', -4.1, 3.1, { site: 'south-steps' }),
         spot('oil-lamp', 11.8, 13.5, { indoor: true, ability: 'smell', hidden: true })
       ]
     },
     '1-4': {
-      newIds: ['wax-tablet', 'water-carry', 'scroll-synagogue'],
+      newIds: ['priest-linen', 'siloam', 'mount-of-olives'],
       storyPeople: [
         { id: 'gather', actor: '기다리던 사람', pos: [1.2, 1.5], lines: people.templeWitness[1] },
         { id: 'zach', actor: '사가랴', pos: [-1.7, -16.9], lines: zachariahLater }
       ],
       items: [
-        spot('wax-tablet', 7.6, 13.4, { indoor: true }),
-        spot('water-carry', 10.5, -2.2),
+        spot('wax-tablet', 0, 0, { site: 'lower-town', indoor: true }),
+        spot('siloam', 1.2, 3.6, { site: 'siloam' }),
+        spot('mount-of-olives', -.8, 2.4, { site: 'olives' }),
+        spot('water-carry', 3.65, 1, { site: 'siloam' }),
         spot('scroll-synagogue', -4.2, -14.6, { indoor: true }),
-        spot('solomon-colonnade', -4.3, -2.8),
-        spot('dove-seller', -7.4, 14.6),
-        spot('money-changer', 11.4, 6.2),
-        spot('ascent-steps', 2.5, -10.6),
-        spot('waiting-court', 3.4, 7.6),
-        spot('priest-linen', 4.2, -8.8),
-        spot('mikveh', 13.8, 1.4)
+        spot('dove-seller', -5, 1.8, { site: 'outer-court' }),
+        spot('money-changer', 5, -.8, { site: 'outer-court' }),
+        spot('ascent-steps', 1.8, 1.6, { site: 'south-steps' }),
+        spot('waiting-court', -3.4, 9.2, { site: 'sanctuary' }),
+        spot('priest-linen', 4.2, -8.8)
       ]
     },
     '1-5': {
@@ -1541,7 +1571,7 @@
       ]
     },
     '1-6': {
-      newIds: ['swaddle-wrap', 'loom-spindle', 'courtyard-hill'],
+      newIds: ['swaddle-wrap', 'loom-spindle', 'flat-roof'],
       storyPeople: [
         { id: 'elizabeth', actor: '엘리사벳', pos: [-3.6, -11.9], lines: cues['1-6'].lines }
       ],
@@ -1749,7 +1779,7 @@
       ]
     },
     '3-4': {
-      newIds: ['wild-flowers', 'terraced-field'],
+      newIds: ['wild-flowers', 'terraced-field', 'temple-trumpet'],
       storyPeople: [
         { id: 'maria', actor: '마리아', pos: [0, 3.8], lines: cues['3-4'].lines }
       ],

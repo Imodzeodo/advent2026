@@ -3112,6 +3112,7 @@
       box('@flame', 0, elevation(-21, 2.44), -20.89, .36, 4.82, .05);
       box(cap, 0, elevation(-21, 5.85), -21, 13.4, .49, 1.99);
       box(roofLine, 0, elevation(-21, 6.22), -21, 13.9, .40, 2.22);
+      if (regional) box('#d4a456', 0, elevation(-21, 6.44), -21, 14.05, .12, 2.34);
       for (let x = -18; x <= 18; x += 2.7) for (let z = -19; z < 19; z += 2.6) {
         if (Math.abs(x) > 11 && z > 9) continue;
         if (z < -11.4) continue;
@@ -3352,9 +3353,276 @@
       walkable: (x, z) => !rail(x, z), signs, climbs: roof ? [[0, -20.7]] : temple ? [[1.65, -18.5]] : [] };
   }
 
+  function jerusalemScenery(group, site, climate) {
+    const { key, edge } = site;
+    const rand = seeded(hashStr(key));
+    const night = climate.time === 'night';
+    const limestone = night ? ['#b6aaaf', '#a098a5', '#c8b9bc'] : ['#d5bd99', '#b9a383', '#e4cfad'];
+    const [wall, shade, cap] = limestone;
+    const tile = night ? '#aea2ac' : '#cbb092', wood = '#73524a', bronze = '#c99249';
+    const cube = new T.BoxGeometry(), stone = new T.IcosahedronGeometry(1, 0);
+    const column = new T.CylinderGeometry(.86, 1, 1, 8);
+    const batches = new Map(), details = new Map(), obstacles = [], blocks = [], climbs = [], fx = [];
+    function add(batch, shape, color, transform) {
+      if (!batch.has(color)) batch.set(color, []);
+      batch.get(color).push(place(shape, ...transform));
+    }
+    const box = (color, ...shape) => add(batches, cube, color, shape);
+    const stoneJoint = (color, ...shape) => add(details, cube, color, shape);
+    const rock = (color, ...shape) => add(batches, stone, color, shape);
+    const round = (color, ...shape) => add(batches, column, color, shape);
+    const stair = (distance, step, total) => clamp(Math.floor(distance / step) + 1, 0, total);
+    const lowerSlope = z => -.82 - .085 * (z + 9);
+    const groundHeight = (x, z) => {
+      if (key === 'olives') return .25 + 12 * Math.max(0, 1 - ((x / 13) ** 2 + (z / 13) ** 2)) ** 1.55;
+      if (key === 'outer-court') return 2.8 - 2.4 * clamp((-z - 4) / 7, 0, 1);
+      if (key === 'south-steps') return Math.abs(x) <= 3.35 ? 0 : 2.8 * clamp((-z + 5.5) / 12, 0, 1);
+      if (key === 'lower-town') return lowerSlope(z);
+      if (key === 'siloam') return -2.35;
+      return .16;
+    };
+    const height = (x, z) => {
+      const y = groundHeight(x, z);
+      if (key === 'south-steps' && Math.abs(x) <= 3.35) return .2 * stair(5.5 - z, .9, 14);
+      if (key === 'wall-walk' && Math.abs(z) < 1.55 && x >= -9 && x < -2.5) return y + .34 * stair(x + 9, .5, 13);
+      if (key === 'wall-walk' && x >= -2.5 && x <= 8.6 && Math.abs(z) < 2.2) return y + 4.42;
+      if (key === 'lower-town' && Math.abs(x) < 1.35 && z > 1 && z < 7) return lowerSlope(1 + .6 * stair(z - 1, .6, 10));
+      return y;
+    };
+    const solid = (x, z, w, d) => obstacles.push([x, z, w / 2 + .18, d / 2 + .18]);
+    function masonry(x, z, w, h, d, base = height(x, z)) {
+      box(wall, x, base + h * .5, z, w, h, d);
+      box(cap, x, base + h, z, w + .16, .16, d + .16);
+      for (let level = .55; level < h - .15; level += .55) stoneJoint(shade, x, base + level, z, w + .02, .035, d + .02);
+    }
+    function pavement(x, z, nx, nz, width = 1.36) {
+      for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+        const px = x + i * width, pz = z + j * width;
+        stoneJoint(rand() > .34 ? tile : limestone[i % 3], px, height(px, pz) -.04, pz, width - .035, .11, width - .035);
+      }
+    }
+    function colonnade(x, z, length, alongX, roofColor = shade) {
+      const y = height(x, z), tall = 3.2, width = 1.85;
+      const n = Math.ceil(length / 2.05);
+      for (let i = 0; i <= n; i++) {
+        const delta = length * (i / n - .5), px = x + (alongX ? delta : 0), pz = z + (alongX ? 0 : delta);
+        for (const side of [-1, 1]) {
+          const cx = px + (alongX ? 0 : side * .7), cz = pz + (alongX ? side * .7 : 0);
+          const base = height(cx, cz);
+          box(shade, cx, base + .13, cz, .59, .26, .62);
+          round(wall, cx, (base + y + tall) / 2, cz, .22, y + tall - base, .22);
+          box(cap, cx, y + tall - .12, cz, .57, .21, .57);
+          blocks.push([cx, cz, .19]);
+        }
+      }
+      box(roofColor, x, y + tall, z, alongX ? length + .63 : width, .23, alongX ? width : length + .63);
+      box(cap, x, y + tall + .16, z, alongX ? length + .77 : width + .13, .12, alongX ? width + .13 : length + .77);
+    }
+    function torch(x, z, y = height(x, z)) {
+      round(wood, x, y + .72, z, .075, 1.44, .075);
+      round(bronze, x, y + 1.43, z, .18, .17, .18);
+      rock('flame', x, y + 1.66, z, .13, .31, .13, .12);
+      if (night || climate.time === 'dusk') {
+        rock('#cd9568', x, y + .016, z, 1.38, .016, 1.20);
+      }
+    }
+    function jar(x, z, y = height(x, z)) {
+      rock('#ad735d', x, y + .27, z, .31, .35, .31);
+      round('#c38c67', x, y + .57, z, .15, .18, .15);
+      round(wood, x, y + .665, z, .115, .028, .115);
+    }
+    function person(x, z, robe, facing = 0, carrying = false) {
+      const y = height(x, z);
+      round(robe, x, y + .64, z, .3, 1.25, .27, -.065, facing);
+      rock('#b08a6c', x, y + 1.44, z, .153, .18, .153);
+      rock(cap, x, y + 1.53, z, .193, .14, .181);
+      box(bronze, x, y + .77, z, .48, .08, .43, 0, facing);
+      if (carrying) jar(x + .42, z + .12, y + .25);
+    }
+    function sheep(x, z, yaw) {
+      const y = height(x, z), fleece = '#e4dacd', face = '#655650';
+      rock(fleece, x, y + .47, z, .37, .38, .53, 0, yaw);
+      rock(face, x + Math.sin(yaw) * .41, y + .58, z + Math.cos(yaw) * .41, .17, .21, .2);
+      for (const dx of [-.17, .17]) for (const dz of [-.24, .24]) {
+        box(face, x + dx, y + .155, z + dz, .093, .31, .11);
+      }
+    }
+    function basin(x, z, w, d, depth) {
+      const y = height(x, z);
+      box('water', x, y + .035, z, w -.44, .075, d -.44);
+      for (const side of [-1, 1]) {
+        masonry(x + side * w / 2, z, .45, depth, d + .48, y);
+        masonry(x, z + side * d / 2, w, depth, .45, y);
+      }
+      for (let i = 0; i < 4; i++) {
+        box(limestone[i % 3], x, y + .08 + i * .092, z + d / 2 - 1.89 + i * .43, w * .33, .13, .46);
+      }
+      for (let i = 0; i < 9; i++) {
+        box('#89aaa9', x + (rand() - .5) * (w - 1), y + .078, z + (rand() - .5) * (d - 1), .45 + rand() * .9, .008, .042);
+      }
+      solid(x, z, w + .32, d + .32);
+    }
+    function stall(x, z, cloth, doves = false) {
+      const y = height(x, z);
+      for (const dx of [-1.5, 1.5]) for (const dz of [-.73, .73]) {
+        box(wood, x + dx, y + 1.04, z + dz, .10, 2.08, .10);
+      }
+      for (let i = -2; i <= 2; i++) {
+        box(i % 2 ? cap : cloth, x + i * .64, y + 2.02, z, .65, .095, 2.03, -.16);
+      }
+      box(wood, x, y + .76, z, 2.62, .17, .73);
+      for (const dx of [-1.02, 1.02]) box(shade, x + dx, y + .34, z, .21, .68, .52);
+      if (doves) {
+        for (let i = -3; i <= 3; i++) box(wood, x + i * .14, y + 1.11, z - .04, .025, .52, .50);
+        box(wood, x, y + 1.38, z - .04, .96, .055, .56);
+      } else {
+        for (const dx of [-.8, 0, .82]) round(bronze, x + dx, y + .87, z, .22, .07, .20);
+      }
+      solid(x, z, 2.95, 1.08);
+    }
+    function smoke(x, z, y) {
+      for (let i = 0; i < 3; i++) {
+        const cloud = glowSprite('#c7bac7', 1.4, .17);
+        cloud.position.set(x, y + i * .45, z);
+        cloud.userData.drawPriority = 1;
+        group.add(cloud);
+        fx.push({ cloud, x, z, base: y, i });
+      }
+    }
+
+    if (key === 'outer-court') {
+      pavement(-8.3, -8.3, 13, 13);
+      for (const side of [-1, 1]) colonnade(side * 8.8, .6, 16.4, false);
+      for (const x of [-5.75, 5.75]) {
+        colonnade(x, -6.3, 5.2, true, '#827483');
+        colonnade(x, 8.8, 5.2, true, '#827483');
+      }
+      stall(5, -2.1, '#a45456');
+      stall(-5, .55, '#596d81', true);
+      for (const [x, z, robe] of [[-3, 3, '#765a7b'], [-1.8, 3.7, '#7a8d83'], [1.9, -4, '#a57665'], [4.5, 3.1, '#82778c'], [4.55, -3.15, '#7a5849']]) person(x, z, robe);
+      for (const [x, z] of [[-7, 6.7], [7, 6.7], [-5, -5.8], [5, -5.8]]) torch(x, z);
+      for (const x of [-5.5, 5.5]) masonry(x, 9.1, 4.1, .6, .47);
+    } else if (key === 'south-steps') {
+      for (let i = 0; i < 14; i++) {
+        const top = (i + 1) * .2;
+        box(limestone[i % 3], 0, top * .5 - .035, 5.05 - i * .9, 6.68, top + .07, .902);
+      }
+      for (const x of [-3.62, 3.62]) for (let i = 0; i < 7; i++) {
+        const z = 4.6 - i * 1.82;
+        masonry(x, z, .48, .42, 1.85);
+      }
+      basin(-5.05, .6, 2.7, 3.2, .3);
+      basin(5.3, 3.6, 2.35, 2.4, .31);
+      torch(-3.8, 4.8); torch(3.8, -5.1);
+      climbs.push([0, -5.1]);
+    } else if (key === 'sheep-gate') {
+      pavement(-8.95, -7.95, 13, 12);
+      for (const x of [-9.1, -3]) {
+        masonry(x, -.9, 2.35, 5.75, 2.25);
+        solid(x, -.9, 2.35, 2.3);
+        for (const dx of [-.84, .84]) for (const dz of [-.84, .84]) box(cap, x + dx, 6.18, -.9 + dz, .46, .59, .44);
+      }
+      box(wall, -6.05, 4.45, -.9, 4.26, 1.37, 1.86);
+      box(cap, -6.05, 5.13, -.9, 4.41, .19, 2.02);
+      round(wood, -7.83, 6.08, -.72, .066, 2.25, .066);
+      box('#aa514e', -7.08, 6.77, -.68, 1.43, .55, .07, .09, -.19, -.14);
+      box(bronze, -7.09, 6.55, -.68, 1.4, .063, .08, .09, -.19, -.14);
+      basin(3.45, -1.6, 8.2, 7.35, .43);
+      for (const z of [-6.28, 3.55, -1.65]) colonnade(3.55, z, 8.30, true);
+      for (const x of [-1.42, 8.48]) colonnade(x, -1.66, 7.65, false);
+      for (const [x, z, yaw] of [[-6.45, -2.5, .3], [-6.05, -3.9, -1], [-4.8, -3.05, .6], [-7.35, -4.2, 1.1], [-5.2, -5.4, .5]]) sheep(x, z, yaw);
+      person(-8.1, -3.7, '#796153');
+      for (const [x, z] of [[-7.5, 1.4], [-3.4, 1.5], [7, 4.35]]) torch(x, z);
+    } else if (key === 'wall-walk') {
+      for (let i = 0; i < 13; i++) {
+        const top = (i + 1) * .34;
+        box(limestone[i % 3], -8.75 + i * .5, .16 + top / 2, 0, .505, top, 3.1);
+      }
+      masonry(3.05, 0, 11.1, 4.42, 4.4, .08);
+      for (const z of [-2.08, 2.08]) {
+        box(shade, 2.98, 4.78, z, 10.95, .52, .28);
+        for (let i = -2; i <= 8; i++) box(cap, i, 5.19, z, .48, .49, .36);
+      }
+      for (const side of [-1, 1]) {
+        solid(3.05, side * 2.25, 11.1, .19);
+        solid(-5.7, side * 1.66, 6.5, .19);
+        masonry(8.0, side * 1.77, 2.1, 2.32, .83, 4.52);
+      }
+      box(cap, 7.75, 6.92, 0, 2.72, .36, 4.87);
+      solid(8.74, 0, .17, 4.4);
+      torch(6.05, -1.33); torch(-9.3, 1.82);
+      climbs.push([4.25, 0]);
+    } else if (key === 'lower-town') {
+      for (const [x, z, width, d, h] of [[-4.9, -1.45, 3.9, 3.4, 2.7], [4.8, -.9, 3.3, 3.9, 3.43], [-7.25, 5.55, 2.85, 3.3, 2.63], [5.4, -5.8, 4.5, 3.6, 3.05], [-5.25, -5.8, 4.24, 3.1, 2.55], [4.9, 5.65, 3.6, 3.2, 2.82]]) {
+        const y = height(x, z);
+        masonry(x, z, width, h, d, y - .19);
+        box(shade, x, y + h - .11, z, width + .22, .19, d + .2);
+        box('#43343e', x, y + .52, z + d / 2 + .015, .86, 1.53, .065);
+        box(wood, x, y + 1.31, z + d / 2 + .055, 1.05, .11, .14);
+        box(night ? 'flame' : wood, x + .93, y + 1.57, z + d / 2 + .03, .3, .4, .09);
+        solid(x, z, width, d);
+      }
+      for (let i = 0; i < 10; i++) {
+        const z = 1.3 + i * .6;
+        box(limestone[i % 3], 0, height(0, z) -.09, z, 2.65, .18, .601);
+      }
+      const ovenY = height(3.1, 2.4);
+      round('#a47769', 3.1, ovenY + .35, 2.4, .75, .70, .66);
+      rock('#b48263', 3.1, ovenY + .76, 2.4, .77, .56, .68);
+      box(wood, 3.1, ovenY + .36, 3, .59, .42, .14);
+      rock('flame', 3.1, ovenY + .28, 3.09, .23, .13, .09);
+      smoke(3.1, 2.4, ovenY + 1.13);
+      blocks.push([3.1, 2.4, .61]);
+      person(2.55, 4.3, '#746180', -.3, true);
+      jar(-2.6, .85); jar(-3.1, .95); torch(-3.6, .58); torch(2.15, -4.35);
+    } else if (key === 'siloam') {
+      pavement(-5.8, -5.8, 9, 9);
+      basin(-.5, -.3, 7.9, 5.4, .46);
+      for (const side of [-1, 1]) {
+        masonry(side * 5.9, -1.35, 1.03, 1.1, 6.1);
+        torch(side * 5.15, 2.7);
+      }
+      for (const [x, z, color] of [[-3.5, 3.55, '#796780'], [4.3, -.4, '#a77265'], [-2.65, -4.6, '#778888']]) person(x, z, color, Math.PI, true);
+      jar(2.75, 3.7); jar(3.19, 3.8);
+    } else if (key === 'olives') {
+      for (const [x, z, size] of [[-8,-5,1.23],[-8,4,1.22],[-4.7,-3,1.27],[-3.9,6.7,1.19],[2,-5.4,1.38],[4.7,-1.8,1.28],[7,3.7,1.24],[5.6,7.2,1.13],[.4,7.9,.99],[8,-7,1.02],[-5.4,-8.7,1.22]]) {
+        const y = height(x, z);
+        round(wood, x, y + size * .66, z, .19 * size, 1.3 * size, .19 * size, .19, 0, -.16);
+        for (let i = 0; i < 5; i++) {
+          const dx = Math.cos(i * 2.4), dz = Math.sin(i * 2.4), s = size * (.8 + rand() * .4);
+          round(wood, x + dx * .27 * size, y + size * 1.14, z + dz * .27 * size, .075 * size, .81 * size, .075 * size, dz * .72, 0, -dx * .72);
+          rock(['#788456', '#5a714f', '#879064'][i % 3], x + dx * .68 * size, y + size * (1.52 + rand() * .34), z + dz * .68 * size, s, s * .63, s * .90, 0, i);
+        }
+        blocks.push([x, z, .27 * size]);
+      }
+      for (let i = 0; i < 34; i++) {
+        const x = (rand() - .5) * 24, z = (rand() - .5) * 24;
+        if (Math.hypot(x, z) < 2.65) continue;
+        rock(i % 2 ? '#a89878' : '#74845d', x, height(x, z), z, .18 + rand() * .45, .15 + rand() * .27, .32);
+      }
+      torch(2.7, 2.8);
+      climbs.push([-.3, .2]);
+    }
+    addScenery(group, batches, color => color === 'flame' ? mat('#ffc979', { emissive: '#ff9a49', ei: night ? 1.8 : .45 }) :
+      color === 'water' ? mat('#52838b', { rough: .47 }) : mat(color));
+    const detail = new T.Group();
+    group.add(detail);
+    addScenery(detail, details, color => mat(color));
+    cube.dispose(); stone.dispose(); column.dispose();
+    const lookAt = key === 'olives' || key === 'wall-walk' ? site.translate([28 - site.x, -31 - site.z]) :
+      site.translate([-28 - site.x, -19 - site.z]);
+    return { height, groundHeight, blocks, climbs, lookAt, detail, fx,
+      walkable(x, z) {
+        if (Math.abs(x) > edge || Math.abs(z) > edge) return true;
+        return !obstacles.some(([cx, cz, w, d]) => Math.abs(x - cx) < w && Math.abs(z - cz) < d);
+      }
+    };
+  }
+
   function regionWorld(scene, options, climate, protectedPoints) {
     const { region, seed } = options;
     const [ox, oz] = region.origin, [wide, deep] = region.bounds;
+    const jerusalem = region.index === 0;
     const water = region.placesToPlay.find(play => play.type === 'stones')?.pos;
     const game = region.placesToPlay.find(play => play.type === 'game')?.pos;
     const summit = region.index === 2 ? [36 - ox, -24 - oz] : null;
@@ -3365,11 +3633,23 @@
     let main, activePart;
     const rand = seeded(hashStr('region/' + region.index));
     for (const site of region.sites) {
-      if (!site.area) continue;
+      if (!site.area && !site.extension) continue;
       const { area, offset: [x, z], translate, markerId } = site;
       const group = new T.Group();
       group.position.set(x, 0, z);
       scene.add(group);
+      if (site.extension) {
+        const local = jerusalemScenery(group, site, climate);
+        blocks.push(...local.blocks.map(([px, pz, r]) => [...translate([px, pz]), r]));
+        for (const effect of local.fx) {
+          effect.cloud.position.x += x; effect.cloud.position.z += z;
+          effect.x += x; effect.z += z;
+          scene.add(effect.cloud);
+          fx.push(effect);
+        }
+        parts.push({ site, group, local });
+        continue;
+      }
       const layout = site.primary ? options.layout : area.layout;
       const weather = site.primary ? climate : { ...climate, weather: 'clear' };
       const adventure = area.adventure && (site.primary ? area.adventure : { ...area.adventure,
@@ -3385,7 +3665,7 @@
         activePart = group;
         scene.background = group.background;
         scene.fog = group.fog;
-        scene.fog.near += 8; scene.fog.far += 26;
+        scene.fog.near += jerusalem ? 26 : 8; scene.fog.far += jerusalem ? 66 : 26;
       }
       for (const child of [...group.children]) {
         const skyObject = child === local.dome || child.isPoints;
@@ -3431,6 +3711,7 @@
       }
     };
     for (const part of parts) {
+      if (part.site.extension) continue;
       part.actors = new T.Group();
       scene.add(part.actors);
     }
@@ -3452,7 +3733,8 @@
       const px = x + ox, pz = z + oz;
       const slope = region.index === 1 || region.index === 2 ? 1.35 : .65;
       const rise = summit ? 5.2 * Math.max(0, 1 - Math.hypot((x - summit[0]) / 11, (z - summit[1]) / 9)) : 0;
-      const hills = rise + slope * Math.sin(px * .072) * Math.cos(pz * .065) + .20 * Math.sin(pz * .23);
+      const valley = jerusalem ? -4.1 * Math.max(0, 1 - Math.hypot((px - 54) / 7, (pz + 7) / 40)) : 0;
+      const hills = rise + valley + slope * Math.sin(px * .072) * Math.cos(pz * .065) + .20 * Math.sin(pz * .23);
       let near, gap = 8;
       for (const part of parts) {
         const distance = gapFrom(part.site, x, z);
@@ -3466,7 +3748,8 @@
       const part = partAt(x, z);
       return part ? part.local.height(x - part.site.offset[0], z - part.site.offset[1]) : exterior(x, z);
     };
-    const landGeo = new T.PlaneGeometry(wide * 2 + 4, deep * 2 + 4, Math.ceil(wide * 1.25), Math.ceil(deep * 1.25))
+    const density = jerusalem ? .94 : 1.25;
+    const landGeo = new T.PlaneGeometry(wide * 2 + 4, deep * 2 + 4, Math.ceil(wide * density), Math.ceil(deep * density))
       .rotateX(-Math.PI / 2).translate(-ox, 0, -oz).toNonIndexed();
     const pos = landGeo.attributes.position, colors = new Float32Array(pos.count * 3);
     const earth = new T.Color(['#8c7d78', '#777855', '#677a5a', '#77634f'][region.index]);
@@ -3551,10 +3834,10 @@
     }
     for (const site of region.sites) {
       const [x, z] = site.offset, r = site.edge, towardsRoad = site.z > 0 ? -1 : 1;
-      const entranceZ = z + towardsRoad * (r + 1.45);
+      const entranceZ = site.extension ? z + towardsRoad * (r + .48) : z + towardsRoad * (r + 1.45);
       const signX = x + 2.75, signY = height(signX, entranceZ);
       signs.push([signX, entranceZ]);
-      const sign = textSprite(site.name, { color: '#fff1c7', size: 21 });
+      const sign = textSprite(site.extension ? site.label : site.name, { color: '#fff1c7', size: 21 });
       sign.position.set(signX, signY + 2.19, entranceZ);
       sign.scale.setScalar(4.8);
       scene.add(sign);
@@ -3566,6 +3849,7 @@
         wallAt(px, entranceZ, 1.73, .96, 1.08);
         add(stone, cap, px, py + 1.18, entranceZ, .35, .20, .35);
       }
+      if (site.extension || jerusalem && site.key === 'sanctuary') continue;
       const inward = site.x <= 0 ? 1 : -1;
       const lx = x + inward * (r + 3.7), lz = z - towardsRoad * Math.min(r - 3, inward > 0 ? 9 : 3);
       const y = height(lx, lz);
@@ -3629,24 +3913,54 @@
       add(stone, '#bd917b', x - 1.9, y + 1.17, z + .2, .17, .19, .17);
       blocks.push([x, z, 1.05]);
     }
+    let templeSilhouette;
+    if (jerusalem) {
+      const scenery = new Map(), dusk = climate.time === 'dusk';
+      const [x, z] = positionOf([28, -32.5]);
+      const silhouette = (color, ...shape) => {
+        if (!scenery.has(color)) scenery.set(color, []);
+        scenery.get(color).push(place(cube, ...shape));
+      };
+      silhouette('#a89882', x, 1.25, z + 3, 24, 2.65, 15.5);
+      silhouette(dusk ? '#d4aa70' : '#d1bda4', x, 6.15, z, 14.2, 7.5, 9);
+      silhouette('#8f7786', x, 10.08, z, 15.7, .68, 10.2);
+      silhouette(dusk ? '#ffbe61' : '#deae65', x, 10.49, z, 15.8, .20, 10.3);
+      silhouette('#664e5d', x, 5.38, z + 4.51, 3.3, 5.55, .16);
+      for (const dx of [-5.8, -3.9, -2.4, 2.4, 3.9, 5.8]) {
+        silhouette('#ead0a0', x + dx, 6.15, z + 4.65, .43, 7.25, .63);
+      }
+      for (const dx of [-10.2, 10.2]) {
+        silhouette('#ac9887', x + dx, 4.52, z + 1.8, 4.15, 4.45, 8.55);
+        silhouette('#ccb091', x + dx, 6.82, z + 1.8, 4.35, .21, 8.74);
+      }
+      templeSilhouette = new T.Group();
+      scene.add(templeSilhouette);
+      addScenery(templeSilhouette, scenery, color => mat(color));
+    }
     addScenery(scene, patches, color => mat(color));
     cube.dispose(); stone.dispose(); cone.dispose(); column.dispose();
     function update(x, z) {
       sky.position.set(x, 0, z);
       let group = null, nearest = 8;
       for (const part of parts) {
+        if (part.site.extension) {
+          part.local.detail.visible = gapFrom(part.site, x, z) < 22;
+          continue;
+        }
         const gap = gapFrom(part.site, x, z);
         if (gap < nearest) { nearest = gap; group = part.group; }
       }
       if (group === activePart) return;
       activePart = group;
       for (const part of parts) {
-        part.group.visible = part.actors.visible = part.group === group;
+        if (!part.site.extension) part.group.visible = part.actors.visible = part.group === group;
       }
+      if (templeSilhouette) templeSilhouette.visible = !parts.some(part => part.site.key === 'sanctuary' && part.group === group);
     }
     const titles = { temple: '성전 계단 전망', sanctuary: '성소 계단 전망', roof: '사가랴 집 지붕 전망', gate: '성문 망루 전망' };
     const viewpoints = parts.flatMap(({ site, local }) => (local.climbs || []).map(pos => ({
-      pos: site.translate(pos), title: titles[site.key] || site.name + ' 전망', episode: site.episode
+      pos: site.translate(pos), title: titles[site.key] || site.label + ' 전망',
+      episode: site.episode || region.main.episode, lookAt: local.lookAt
     })));
     if (summit) {
       const hill = region.sites.find(site => site.key === 'galilee');
@@ -3942,6 +4256,24 @@
     } else if (prop === 'coins') {
       add(cube, '#7b553b', 0, .38, 0, .92, .76, .58);
       for (const [dx, dz, h] of [[-.22, .06, .18], [0, -.04, .24], [.22, .08, .14]]) add(cyl, '#d7dde6', dx, .76 + h / 2, dz, .18, h, .18);
+    } else if (prop === 'warningStone') {
+      add(cube, '#86776f', 0, .14, 0, 1.10, .28, .61);
+      add(cube, '#c3b4a4', 0, .63, 0, .91, .73, .20);
+      for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 7; j++) add(cube, '#87776b', -.324 + j * .106, .42 + i * .105, .109,
+          .036 + ((i + j * 2) % 3) * .012, .027, .023, 0, 0, (j % 3 - 1) * .28);
+      }
+    } else if (prop === 'sheepGate') {
+      for (const x of [-.44, .44]) {
+        add(cube, '#c1ad96', x, .61, 0, .23, 1.2, .40);
+        add(cube, '#ded0b4', x, 1.27, 0, .32, .16, .46);
+      }
+      add(cube, '#b6a18e', 0, 1.06, 0, 1.08, .22, .35);
+      add(cube, '#a95350', -.15, 1.43, 0, .51, .22, .06, 0, 0, -.12);
+    } else if (prop === 'bethesda') {
+      add(cube, '#55808f', 0, .16, 0, 1.05, .17, .65);
+      for (const z of [-.36, 0, .36]) add(cube, '#cebfa8', 0, .38, z, 1.15, .14, .10);
+      for (const x of [-.51, .51]) add(cube, '#cebfa8', x, .38, 0, .10, .14, .81);
     } else if (prop === 'mikveh') {
       add(cube, '#b0a498', 0, .16, 0, 1.25, .32, 1.15);
       add(cube, '#4d92a6', 0, .28, 0, .96, .12, .86);
@@ -5314,7 +5646,8 @@
         if (vista !== next) { vista = next; vistaSince = now; }
         const show = !!vista && !walking && now - vistaSince > 380;
         if (show && vistaBlend < .027 && activePointer == null) {
-          const yaw = Math.atan2(p.x + region.origin[0], p.z + region.origin[1]);
+          const [lookX, lookZ] = vista.lookAt || region.origin.map(value => -value);
+          const yaw = Math.atan2(p.x - lookX, p.z - lookZ);
           azWant = az + Math.atan2(Math.sin(yaw - az), Math.cos(yaw - az));
         }
         vistaBlend = reduced ? Number(show) : lerp(vistaBlend, Number(show), Math.min(1, delta * 1.8));
@@ -5328,7 +5661,8 @@
         target.lerp(spot, firstFrame || reduced ? 1 : Math.min(1, delta * 3.6));
         az = lerp(az, azWant, Math.min(1, delta * 7));
         const distance = room ? 4.9 : adventure ? 9.6 + vistaBlend * 10.6 : 8;
-        camPosition.set(target.x + Math.sin(az) * distance, target.y + (room ? 4.1 : gazing ? 2.1 : adventure ? 4.45 + vistaBlend * 12.0 : 3.85), target.z + Math.cos(az) * distance);
+        const vistaLift = vista?.lookAt ? 7 : 12;
+        camPosition.set(target.x + Math.sin(az) * distance, target.y + (room ? 4.1 : gazing ? 2.1 : adventure ? 4.45 + vistaBlend * vistaLift : 3.85), target.z + Math.cos(az) * distance);
         camera.position.copy(camPosition);
         aim.copy(target);
         camera.lookAt(aim); camera.updateMatrixWorld();
