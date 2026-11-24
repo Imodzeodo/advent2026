@@ -1170,6 +1170,10 @@
 
   const discoverShots = new Map();
   const discoverShotStore = 'discover-v74';
+  function discoverShotToken(itemId) {
+    const prop = window.DISCOVERIES?.[itemId]?.prop;
+    return prop?.startsWith('diorama-') ? itemId + ':' + prop : itemId;
+  }
 
   function trackDiscoverShot(itemId, pending) {
     discoverShots.set(itemId, pending);
@@ -1179,7 +1183,7 @@
 
   function readDiscoverShot(itemId) {
     if (discoverShots.has(itemId)) return discoverShots.get(itemId);
-    return trackDiscoverShot(itemId, photoFile(discoverShotStore, itemId));
+    return trackDiscoverShot(itemId, photoFile(discoverShotStore, discoverShotToken(itemId)));
   }
 
   async function discoverThumbURL(itemId) {
@@ -1704,7 +1708,7 @@
 
   function runTryExperience({ root, item, sheep, flat, onComplete, onClose }) {
     const mode = item.tryMode || 'spin';
-    const grain = item.prop === 'grain' || item.prop === 'winnow';
+    const grain = ['grain', 'winnow', 'diorama-gleaning', 'diorama-threshing-floor'].includes(item.prop);
     const react = sheepReaction(item, sheep);
     let pct = 0, finished = false, holdRaf = 0, holding = false, lastHold = 0;
 
@@ -2102,7 +2106,7 @@
           const url = view.snapProp(markerId);
           if (url) {
             discoverShots.set(itemId, url);
-            void photoFile(discoverShotStore, itemId, url);
+            void photoFile(discoverShotStore, discoverShotToken(itemId), url);
           }
           return url;
         } catch { return null; }

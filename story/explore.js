@@ -1143,12 +1143,12 @@
       ref: '출 27:20', sheep: '일곱 불빛이 금빛으로 반짝여서 눈이 부셔.'
     },
     'temple-trumpet': {
-      title: '나팔 소리', kind: 'touch', rarity: 'common', theme: 'temple', prop: 'trumpet', anim: 'trumpet', cue: 'worship', icon: '🎺',
+      title: '나팔 소리', kind: 'touch', rarity: 'common', theme: 'temple', prop: 'diorama-silver-trumpets', anim: 'trumpet', cue: 'worship', icon: '🎺',
       fact: '예배와 절기를 알릴 때 나팔을 불었어.',
       ref: '민 10:10', touchLine: '맑은 나팔 소리가 성전 뜰로 퍼졌어!', sheep: '깜짝이야! 나팔 소리가 뜰 끝까지 울려.'
     },
     'priest-linen': {
-      title: '제사장의 흰 세마포 옷', kind: 'look', rarity: 'common', theme: 'temple', prop: 'linen', cue: 'wool', icon: '👘',
+      title: '제사장의 흰 세마포 옷', kind: 'look', rarity: 'common', theme: 'temple', prop: 'diorama-linen-robe', cue: 'wool', icon: '👘',
       fact: '제사장은 고운 흰 베옷을 입고 섬겼어.',
       sheep: '내 털보다 훨씬 곱고 하얀 옷이네.'
     },
@@ -1158,35 +1158,35 @@
       sheep: '한 계단씩 오를 때마다 노랫소리가 들리는 것 같아.'
     },
     mikveh: {
-      title: '정결례 웅덩이', kind: 'look', rarity: 'common', theme: 'temple', prop: 'mikveh', cue: 'water', icon: '💧',
+      title: '정결례 웅덩이', kind: 'look', rarity: 'common', theme: 'temple', prop: 'diorama-mikveh', cue: 'water', icon: '💧',
       fact: '성전에 들어가기 전 몸을 씻던 계단식 물웅덩이야.',
       sheep: '계단 아래로 맑은 물이 고여 있어. 발끝이 시원해 보여.'
     },
     'waiting-court': {
-      title: '사람들이 기다리는 뜰', kind: 'touch', rarity: 'common', theme: 'temple', prop: 'pray', anim: 'pray', cue: 'worship', icon: '🙏',
+      title: '사람들이 기다리는 뜰', kind: 'touch', rarity: 'common', theme: 'temple', prop: 'diorama-prayer-court', anim: 'pray', cue: 'worship', icon: '🙏',
       fact: '분향하는 동안 백성은 밖에서 기도했어.',
       ref: '눅 1:10', touchLine: '뜰에 모인 사람들이 조용히 두 손을 모았어.', sheep: '나도 발소리를 줄이고 옆에 가만히 서 있을게.'
     },
 
     'sheep-gate': {
-      title: '양문', kind: 'look', rarity: 'legend', theme: 'temple', prop: 'sheepGate', cue: 'animal', icon: '🐑',
+      title: '양문', kind: 'look', rarity: 'legend', theme: 'temple', prop: 'diorama-sheep-gate', cue: 'animal', icon: '🐑',
       fact: "성전 북쪽에 '양문'이라는 성문이 있었어. 제물로 쓸 양들이 이 문으로 들어왔대.",
       ref: '느 3:1; 요 5:2'
     },
     bethesda: {
-      title: '베데스다 못', kind: 'look', rarity: 'rare', theme: 'temple', prop: 'bethesda', cue: 'water', icon: '💧',
+      title: '베데스다 못', kind: 'look', rarity: 'rare', theme: 'temple', prop: 'diorama-bethesda', cue: 'water', icon: '💧',
       fact: '양문 곁에 행각 다섯이 둘러싼 베데스다 못이 있었어.', ref: '요 5:2'
     },
     'mount-of-olives': {
-      title: '감람산', kind: 'look', rarity: 'legend', theme: 'temple', prop: 'fig', cue: 'road', icon: '🌿',
+      title: '감람산', kind: 'look', rarity: 'legend', theme: 'temple', prop: 'diorama-olives', cue: 'road', icon: '🌿',
       fact: '성전 맞은편 동쪽 산이야. 예수님은 여기 앉아 성전을 바라보며 제자들과 이야기하셨어.', ref: '막 13:3'
     },
     siloam: {
-      title: '실로암 못', kind: 'touch', rarity: 'rare', theme: 'temple', prop: 'water', anim: 'water', cue: 'water', icon: '🏺',
+      title: '실로암 못', kind: 'touch', rarity: 'rare', theme: 'temple', prop: 'diorama-siloam', anim: 'water', cue: 'water', icon: '🏺',
       fact: '예루살렘 남쪽의 못이야. 예수님이 눈먼 사람에게 여기 가서 씻으라고 하셨지.', ref: '요 9:7'
     },
     'gentiles-court': {
-      title: '이방인의 뜰', kind: 'look', rarity: 'common', theme: 'temple', prop: 'colonnade', cue: 'worship', icon: '🏛️',
+      title: '이방인의 뜰', kind: 'look', rarity: 'common', theme: 'temple', prop: 'diorama-gentiles-court', cue: 'worship', icon: '🏛️',
       fact: '성전 바깥 가장 넓은 뜰이야. 유대인이 아닌 사람도 여기까지는 들어올 수 있었어.'
     },
     'warning-stone': {
@@ -1196,12 +1196,12 @@
 
     // 집과 살림
     'flat-roof': {
-      title: '평평한 지붕과 난간', kind: 'look', rarity: 'common', theme: 'home', prop: 'roof', cue: 'road', icon: '🏡',
+      title: '평평한 지붕과 난간', kind: 'look', rarity: 'common', theme: 'home', prop: 'diorama-flat-roof', cue: 'road', icon: '🏡',
       fact: '지붕은 평평해서 말리고, 기도하고, 여름엔 자기도 했어. 떨어지지 않게 난간을 둘렀지.',
       ref: '신 22:8', sheep: '바람이 시원하게 불어! 난간이 있어서 안심이야.'
     },
     'oil-lamp': {
-      title: '기름 등잔', kind: 'try', rarity: 'rare', theme: 'home', prop: 'lamp', cue: 'fire', icon: '🪔',
+      title: '기름 등잔', kind: 'try', rarity: 'rare', theme: 'home', prop: 'diorama-clay-lamp', cue: 'fire', icon: '🪔',
       tryMode: 'order', tryPrompt: '기름 붓기 → 심지 놓기 → 불 붙이기 순서로 눌러 봐.', tryBtn: '다음 단계',
       bag: { name: '불 켠 등잔', icon: '🪔' },
       fact: '손바닥만 한 진흙 등잔에 올리브기름을 부어 불을 켰어.',
@@ -1230,7 +1230,7 @@
       sheep: '햇볕을 머금은 벽이 꽤 단단해 보여.'
     },
     'empty-cradle': {
-      title: '빈 요람', kind: 'touch', rarity: 'rare', theme: 'home', prop: 'cradle', anim: 'sway', cue: 'baby', icon: '🛏️',
+      title: '빈 요람', kind: 'touch', rarity: 'rare', theme: 'home', prop: 'diorama-rocking-cradle', anim: 'sway', cue: 'baby', icon: '🛏️',
       fact: '오래 아이를 기다린 집이야. 조용히 흔들어 볼 수 있어.',
       touchLine: '빈 요람이 천천히 흔들리며 나무 소리를 냈어.', sheep: '요람 옆에서 발소리를 낮추고 가만히 바라보고 있어.'
     },
@@ -1240,7 +1240,7 @@
       touchLine: '물동이가 살짝 출렁이다가 딱 균형을 잡았어!', sheep: '우와, 한 방울도 안 흘리고 걷다니 대단해!'
     },
     'courtyard-hill': {
-      title: '산골 집 마당', kind: 'look', rarity: 'common', theme: 'home', prop: 'terrace', cue: 'road', icon: '🏘️',
+      title: '산골 집 마당', kind: 'look', rarity: 'common', theme: 'home', prop: 'diorama-stone-courtyard', cue: 'road', icon: '🏘️',
       fact: '유대 산지 마을의 돌집과 안뜰이야.',
       sheep: '돌담 안쪽 마당이 아늑해. 여기서 같이 쉬어도 좋겠다.'
     },
@@ -1296,7 +1296,7 @@
       sheep: '발굽이 보라색이 될 것 같아! 달콤한 포도 향이 퍼져.'
     },
     yoke: {
-      title: '멍에', kind: 'look', rarity: 'common', theme: 'work', prop: 'yoke', cue: 'craft', icon: '🪵',
+      title: '멍에', kind: 'look', rarity: 'common', theme: 'work', prop: 'diorama-yoke', cue: 'craft', icon: '🪵',
       fact: '두 마리 소가 함께 끌도록 어깨에 얹는 나무야. 예수님은 "내 멍에는 쉽고"라고 하셨어.',
       ref: '마 11:30', sheep: '둘이 나란히 걸으면 짐이 가벼워지나 봐.'
     },
@@ -1318,12 +1318,12 @@
       sheep: '돌을 차곡차곡 쌓아 올려서 비탈도 밭이 됐네.'
     },
     'fig-tree': {
-      title: '무화과나무', kind: 'look', rarity: 'common', theme: 'road', prop: 'fig', cue: 'road', icon: '🌳',
+      title: '무화과나무', kind: 'look', rarity: 'common', theme: 'road', prop: 'diorama-fig-tree', cue: 'road', icon: '🌳',
       fact: '그늘이 넓어 그 아래 앉아 쉬거나 성경을 묵상했대.',
       ref: '요 1:48', sheep: '잎이 넓어서 그늘이 진짜 시원해. 잠깐 쉬었다 가자.'
     },
     'traveler-pack': {
-      title: '여행자의 짐', kind: 'look', rarity: 'common', theme: 'road', prop: 'pack', cue: 'road', icon: '🎒',
+      title: '여행자의 짐', kind: 'look', rarity: 'common', theme: 'road', prop: 'diorama-traveler-pack', cue: 'road', icon: '🎒',
       fact: '지팡이, 가죽 물주머니, 샌들, 겉옷(밤엔 이불)이면 길을 떠났어.',
       sheep: '단출한데 필요한 건 다 있네. 밤엔 겉옷이 이불이 된대!'
     },
@@ -1338,7 +1338,7 @@
       touchLine: '나귀가 긴 귀를 쫑긋하며 고개를 끄덕였어.', sheep: '움찔! 나귀 귀가 엄청 크네… 그래도 든든해 보여.'
     },
     'scroll-synagogue': {
-      title: '회당과 두루마리', kind: 'look', rarity: 'rare', theme: 'road', prop: 'scroll', cue: 'worship', icon: '📜',
+      title: '회당과 두루마리', kind: 'look', rarity: 'rare', theme: 'road', prop: 'diorama-reading-scroll', cue: 'worship', icon: '📜',
       fact: '안식일이면 회당에 모여 두루마리 성경을 읽었어.',
       ref: '눅 4:16', sheep: '돌돌 말린 두루마리를 펼치면 말씀이 가득 적혀 있겠지.'
     },
@@ -1353,12 +1353,12 @@
       ref: '룻 4:1', sheep: '사람들이 많이 오가는 자리네. 마을 소식이 다 모이겠다.'
     },
     census: {
-      title: '호적 등록', kind: 'look', rarity: 'common', theme: 'road', prop: 'census', cue: 'road', icon: '📋',
+      title: '호적 등록', kind: 'look', rarity: 'common', theme: 'road', prop: 'diorama-census', cue: 'road', icon: '📋',
       fact: '로마 황제의 명령으로 사람들은 조상의 고향에 가서 이름을 올렸어.',
       ref: '눅 2:1-3', sheep: '줄이 길게 늘어섰어. 멀리서 온 사람도 많나 봐.'
     },
     'roman-soldier': {
-      title: '로마 군인', kind: 'look', rarity: 'common', theme: 'road', prop: 'soldier', cue: 'animal', icon: '🛡️',
+      title: '로마 군인', kind: 'look', rarity: 'common', theme: 'road', prop: 'diorama-roman-soldier', cue: 'animal', icon: '🛡️',
       fact: '유대는 로마의 다스림을 받았어.',
       sheep: '갑옷 소리가 철컥거려. 괜히 발걸음이 조심스러워져.'
     },
@@ -1375,7 +1375,7 @@
       ref: '시 23:4', touchLine: '지팡이 끝으로 바닥을 톡 짚자 든든한 소리가 났어.', sheep: '저 지팡이가 있으면 길을 잃을 걱정이 없겠어.'
     },
     sling: {
-      title: '물매 돌리기', kind: 'try', rarity: 'rare', theme: 'field', prop: 'sling', cue: 'craft', icon: '🪨',
+      title: '물매 돌리기', kind: 'try', rarity: 'rare', theme: 'field', prop: 'diorama-sling', cue: 'craft', icon: '🪨',
       tryMode: 'spin', tryPrompt: '원을 그려 물매를 힘차게 돌려 봐.', tryBtn: '물매 돌리기',
       bag: { name: '목자의 물매', icon: '🪨' },
       fact: '다윗도 쓰던 돌팔매야. 목자는 이걸로 양 떼를 지켰어.',
@@ -1401,7 +1401,7 @@
 
     // 성탄의 밤
     'guest-room': {
-      title: '손님방과 아래층 동물 칸', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'guestroom', cue: 'animal', icon: '🏠',
+      title: '손님방과 아래층 동물 칸', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'diorama-guestroom', cue: 'animal', icon: '🏠',
       fact: '\'여관\'으로 옮긴 말은 집의 손님방을 뜻할 수도 있어. 집 아래층에는 동물이 지내는 칸이 있었대.',
       ref: '눅 2:7', sheep: '아래층에 동물들 자리가 있으면 밤에 꽤 따뜻하겠어.'
     },
@@ -1411,7 +1411,7 @@
       touchLine: '똑똑 두드렸지만 안쪽은 이미 사람들로 가득해.', sheep: '빈자리가 있을까? 조금 더 걸어 보자.'
     },
     'city-of-david': {
-      title: '다윗의 동네', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'david', cue: 'worship', icon: '👑',
+      title: '다윗의 동네', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'diorama-david', cue: 'worship', icon: '👑',
       fact: '베들레헴은 다윗 왕이 태어난 마을이야.',
       ref: '눅 2:4', sheep: '오래전 다윗이 양을 치던 언덕이 바로 이 근처래.'
     },
@@ -1426,12 +1426,12 @@
       sheep: '바위 안쪽이라 찬 바람이 덜 들어오네.'
     },
     'ox-donkey': {
-      title: '소와 나귀', kind: 'touch', rarity: 'common', theme: 'christmas', prop: 'oxdonkey', anim: 'donkey', cue: 'animal', icon: '🐂',
+      title: '소와 나귀', kind: 'touch', rarity: 'common', theme: 'christmas', prop: 'diorama-ox-donkey', anim: 'donkey', cue: 'animal', icon: '🐂',
       fact: '따뜻한 숨을 쉬는 가축들이야.',
       touchLine: '소와 나귀가 하얀 입김을 내쉬며 조용히 고개를 끄덕였어.', sheep: '따뜻한 숨결 덕분에 마구간이 포근해.'
     },
     'great-star': {
-      title: '큰 별', kind: 'look', rarity: 'legend', theme: 'christmas', prop: 'greatstar', cue: 'worship', icon: '⭐',
+      title: '큰 별', kind: 'look', rarity: 'legend', theme: 'christmas', prop: 'diorama-great-star', cue: 'worship', icon: '⭐',
       fact: '동방에서 온 사람들은 별을 따라왔어.',
       ref: '마 2:2', sheep: '저 별 진짜 밝다! 밤하늘에서 눈을 못 떼겠어.'
     },
@@ -1457,17 +1457,17 @@
       ref: '눅 1:80'
     },
     'wilderness-road': {
-      title: '광야의 길', kind: 'look', rarity: 'legend', theme: 'road', prop: 'wilderness-road', cue: 'quiet', icon: '🏜️',
+      title: '광야의 길', kind: 'look', rarity: 'legend', theme: 'road', prop: 'diorama-wilderness-road', cue: 'quiet', icon: '🏜️',
       fact: '"광야에 외치는 자의 소리여 주의 길을 예비하라." 대림절은 이 길을 준비하는 시간이야.',
       ref: '사 40:3; 눅 3:4'
     },
     'camel-hair-belt': {
-      title: '낙타털 옷과 가죽 띠', kind: 'touch', rarity: 'common', theme: 'work', prop: 'camel-coat', cue: 'craft', icon: '🧥',
+      title: '낙타털 옷과 가죽 띠', kind: 'touch', rarity: 'common', theme: 'work', prop: 'diorama-camel-robe', cue: 'craft', icon: '🧥',
       fact: '요한은 낙타털 옷을 입고 허리에 가죽 띠를 띠었어.',
       ref: '마 3:4'
     },
     'locusts-honey': {
-      title: '메뚜기와 들꿀', kind: 'look', rarity: 'common', theme: 'field', prop: 'wild-honey', cue: 'quiet', icon: '🍯',
+      title: '메뚜기와 들꿀', kind: 'look', rarity: 'common', theme: 'field', prop: 'diorama-locusts-honey', cue: 'quiet', icon: '🍯',
       fact: '요한은 광야에서 메뚜기와 들꿀을 먹었어.',
       ref: '마 3:4'
     },
@@ -1477,7 +1477,7 @@
       ref: '눅 1:39'
     },
     'thresh-winnow': {
-      title: '타작과 까부르기', kind: 'try', rarity: 'rare', theme: 'work', prop: 'winnow', cue: 'craft', icon: '🌾',
+      title: '타작과 까부르기', kind: 'try', rarity: 'rare', theme: 'work', prop: 'diorama-threshing-floor', cue: 'craft', icon: '🌾',
       fact: '곡식은 타작마당에서 떨고, 바람에 까부르면 가벼운 겨는 날아가고 알곡만 남았어.',
       ref: '룻 3:2; 마 3:12',
       tryMode: 'tap', tryPrompt: '키를 톡톡 눌러 겨를 바람에 날려 봐.', tryBtn: '키 까부르기'
@@ -1488,17 +1488,17 @@
       ref: '눅 4:29'
     },
     'mount-tabor': {
-      title: '다볼산', kind: 'look', rarity: 'common', theme: 'road', prop: 'tabor', cue: 'quiet', icon: '⛰️',
+      title: '다볼산', kind: 'look', rarity: 'common', theme: 'road', prop: 'diorama-tabor', cue: 'quiet', icon: '⛰️',
       fact: '나사렛 동쪽에 둥근 다볼산이 솟아 있어.',
       ref: '시 89:12'
     },
     'sea-of-galilee': {
-      title: '갈릴리 호수', kind: 'look', rarity: 'common', theme: 'road', prop: 'lake', cue: 'water', icon: '⛵',
+      title: '갈릴리 호수', kind: 'look', rarity: 'common', theme: 'road', prop: 'diorama-galilee', cue: 'water', icon: '⛵',
       fact: "갈릴리 호수는 '바다'라고도 불렸어. 고기잡이배가 떠 있었지.",
       ref: '마 4:18'
     },
     'herod-palace': {
-      title: '헤롯의 궁', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'palace', cue: 'quiet', icon: '🏛️',
+      title: '헤롯의 궁', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'diorama-herod-palace', cue: 'quiet', icon: '🏛️',
       fact: '헤롯 왕은 예루살렘에 화려한 궁을 두었어. 동방에서 온 사람들이 먼저 이곳에 찾아왔지.',
       ref: '마 2:1-3'
     },
@@ -1513,7 +1513,7 @@
       ref: '삼하 23:15'
     },
     'gleaning': {
-      title: '이삭줍기', kind: 'try', rarity: 'rare', theme: 'field', prop: 'grain', cue: 'craft', icon: '🌾',
+      title: '이삭줍기', kind: 'try', rarity: 'rare', theme: 'field', prop: 'diorama-gleaning', cue: 'craft', icon: '🌾',
       fact: '룻은 베들레헴 보아스의 밭에서 이삭을 주웠어. 밭 모퉁이와 떨어진 이삭은 가난한 사람을 위해 남겨 두었지.',
       ref: '룻 2:3; 레 19:9-10',
       tryMode: 'tap', tryPrompt: '밭 모퉁이에 떨어진 이삭을 톡톡 눌러 주워 봐.', tryBtn: '이삭 줍기'
@@ -1524,7 +1524,7 @@
       ref: '창 35:21; 미 4:8'
     },
     'well-meetings': {
-      title: '우물가의 만남', kind: 'look', rarity: 'common', theme: 'road', prop: 'water', cue: 'water', icon: '💧',
+      title: '우물가의 만남', kind: 'look', rarity: 'common', theme: 'road', prop: 'diorama-well-meeting', cue: 'water', icon: '💧',
       fact: '성경엔 우물가에서 만난 이야기가 많아. 리브가, 라헬, 그리고 예수님을 만난 사마리아 여인.',
       ref: '창 24:15; 창 29:9-10; 요 4:7', sheep: '물을 길으러 왔다가 반가운 이야기를 나누는 자리가 됐네.'
     }
