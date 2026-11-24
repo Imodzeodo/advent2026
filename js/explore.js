@@ -4,10 +4,10 @@
   const icons = { person: '●', quest: '♥', verse: '▤', secret: '⚿', photo: '◎', find: '✦', exit: '➜', event: '★', follow: '◇',
     light: '♨', clear: '◆', guard: '✶', fragment: '✦', ability: '🐾', cache: '✧', door: '▣', look: '👀', touch: '✋', try: '🛠' };
   const mapPoints = [
-    [72, 131], [239, 178], [88, 164], [61, 199], [114, 219], [259, 224], [306, 184],
-    [290, 100], [237, 61], [265, 49], [294, 65], [316, 40], [329, 86], [241, 104],
-    [228, 133], [265, 133], [210, 213], [232, 247], [273, 199], [286, 252], [318, 226],
-    [111, 277], [134, 308], [111, 343], [79, 319], [47, 338], [42, 295]
+    [165, 222], [110, 236], [181, 211], [192, 228], [172, 244], [138, 252], [98, 250],
+    [266, 258], [180, 62], [199, 50], [216, 62], [238, 86], [164, 80], [198, 84],
+    [182, 100], [210, 104], [150, 198], [118, 270], [146, 278], [98, 288], [126, 296],
+    [176, 302], [192, 314], [216, 322], [234, 338], [180, 334], [198, 348]
   ];
   const events = [
     { title: '별똥별', clue: '짧게 빛나고 간 별똥별을 찾아봐.', result: '별빛이 땅에 잠깐 내려앉았어.', oil: 1 },
@@ -67,38 +67,92 @@
       ['lower-town', '아랫마을 골목', -18, 49, 9],
       ['siloam', '실로암 못', -10, 65, 7],
       ['olives', '감람산 비탈', 68, 10, 13, '감람산'],
+      ['herod-palace', '헤롯의 궁 앞 광장', -61, 27, 13, '헤롯의 궁'],
     ], routes: [
       [[-28, -12], [-28, 0], [0, 0], [28, 0], [28, -12]],
       [[0, 0], [0, 42], [-10, 49], [-18, 49], [-18, 60], [-10, 65]],
       [[0, 0], [0, -39], [5, -49], [16, -49], [43, -47]],
       [[43, -47], [55, -43], [55, -5], [59, 8], [68, 10]],
       [[28, 0], [51, 0], [55, -5]],
+      [[-28, 0], [-46, 8], [-61, 16], [-61, 27], [-43, 37], [-18, 49]],
     ] },
-    { title: '유대 산골', bounds: [58, 55], sites: [
+    { title: '유대 산골과 빈 들', bounds: [125, 65], sites: [
       ['roof', '사가랴의 집', -29, -27], ['hillpath', '산골 길', 28, -27],
       ['elizabeth', '엘리사벳 집과 포도밭', 12, 32],
+      ['judean-terraces', '계단밭 비탈', -63, -26, 10],
+      ['village-threshing', '마을 우물과 타작마당', -43, 19, 11, '우물과 타작마당'],
+      ['valley-stream', '골짜기 시냇가', -20, 44, 11],
+      ['wilderness-edge', '빈 들 가장자리', 62, 22, 14, '빈 들'],
+      ['wilderness-vista', '광야 길 전망 자리', 102, 32, 15, '광야 길 전망'],
+      ['desert', '광야 길', 96, -27],
+    ], routes: [
+      [[-63, -26], [-29, -27], [-29, 0], [28, 0], [28, -27]],
+      [[-29, 0], [-43, 19], [-20, 44], [12, 32], [28, 0]],
+      [[28, 0], [48, 8], [62, 22], [83, 33], [102, 32], [96, 0], [96, -27]],
+      [[28, -27], [60, -21], [77, -13], [96, -27]],
     ] },
-    { title: '나사렛·갈릴리', bounds: [81, 57], sites: [
+    { title: '나사렛·갈릴리', bounds: [111, 85], sites: [
       ['nazareth', '나사렛 골목', -51, 28], ['workshop', '요셉의 작업장', 0, 28],
       ['well', '마을 우물', 51, 28], ['galilee', '갈릴리 언덕', 0, -28],
-      ['desert', '광야 길 입구', -51, -28],
+      ['south-road', '남쪽으로 가는 길 어귀', -20, 72, 7, '예루살렘·유대 산골 ↓'],
+      ['nazareth-cliff', '산 위 마을 가장자리 낭떠러지', -55, 68, 11, '나사렛 낭떠러지'],
+      ['synagogue-yard', '회당 앞 마당', -53, -10, 9, '회당'],
+      ['grain-yard', '타작마당과 곡식 창고', 15, 67, 10, '곡식 창고'],
+      ['olive-cave', '올리브 짜는 틀 동굴', -84, -31, 9, '올리브 틀 동굴'],
+      ['tabor-vista', '다볼산 보이는 언덕 전망', 90, 54, 13, '다볼산 전망'],
+      ['lake-pass', '갈릴리 호수가 보이는 고개', 62, -54, 14, '호수 고개'],
+    ], routes: [
+      [[-51, 28], [-51, 0], [0, 0], [51, 0], [51, 28]],
+      [[-51, 0], [-53, -10], [-62, -23], [-84, -31]],
+      [[0, 28], [0, 0], [0, -28], [36, -24], [51, 0]],
+      [[36, -24], [49, -41], [62, -54]],
+      [[-51, 28], [-51, 50], [-55, 68], [-20, 72], [15, 67], [40, 54], [51, 28]],
+      [[40, 54], [70, 54], [90, 54]],
     ] },
-    { title: '베들레헴', bounds: [52, 52], sites: [
+    { title: '베들레헴', bounds: [83, 73], sites: [
       ['gate', '베들레헴 성문', -25, -25], ['inn', '여관 골목', 25, -25],
       ['field', '들판과 양 우리', 25, 25], ['stable', '마구간', -25, 25],
+      ['rachel-tomb', '라헬의 무덤 길가', -51, -42, 10, '라헬의 무덤'],
+      ['david-well', '다윗의 우물', -25, -42, 7],
+      ['boaz-field', '보아스의 밭', 52, 13, 12],
+      ['eder-tower', '에델 망대 언덕', 53, 48, 12, '에델 망대'],
+      ['shepherd-cave', '목자들의 동굴 우리', 5, 49, 9, '동굴 우리'],
+      ['bethlehem-vista', '베들레헴 언덕 전망', -40, 49, 13, '언덕 전망'],
+    ], routes: [
+      [[-51, -42], [-25, -42], [-25, -25], [-25, 0], [25, 0], [25, -25]],
+      [[-25, 0], [-25, 25], [-34, 36], [-40, 49]],
+      [[25, 0], [25, 25], [15, 39], [5, 49], [-40, 49]],
+      [[25, 25], [42, 24], [52, 13]],
+      [[42, 24], [53, 37], [53, 48]],
     ] },
   ];
 
   const siteKey = id => id === '2-0' ? 'desert' : window.EXPLORE[id].kit;
+  const regionForSite = key => REGION_LAYOUTS.findIndex(region => region.sites.some(([site]) => site === key));
+  const regionCollections = [
+    ['1-0', '예루살렘 성곽지기'], ['1-1', '유대 산골 길잡이'], ['2-1', '갈릴리 길잡이'], ['4-0', '베들레헴 들판지기']
+  ];
+  let regionCatalog;
+  function regionCollection(index, log = progress()) {
+    regionCatalog ||= (() => {
+      const lists = REGION_LAYOUTS.map(() => new Set());
+      for (const [episode, area] of Object.entries(window.EXPLORE)) {
+        for (const entry of area.discover?.items || []) {
+          lists[regionForSite(entry.site || siteKey(episode))]?.add(entry.id);
+        }
+      }
+      return lists.map(list => [...list]);
+    })();
+    const ids = regionCatalog[index], [rep, badge] = regionCollections[index];
+    const found = ids.filter(id => log.discoveries?.[id]).length;
+    return { ids, rep, badge, title: regions[index], found, done: ids.length > 0 && found === ids.length };
+  }
   const regionCell = 6;
   function makeRegion(id, log) {
     const currentKey = siteKey(id);
-    const fromRoof = id === '1-1';
-    const index = fromRoof ? 0 : REGION_LAYOUTS.findIndex(region => region.sites.some(([key]) => key === currentKey));
+    const index = regionForSite(currentKey);
     if (index < 0) return null;
-    const { title, bounds: normalBounds, sites: normalSites, routes } = REGION_LAYOUTS[index];
-    const bounds = fromRoof ? [108, normalBounds[1]] : normalBounds;
-    const layout = fromRoof ? [['roof', '사가랴의 집', -79, -12], ...normalSites] : normalSites;
+    const { title, bounds, sites: layout, routes } = REGION_LAYOUTS[index];
     const [, , ox, oz] = layout.find(([key]) => key === currentKey);
     const visibleEpisodes = openList();
     const sites = layout.map(([key, name, x, z, extension, label]) => {
@@ -114,6 +168,15 @@
       })) : [];
       if (key === 'lower-town') houses.push({
         id: 'house/lower-town', title: '아랫마을 돌집', style: 'nazareth', pos: translate([-4.9, .56]), episode: id
+      });
+      if (key === 'shepherd-cave') houses.push({
+        id: 'house/shepherd-cave', title: '목자들의 동굴 우리', style: 'stable', pos: translate([0, -2.35]), episode: id
+      });
+      if (key === 'olive-cave') houses.push({
+        id: 'house/olive-cave', title: '올리브 짜는 틀 동굴', style: 'workshop', pos: translate([0, -2.4]), episode: id
+      });
+      if (episode === '1-1') houses.push({
+        id: 'house/roof-store', title: '돌담 뒤 작업방', style: 'workshop', pos: translate([9.75, -20.45]), episode, standAlone: true
       });
       return { key, name, label: label || (key === 'elizabeth' ? '엘리사벳 집' : name), x, z, primary, episode, area,
         offset, translate, markerId, houses, extension: !!extension, edge: extension || (area?.adventure || index === 0 ? 23.5 : 8) };
@@ -136,22 +199,21 @@
       dirty = false; savedAt = performance.now();
       Core.save();
     }
-    const roads = [...new Set(sites.map(site => site.x))].sort((a, b) => a - b);
-    const paths = routes ? routes.flatMap(points => points.slice(1).map((point, i) => [points[i], point])) :
-      [[[roads[0], 0], [roads.at(-1), 0]], ...sites.map(site => [[site.x, 0], [site.x, site.z]])];
-    if (fromRoof) paths.push([[-79, -12], [-79, 0]], [[-79, 0], [-28, 0]]);
-    if (index === 2) paths.push([[51, 0], [36, -24]], [[36, -24], [16, -27]]);
+    const paths = routes.flatMap(points => points.slice(1).map((point, i) => [points[i], point]));
     const placesToPlay = [
       [['pigeons', -3, 5.5]], [['chickens', -9, 3], ['bush', -20, 4]],
       [['stones', 26, 0], ['bush', 37, 4]], [['game', -4, 7], ['chickens', 10, 4]],
     ][index].map(([type, x, z]) => ({ type, pos: [x - ox, z - oz] }));
     const sources = sites.filter(site => site.area?.discover).map(site => ({ site, taggedOnly: false }));
     // Shared discoveries stay in their districts when another episode takes over the starting site.
-    if (index === 0) {
-      const registered = new Set(sources.map(({ site }) => site.episode));
-      for (const { id: episode } of visibleEpisodes.filter(ep => /^1-[0-4]$/.test(ep.id)).reverse()) {
-        if (registered.has(episode)) continue;
-        const area = window.EXPLORE[episode];
+    const registered = new Set(sources.map(({ site }) => site.episode));
+    const districts = new Set(sites.map(site => site.key));
+    const districtEpisodes = visibleEpisodes.map(ep => ep.id);
+    if (index === 0 && date() >= '2026-12-19' && !districtEpisodes.includes('4-0')) districtEpisodes.push('4-0');
+    for (const episode of districtEpisodes.reverse()) {
+      if (registered.has(episode)) continue;
+      const area = window.EXPLORE[episode];
+      if (area.discover?.items.some(entry => districts.has(entry.site))) {
         sources.push({ site: { episode, area, markerId: key => episode + ':' + key }, taggedOnly: true });
       }
     }
@@ -164,18 +226,29 @@
     const { title, bounds: [w, h], sites, paths, visited, canonical } = region;
     const [px, pz] = canonical(position);
     const [sx, sz] = scent ? canonical(scent) : [];
+    const { found, ids } = regionCollection(region.index, log);
+    const visitedCount = sites.filter(site => log.visitedSites?.[site.key] || visited.has(Math.floor(site.x / regionCell) + ',' + Math.floor(site.z / regionCell))).length;
+    const legends = ids.filter(id => log.discoveries[id] && discoverRarity(window.DISCOVERIES[id], id) === 'legend').length;
+    const siteIcons = { temple: '🏛️', sanctuary: '🕎', roof: '🏠', well: '🪣', 'david-well': '🪣', 'village-threshing': '🌾',
+      gate: '🚪', 'sheep-gate': '🐑', 'wall-walk': '🏰', 'herod-palace': '🏰', 'eder-tower': '🏰', 'shepherd-cave': '🐑',
+      'olive-cave': '🫒', 'boaz-field': '🌾', 'grain-yard': '🌾', 'rachel-tomb': '🪨', 'lake-pass': '🌊', siloam: '💧', 'valley-stream': '💧' };
     const reveal = [...visited].map(cell => {
       const [x, z] = cell.split(',').map(Number);
       return `<rect x="${x * regionCell}" y="${z * regionCell}" width="${regionCell}" height="${regionCell}" fill="white"/>`;
     }).join('');
     const pins = sites.map(site => {
-      const walked = visited.has(Math.floor(site.x / regionCell) + ',' + Math.floor(site.z / regionCell));
-      return `<circle cx="${site.x}" cy="${site.z}" r="2.6" fill="${walked ? '#ffdaa0' : '#9a8696'}"/>
+      const walked = visited.has(Math.floor(site.x / regionCell) + ',' + Math.floor(site.z / regionCell)) || !!log.visitedSites?.[site.key];
+      const litPulse = region.newlyLit === site.key
+        ? `<circle class="region-site-pulse" cx="${site.x}" cy="${site.z}" r="5.6" fill="none" stroke="#ffd86b" stroke-width="1.4" data-lit-site="${esc(site.key)}"/>`
+        : '';
+      return `${litPulse}<circle cx="${site.x}" cy="${site.z}" r="3.3" fill="${walked ? '#ffdaa0' : '#9a8696'}" data-site-pin="${esc(site.key)}" data-site-walked="${walked}"/>
+        <text x="${site.x}" y="${site.z + 1.65}" text-anchor="middle" fill="#372839" font-size="4.7">${siteIcons[site.key] || '◆'}</text>
         <text x="${site.x}" y="${site.z + 7.8}" text-anchor="middle" fill="#f5debd" font-size="4.2">${esc(site.label)}</text>`;
     }).join('');
     return `<svg class="region-chart" viewBox="${-w} ${-h} ${w * 2} ${h * 2}" role="img" aria-label="${esc(title)} 지도">
       <defs><mask id="region-walk-mask">${reveal}</mask></defs>
       <rect x="${-w}" y="${-h}" width="${w * 2}" height="${h * 2}" fill="#322c44"/>
+      <text x="${w - 5}" y="${-h + 7.5}" text-anchor="end" fill="#f5debd" font-size="5">N↑</text>
       <rect x="${-w}" y="${-h}" width="${w * 2}" height="${h * 2}" fill="#817056" mask="url(#region-walk-mask)"/>
       <g fill="none" stroke="#b5a079" stroke-width="1.5" stroke-linecap="round" mask="url(#region-walk-mask)">
         ${paths.map(([[x, z], [tx, tz]]) => `<path d="M${x} ${z}L${tx} ${tz}"/>`).join('')}
@@ -184,11 +257,12 @@
       <circle cx="${px}" cy="${pz}" r="2.6" fill="#d5fbff" stroke="#254861" data-region-player/>
     </svg>
     <p class="region-map-key">● 지금 위치 ${scent ? ' · 🟠 양이 맡은 냄새' : ''}</p>
+    <p class="region-map-key" data-region-progress>가 본 곳 ${visitedCount}/${sites.length} · 발견 ${found}/${ids.length} · 전설 ${legends}</p>
     <ul class="region-places">${sites.map(site => {
-      const dc = region.index === 0 && (site.extension || site.episode)
+      const dc = site.extension || region.index === 0 && site.episode
         ? countAtSite(site, entries, log)
         : site.episode ? discoverCount(site.episode, log) : null;
-      return `<li><b>${esc(site.name)}</b><span>${dc ? `발견 ${dc.n}/${dc.max}` : '아직 이야기가 열리지 않았어'}</span></li>`;
+      return `<li><b>${esc(site.name)}</b><span>${dc?.max ? `발견 ${dc.n}/${dc.max}` : site.extension ? '둘러볼 수 있어' : '아직 이야기가 열리지 않았어'}</span></li>`;
     }).join('')}</ul>`;
   }
 
@@ -201,7 +275,7 @@
     const field = Field.ensure();
     if (!field.explore || Array.isArray(field.explore) || typeof field.explore !== 'object') field.explore = {};
     const log = field.explore;
-    for (const key of ['found', 'quests', 'rewards', 'photos', 'adventures', 'discoveries', 'discoverBag', 'discoverUnlock', 'themeRewards', 'narrated', 'visits', 'friendHints', 'regionWalk']) {
+    for (const key of ['found', 'quests', 'rewards', 'photos', 'adventures', 'discoveries', 'discoverBag', 'discoverUnlock', 'themeRewards', 'narrated', 'visits', 'friendHints', 'regionWalk', 'visitedSites']) {
       if (!log[key] || Array.isArray(log[key]) || typeof log[key] !== 'object') log[key] = {};
     }
     if (!log.discoverOil || typeof log.discoverOil !== 'object') log.discoverOil = { date: '', count: 0 };
@@ -431,6 +505,46 @@
   const backButton = label => `<button type="button" class="explore-back" aria-label="${label}" title="${label}">←</button>`;
   const canWatchEnding = () => !!(Core.PREVIEW_ALL || date() >= Core.XMAS || Core.data.done?.end);
 
+  function geographyMap({ highlight, journeys = [] } = {}) {
+    const scope = highlight ? 'mini-geography' : 'world-geography';
+    return `<svg viewBox="0 0 370 370" class="explore-geography" role="${journeys.length ? 'group' : 'img'}" aria-label="갈릴리에서 유대까지 지리 약도">
+      <defs>
+        <pattern id="${scope}-relief" width="27" height="14" patternUnits="userSpaceOnUse">
+          <path d="M-6 5Q5 -2 13 5T32 5m-38 7q11-7 19 0t19 0" fill="none" stroke="#a8875d" opacity=".32"/>
+        </pattern>
+        <linearGradient id="${scope}-land" x2=".8" y2="1"><stop stop-color="#f1e2b9"/><stop offset="1" stop-color="#e4c18b"/></linearGradient>
+      </defs>
+      <rect width="370" height="370" rx="16" fill="url(#${scope}-land)"/>
+      <path d="M140 0Q106 51 131 91Q153 121 112 163Q87 204 112 235Q132 260 86 298Q65 338 99 370H238Q263 326 238 289Q215 264 247 227Q266 199 237 162Q219 136 255 98Q267 70 247 0Z" fill="url(#${scope}-relief)"/>
+      <path d="M253 181Q271 191 300 197L316 346 246 370H220Q253 340 241 306T239 250Q249 220 253 181Z" fill="#dcaa6d" opacity=".58"/>
+      <path d="M297 67C278 113 309 137 299 162S304 208 319 255" fill="none" stroke="#9aab79" stroke-width="20" opacity=".62"/>
+      <g fill="#89adb5" stroke="#65949c" stroke-width="1.5">
+        <path d="M0 0H100Q95 17 84 33Q69 47 78 63Q73 75 65 77Q73 86 65 93Q53 111 51 132Q43 177 20 209L0 233Z"/>
+        <path d="M289 51Q302 47 307 60Q311 68 299 82Q292 88 285 78Q283 69 287 65Q280 56 289 51Z"/>
+        <path d="M319 237Q333 235 335 250Q332 264 338 276L334 292Q339 307 328 328Q316 332 314 315L319 297Q307 281 312 268Q305 247 319 237Z"/>
+      </g>
+      <path d="M296 79C289 114 309 135 301 159S304 207 319 241" fill="none" stroke="#65949c" stroke-width="2.7"/>
+      <path d="M226 115q7-14 12-16q6 1 13 16z" fill="#ac8e65" stroke="#87684d"/>
+      <g fill="#60482f" font-family="sans-serif" font-weight="700" font-size="12">
+        <text x="13" y="116" fill="#284d56">지중해</text>
+        <text x="322" y="72" text-anchor="middle" fill="#284d56" font-size="10">갈릴리 호수</text>
+        <text x="311" y="155" fill="#284d56" font-size="10">요단강</text>
+        <text x="344" y="274" fill="#284d56" font-size="10">사해</text>
+        <text x="313" y="343" fill="#284d56" font-size="10">-430m</text>
+        <text x="223" y="126" font-size="10">다볼산</text>
+        <text x="139" y="30">갈릴리</text><text x="119" y="152">사마리아</text>
+        <text x="103" y="216">유대</text><text x="260" y="242">광야</text>
+        <text x="342" y="24">N↑</text>
+      </g>
+      ${journeys.map(([key, journey]) => `<g data-journey="${key}" role="button" tabindex="0" aria-label="${esc(journey.title)}">
+        <path d="${journey.path}" fill="none" stroke="transparent" stroke-width="17" pointer-events="stroke"/>
+        <path d="${journey.path}" fill="none" stroke="${journey.color}" stroke-width="2.35" stroke-dasharray="2 5" stroke-linecap="round" pointer-events="none"/>
+      </g>`).join('')}
+      ${highlight ? `<circle cx="${highlight[0]}" cy="${highlight[1]}" r="14" fill="#ffef93" stroke="#a56943" stroke-width="1.5"/>
+        <circle cx="${highlight[0]}" cy="${highlight[1]}" r="5" fill="#a44b64"/>` : ''}
+    </svg>`;
+  }
+
   function map() {
     if (!Field.has()) return App.home();
     Sound.ambience(null);
@@ -454,37 +568,26 @@
         aria-label="${esc(window.EXPLORE[ep.id].title + (current ? ' · 오늘' : '') + (score.n === score.max ? ' · 전부 찾음' : '') + (secret ? ' · 비밀' : '') + (photo ? ' · 사진' : '') + (placeStatus(ep) ? ' · ' + placeStatus(ep) : ''))}">
         <b>${i + 1}</b>${tags ? `<small aria-hidden="true">${tags}</small>` : ''}</button>`;
     };
-    const route = list.map((_, i) => mapPoints[i].join(',')).join(' ');
+    const journeys = Object.entries(window.EXPLORE_JOURNEYS).filter(([key]) =>
+      key === 'mary' ? list.some(ep => ep.id === '3-2') : date() >= '2026-12-19');
     const traveled = list.at(-1)?.id;
     const first = list.find(ep => ep.date === date()) || latest;
     const discoveredCount = Object.keys(log.discoveries || {}).length;
     const totalDiscoveries = Object.keys(window.DISCOVERIES || {}).length;
     const root = replace(`<header class="explore-head">${backButton('들판으로')}<div><h1>성탄 길 지도</h1><p>내 양과 걸어온 길</p></div><div class="explore-head-btns"><button class="explore-sub" type="button" data-notebook>📓 ${discoveredCount}/${totalDiscoveries}</button><button class="explore-sub" type="button" data-album>사진 ${tally.photos}/27</button></div></header>
       <div class="explore-parchment">
-        <svg viewBox="0 0 370 370" aria-hidden="true">
-          <defs>
-            <pattern id="mapgrain" width="15" height="15" patternUnits="userSpaceOnUse"><path d="M1 2h1m6 9h1m4-9h1m-8 5h2" stroke="#976c55" opacity=".18" stroke-width="1"/></pattern>
-            <linearGradient id="mapland" x2=".8" y2="1"><stop stop-color="#f4e3b9"/><stop offset="1" stop-color="#dfbd89"/></linearGradient>
-          </defs>
-          <rect width="370" height="370" rx="16" fill="url(#mapland)"/><rect width="370" height="370" rx="16" fill="url(#mapgrain)"/>
-          <path d="M236 0Q216 74 246 122Q212 157 236 181Q250 221 227 251Q263 280 245 370" fill="none" stroke="#859cb5" stroke-width="4" opacity=".48"/>
-          <path d="M0 256Q98 264 159 243Q252 286 370 215M0 99Q113 73 192 130Q264 151 370 111" fill="none" stroke="#9b7757" stroke-dasharray="8 7" opacity=".33"/>
-          <path d="M15 106l13-17 10 13 10-6 12 17m56 136 14-13 9 14 12-10 16 13m127-111 14-22 11 12 16-24 19 32m-322 94 14-15 8 9" fill="none" stroke="#9b7757" stroke-width="2" opacity=".57"/>
-          <g fill="#745339" font-size="12" font-weight="700" font-family="sans-serif">
-            <text x="23" y="79">예루살렘</text><text x="191" y="161">유대 산골</text>
-            <text x="186" y="25">나사렛·갈릴리</text><text x="36" y="258">베들레헴</text>
-          </g>
-          ${route ? `<polyline points="${route}" stroke="#8c674a" stroke-width="2" fill="none"/><polyline points="${route}" stroke="#ffdf84" stroke-width="2.1" stroke-dasharray="3 7" stroke-linecap="round" fill="none"/>` : ''}
-          <path d="M25 42l5-18 5 18-5-3zM18 40l12-5 11 5-11 5z" fill="#916848"/><text x="30" y="19" text-anchor="middle" fill="#916848" font-size="9">북</text>
-        </svg>
+        ${geographyMap({ journeys })}
         ${list.map(ball).join('')}
       </div>
+      <p class="explore-map-scale">지도는 줄여서 그렸어. 실제로는 나사렛에서 예루살렘까지 약 100km, 걸어서 4~5일 걸려.</p>
+      <div class="explore-geography-links" aria-label="지역 소개">${Object.entries(window.EXPLORE_GEOGRAPHY).map(([key, place]) =>
+        `<button class="btn ghost" type="button" data-geography="${key}">${esc(place.title)}</button>`).join('')}</div>
       <div class="explore-map-stats"><span>장소 ${list.length}/27</span><span>★ ${tally.stars}곳</span><span>⚿ ${tally.secrets}곳</span></div>
       ${event ? `<p class="explore-map-event">★ 오늘 ${esc(window.EXPLORE[event.ep].title)}에 무슨 일이 생겼대.</p>` : ''}
       ${first ? `<button type="button" class="btn explore-go" data-place="${first.id}">${esc(window.EXPLORE[first.id].title)}에 가 보자</button>${placeStatus(first) ? `<p class="explore-place-status">${placeStatus(first)}</p>` : ''}` : '<p class="explore-map-event">첫 이야기가 열리는 날, 지도에 길이 생겨.</p>'}
       <button type="button" class="link explore-places-toggle" aria-expanded="false">장소 이름으로 보기</button>
       <div class="explore-places" hidden>${regions.map((region, i) => {
-        const places = list.filter(ep => window.EXPLORE[ep.id].region === i);
+        const places = list.filter(ep => regionForSite(siteKey(ep.id)) === i);
         return places.length ? `<h2>${region}</h2>${places.map(ep => `<button type="button" data-place="${ep.id}">${esc(Core.dateLabel(ep.date))} · ${esc(window.EXPLORE[ep.id].title)}${placeStatus(ep) ? `<small>${placeStatus(ep)}</small>` : ''}</button>`).join('')}` : '';
       }).join('')}</div>
       ${traveled ? '<button type="button" class="btn ghost explore-challenge">탐험 도전장 저장·공유</button>' : ''}
@@ -492,6 +595,21 @@
     root.querySelector('.explore-back').onclick = () => Field.page();
     root.querySelector('[data-notebook]')?.addEventListener('click', () => openNotebook(root, Field.mainCare()?.sheep));
     root.querySelector('[data-album]').onclick = album;
+    const showGeography = (place, map = '') => Field.showSheet(root, place.title,
+      `${map}<p class="discover-fact">${esc(place.fact)}</p>${place.ref ? Field.wordMarkup(place.ref) : ''}`);
+    root.querySelectorAll('[data-geography]').forEach(button => button.onclick = () => {
+      const place = window.EXPLORE_GEOGRAPHY[button.dataset.geography];
+      showGeography(place, geographyMap({ highlight: place.point }));
+    });
+    root.querySelectorAll('[data-journey]').forEach(button => {
+      const open = () => showGeography(window.EXPLORE_JOURNEYS[button.dataset.journey]);
+      button.addEventListener('click', open);
+      button.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        open();
+      });
+    });
     root.querySelector('[data-walked-ending]')?.addEventListener('click', () => ending());
     root.querySelector('.explore-challenge')?.addEventListener('click', () =>
       Field.showCard(root, '탐험 도전장', () => Card.drawExploreChallenge(tally), 'EXPLORE', '탐험 도전장', `내 탐험 기록은 ★ ${tally.stars}곳. 이길 수 있어?`));
@@ -1018,11 +1136,268 @@
     const saved = await photoFile('discover', itemId);
     return saved || (item ? fallbackThumbSVG(item) : '');
   }
+
+  const LEGEND_DISCOVER_IDS = new Set([
+    'menorah', 'sheep-gate', 'wilderness-road', 'eder-tower',
+    'stone-manger', 'great-star', 'mount-of-olives', 'incense-altar'
+  ]);
+  const RARE_DISCOVER_IDS = new Set([
+    'empty-cradle', 'wax-tablet', 'david-well', 'rachel-tomb',
+    'bethesda', 'siloam', 'barren-country', 'scroll-synagogue', 'swaddle-wrap'
+  ]);
+  const RARITY_META = {
+    legend: { id: 'legend', label: '✦ 전설', short: '전설', duration: 3500 },
+    rare: { id: 'rare', label: '✧ 희귀', short: '희귀', duration: 2000 },
+    common: { id: 'common', label: '일반', short: '일반', duration: 1200 }
+  };
+  function discoverRarity(item, itemId = '') {
+    if (!item) return 'common';
+    const raw = item.rarity;
+    if (raw === 'legend' || raw === 'legendary' || LEGEND_DISCOVER_IDS.has(itemId)) return 'legend';
+    if (raw === 'rare' || item.kind === 'try' || RARE_DISCOVER_IDS.has(itemId)) return 'rare';
+    return 'common';
+  }
+  function rarityBadgeHTML(rarity) {
+    const meta = RARITY_META[rarity] || RARITY_META.common;
+    return `<span class="discover-rarity-badge is-${meta.id}" data-rarity-badge="${meta.id}">${esc(meta.label)}</span>`;
+  }
+  function isReducedMotion() {
+    return !!(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ||
+      document.documentElement.classList.contains('no-motion'));
+  }
+  function vibrateDevice(pattern) {
+    if (!Sound.on || isReducedMotion()) return;
+    try { navigator.vibrate?.(pattern); } catch { /* 기기 미지원 무시 */ }
+  }
+  function visitedSiteStats(log = progress()) {
+    const seenSites = new Map();
+    REGION_LAYOUTS.forEach((reg, rIdx) => {
+      const walkedSet = new Set(Array.isArray(log.regionWalk?.[rIdx]) ? log.regionWalk[rIdx] : []);
+      for (const [key, name, x, z] of reg.sites) {
+        const cell = Math.floor(x / regionCell) + ',' + Math.floor(z / regionCell);
+        const isVis = !!(log.visitedSites?.[key] || walkedSet.has(cell) ||
+          epList().some(ep => siteKey(ep.id) === key && (log.visits?.[ep.id] > 0 || log.narrated?.[ep.id])));
+        seenSites.set(key, seenSites.get(key) || isVis);
+      }
+    });
+    const total = seenSites.size;
+    const visited = [...seenSites.values()].filter(Boolean).length;
+    return { visited, total };
+  }
+
+  let activeRevealCleanup = null;
+  function dismissDiscoverReveal() {
+    if (activeRevealCleanup) {
+      const fn = activeRevealCleanup;
+      activeRevealCleanup = null;
+      fn();
+    }
+  }
+
+  function cardBackEmblemSVG() {
+    return `<svg class="reveal-back-emblem" viewBox="0 0 120 120" aria-hidden="true">
+      <defs>
+        <radialGradient id="rev-star-g" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#fff9e2"/>
+          <stop offset="55%" stop-color="#ffd269"/>
+          <stop offset="100%" stop-color="#a86d19" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <circle cx="60" cy="60" r="52" fill="none" stroke="#ffd875" stroke-width="1.6" stroke-dasharray="4 3" opacity=".75"/>
+      <circle cx="60" cy="60" r="42" fill="url(#rev-star-g)" opacity=".35"/>
+      <polygon points="60,12 69,46 104,46 75,66 85,100 60,79 35,100 45,66 16,46 51,46" fill="none" stroke="#ffe59e" stroke-width="1.8" opacity=".55"/>
+      <path d="M60 10 L67 48 L106 60 L67 72 L60 110 L53 72 L14 60 L53 48 Z" fill="#ffe79e"/>
+      <circle cx="60" cy="60" r="7" fill="#ffffff"/>
+    </svg>`;
+  }
+
+  function playDiscoverReveal({ root, item, itemId, sheep, res, shotUrl = null }) {
+    dismissDiscoverReveal();
+    if (!root || !item) return null;
+    const rarity = discoverRarity(item, itemId);
+    const rMeta = RARITY_META[rarity] || RARITY_META.common;
+    const isFirst = res?.isFirst !== false;
+    const reduced = isReducedMotion();
+    const totalMs = isFirst ? rMeta.duration : 420;
+    const meta = KIND_META[item.kind] || KIND_META.look;
+    const react = sheepReaction(item, sheep);
+    const thumb = shotUrl || fallbackThumbSVG(item);
+    const chargeMs = rarity === 'legend' ? 1150 : rarity === 'rare' ? 620 : 320;
+    const flipAt = !isFirst ? 90 : rarity === 'legend' ? 1750 : rarity === 'rare' ? 1080 : 680;
+    const burstAt = rarity === 'legend' ? 1180 : rarity === 'rare' ? 760 : 0;
+
+    const sparksHTML = Array.from({ length: rarity === 'legend' ? 20 : rarity === 'rare' ? 10 : 4 }, (_, i) => {
+      const ang = (i / (rarity === 'legend' ? 20 : rarity === 'rare' ? 10 : 4)) * Math.PI * 2;
+      const dist = (rarity === 'legend' ? 128 : 96) + (i % 3) * 28;
+      const tx = Math.round(Math.cos(ang) * dist) + 'px';
+      const ty = Math.round(Math.sin(ang) * dist) + 'px';
+      const delay = ((i % 4) * 0.04).toFixed(2) + 's';
+      return `<i class="discover-reveal-spark" style="--tx:${tx};--ty:${ty};--d:${delay}">${i % 2 ? '✦' : '★'}</i>`;
+    }).join('');
+
+    const sheepSvg = window.Field?.sheepArt ? `<svg class="reveal-sheep-svg" viewBox="-42 -56 84 75" aria-hidden="true">${Field.sheepArt(sheep)}</svg>` : '<span class="reveal-sheep-svg">🐑</span>';
+    const overlay = document.createElement('div');
+    overlay.className = `discover-reveal rarity-${rarity}${reduced ? ' is-reduced' : ''}`;
+    overlay.dataset.revealRarity = rarity;
+    overlay.dataset.revealMode = isFirst ? 'first' : 'replay';
+    overlay.dataset.revealDuration = String(totalMs);
+    overlay.dataset.revealPhase = (reduced || !isFirst) ? 'front' : 'orb';
+    overlay.style.setProperty('--charge-ms', chargeMs + 'ms');
+
+    overlay.innerHTML = `
+      <div class="discover-reveal-backdrop"></div>
+      <div class="discover-reveal-rays"></div>
+      <div class="discover-reveal-orb" data-reveal-orb></div>
+      <div class="discover-reveal-burst" data-reveal-burst></div>
+      <div class="discover-reveal-sparks" data-reveal-sparks>${sparksHTML}</div>
+      <div class="discover-reveal-flash" data-reveal-flash></div>
+      <div class="discover-reveal-stage" data-reveal-stage>
+        <div class="discover-reveal-card" data-reveal-card>
+          <div class="reveal-card-face reveal-card-back" data-reveal-back>
+            <div class="reveal-charge-frame"></div>
+            <div class="reveal-card-back-inner">
+              ${cardBackEmblemSVG()}
+              <p class="reveal-back-sub">ADVENT DISCOVERY</p>
+              <h3 class="reveal-back-title">그 밤을 향하여</h3>
+              <span class="discover-rarity-badge is-${rarity}">${esc(rMeta.label)}</span>
+              <div class="reveal-charge-bar"><i></i></div>
+            </div>
+          </div>
+          <div class="reveal-card-face reveal-card-front" data-reveal-front>
+            <div class="reveal-holo-sheen"></div>
+            <div class="reveal-front-top">
+              <span class="reveal-kind-tag">${meta.icon} ${esc(meta.label)}</span>
+              ${rarityBadgeHTML(rarity)}
+            </div>
+            <div class="reveal-art-frame">
+              <img data-reveal-img src="${esc(thumb)}" alt="${esc(item.title)}">
+              ${isFirst ? `<span class="reveal-new-ribbon">✨ 처음 발견${res?.oilBonus ? ' · 기름 +1' : ''}</span>` : ''}
+            </div>
+            <div class="reveal-front-body">
+              <h3 class="reveal-front-title" data-reveal-title>${esc(item.title)}</h3>
+              <p class="reveal-front-fact" data-reveal-fact>${esc(item.fact)}</p>
+              ${item.ref ? `<span class="reveal-front-ref" data-reveal-ref>📖 ${esc(Bible.full(item.ref))}</span>` : ''}
+            </div>
+            <div class="reveal-sheep-row" data-reveal-sheep>
+              <div class="reveal-sheep-avatar-wrap">
+                ${sheepSvg}
+                ${rarity === 'legend' ? '<span class="reveal-sheep-hearts" data-reveal-hearts>♥ ♥</span>' : ''}
+              </div>
+              <div class="reveal-sheep-bubble"><b>${esc(sheep?.name || '내 양')}</b>${esc(react.line)}</div>
+            </div>
+          </div>
+        </div>
+        <p class="discover-reveal-hint" data-reveal-hint>${(reduced || !isFirst) ? '화면을 톡 누르면 닫혀요' : '화면을 톡 누르면 바로 앞면으로'}</p>
+      </div>`;
+
+    root.appendChild(overlay);
+    if (!shotUrl) {
+      discoverThumbURL(itemId).then(url => {
+        const img = overlay.querySelector('[data-reveal-img]');
+        if (img && img.isConnected && url) img.src = url;
+      });
+    }
+
+    const timers = [];
+    const schedule = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
+    let finishTimer = 0;
+
+    function cleanup() {
+      timers.forEach(clearTimeout);
+      clearTimeout(finishTimer);
+      overlay.remove();
+    }
+    activeRevealCleanup = cleanup;
+
+    function scheduleFinish(ms) {
+      clearTimeout(finishTimer);
+      finishTimer = setTimeout(() => {
+        if (overlay.dataset.revealHold === 'true') return;
+        dismissDiscoverReveal();
+      }, ms);
+    }
+
+    function showFrontFace(skipped = false) {
+      timers.forEach(clearTimeout);
+      timers.length = 0;
+      overlay.dataset.revealPhase = 'front';
+      if (skipped) overlay.dataset.revealSkipped = 'true';
+      overlay.classList.remove('is-shaking', 'is-flashing');
+      if (rarity === 'legend') overlay.classList.add('is-bursting');
+      const hintEl = overlay.querySelector('[data-reveal-hint]');
+      if (hintEl) hintEl.textContent = '화면을 톡 누르면 계속 둘러봐요';
+      Sound.sfx('revealFlip', rarity);
+      vibrateDevice(rarity === 'legend' ? [25, 35, 45] : 16);
+      scheduleFinish(skipped ? 650 : Math.max(420, totalMs - flipAt));
+    }
+
+    if (reduced || !isFirst) {
+      Sound.sfx('revealFlip', rarity);
+      scheduleFinish(totalMs);
+    } else {
+      // 1단계: 빛 구슬 상승 (0 ~ 0.4초)
+      Sound.sfx('revealOrb', rarity);
+      vibrateDevice(14);
+      // 2단계: 카드 뒷면 회전 & 등급 테두리 차오름 (0.4초~)
+      schedule(() => {
+        if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
+        overlay.dataset.revealPhase = 'back';
+        Sound.sfx('revealCharge', rarity);
+      }, 400);
+      if (burstAt > 0) {
+        schedule(() => {
+          if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
+          overlay.classList.add('is-bursting');
+          if (rarity === 'legend') {
+            overlay.classList.add('is-shaking', 'is-flashing');
+            vibrateDevice([30, 45, 25, 45, 55]);
+          } else {
+            vibrateDevice([22, 40, 30]);
+          }
+        }, burstAt);
+      }
+      // 3단계: 카드 앞면 뒤집기
+      schedule(() => {
+        if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
+        showFrontFace(false);
+      }, flipAt);
+      scheduleFinish(totalMs + 400);
+    }
+
+    overlay.addEventListener('click', e => {
+      // 하단 도킹 카드의 [계속 둘러보기]나 다이얼로그 닫기 버튼 위치 클릭 시 즉시 전달
+      for (const sel of ['[data-close-inspect]', '[data-open-nb]', '[data-retouch]', 'dialog[open] [data-continue]', 'dialog[open] [data-try-cancel]']) {
+        const targetBtn = document.querySelector(sel);
+        if (targetBtn) {
+          const r = targetBtn.getBoundingClientRect();
+          if (r.width > 0 && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            dismissDiscoverReveal();
+            targetBtn.click();
+            return;
+          }
+        }
+      }
+      if (overlay.dataset.revealPhase !== 'front') {
+        showFrontFace(true);
+      } else {
+        dismissDiscoverReveal();
+      }
+    });
+
+    return overlay;
+  }
+
   function openNotebook(root, sheep, placeId = null) {
     ensureV68Styles();
     const log = progress(), seen = log.discoveries || {}, day = date();
     const all = window.DISCOVERIES || {}, themes = window.DISCOVER_THEMES || [];
-    const total = Object.keys(all).length, found = Object.keys(seen).filter(k => all[k]).length;
+    const allKeys = Object.keys(all);
+    const total = allKeys.length, found = Object.keys(seen).filter(k => all[k]).length;
+    const legendKeys = allKeys.filter(k => discoverRarity(all[k], k) === 'legend');
+    const rareKeys = allKeys.filter(k => discoverRarity(all[k], k) === 'rare');
+    const legendFound = legendKeys.filter(k => seen[k]).length;
+    const rareFound = rareKeys.filter(k => seen[k]).length;
+    const siteStats = visitedSiteStats(log);
     const oilUsed = log.discoverOil?.date === day ? log.discoverOil.count : 0;
     const friendQuotaUsed = () => log.friendCodeDay?.date === day ? (log.friendCodeDay.count || 0) : 0;
     const hasPlace = !!(placeId && window.EXPLORE[placeId]?.discover);
@@ -1031,6 +1406,7 @@
     function cardHTML(itemId, entry = null) {
       const item = all[itemId];
       if (!item) return '';
+      const rarity = discoverRarity(item, itemId);
       if (!seen[itemId]) {
         const meta = KIND_META[item.kind] || KIND_META.look;
         const area = placeId && window.EXPLORE[placeId];
@@ -1039,15 +1415,15 @@
           ? (area.adventure?.zones[zone] || (entry.pos[1] < 0 ? area.title + ' 안쪽' : area.title + ' 입구')) + ' 근처' : '';
         const friendPlaceId = log.friendHints?.[itemId];
         const friendPlace = friendPlaceId && window.EXPLORE[friendPlaceId]?.title;
-        return `<article class="notebook-card locked${friendPlace ? ' has-friend-hint' : ''}" data-locked-item="${esc(itemId)}">🔒 아직 만나지 못한 발견 · ${meta.icon} ${meta.label}${hint ? `<small class="notebook-hint">${esc(hint)}</small>` : ''}${friendPlace ? `<small class="notebook-friend-hint" data-friend-hint="${esc(itemId)}">🤝 친구가 먼저 찾았어: ${esc(friendPlace)}</small>` : ''}</article>`;
+        return `<article class="notebook-card locked${friendPlace ? ' has-friend-hint' : ''}" data-locked-item="${esc(itemId)}" data-rarity="${rarity}">🔒 아직 만나지 못한 발견 · ${meta.icon} ${meta.label} ${rarityBadgeHTML(rarity)}${hint ? `<small class="notebook-hint">${esc(hint)}</small>` : ''}${friendPlace ? `<small class="notebook-friend-hint" data-friend-hint="${esc(itemId)}">🤝 친구가 먼저 찾았어: ${esc(friendPlace)}</small>` : ''}</article>`;
       }
       const meta = KIND_META[item.kind] || KIND_META.look;
       const react = sheepReaction(item, sheep);
       const shareCode = encodeDiscoverCode(itemId);
-      return `<article class="notebook-card" data-note-item="${esc(itemId)}">
+      return `<article class="notebook-card rarity-${rarity}" data-note-item="${esc(itemId)}" data-rarity="${rarity}">
         <img class="notebook-thumb" data-note-thumb="${esc(itemId)}" src="${esc(fallbackThumbSVG(item))}" alt="${esc(item.title)}">
         <div class="notebook-body">
-          <h4>${meta.icon} ${esc(item.title)}</h4>
+          <h4>${meta.icon} ${esc(item.title)} ${rarityBadgeHTML(rarity)}</h4>
           <p>${esc(item.fact)}</p>
           ${item.ref ? `<div class="notebook-verse">📖 ${esc(Bible.full(item.ref))}</div>` : ''}
           <div class="notebook-sheep">🐑 <b>${esc(sheep?.name || '내 양')}</b>: ${esc(react.line)}</div>
@@ -1061,6 +1437,16 @@
     }
 
     function bodyHTML() {
+      if (tab.startsWith('region-')) {
+        const index = Number(tab.slice(7));
+        const { ids, found, title, badge, done } = regionCollection(index, log);
+        return `<section class="notebook-theme" data-region-collection="${index}">
+          <div class="notebook-theme-head"><h3>📍 ${esc(title)}</h3><span>${found}/${ids.length}</span></div>
+          <p class="notebook-theme-reward${done ? ' done' : ''}">${done ? '✓ 칭호 획득' : '다 모으면 받을 칭호'} · ${esc(badge)}</p>
+          ${done ? `<button type="button" class="btn ghost" data-region-card="${index}">📷 전경 카드 저장</button>` : ''}
+          <div class="notebook-grid">${ids.map(id => cardHTML(id)).join('')}</div>
+        </section>`;
+      }
       if (tab === 'place' && hasPlace) {
         const spec = window.EXPLORE[placeId].discover;
         const dc = discoverCount(placeId, log);
@@ -1085,6 +1471,10 @@
       <span>모은 발견 <b>${found}/${total}</b></span>
       <span>오늘 발견 기름 ${Math.min(5, oilUsed)}/5</span>
     </div>
+    <div class="notebook-rarity-bar">
+      <span data-notebook-rarity>전설 <b>${legendFound}/${legendKeys.length}</b> · 희귀 <b>${rareFound}/${rareKeys.length}</b></span>
+      <span data-notebook-sites>가 본 곳 <b>${siteStats.visited}/${siteStats.total}</b></span>
+    </div>
     <div class="notebook-friend-box">
       <div class="notebook-friend-top">
         <button type="button" class="notebook-friend-toggle" data-friend-code-toggle>🤝 친구 코드 넣기</button>
@@ -1096,7 +1486,11 @@
       </div>
       <p class="notebook-friend-msg" data-friend-code-msg hidden></p>
     </div>
-    ${hasPlace ? `<div class="notebook-tabs"><button type="button" data-nb-tab="place" class="active">이 장소</button><button type="button" data-nb-tab="themes">주제별 (6)</button></div>` : ''}
+    <div class="notebook-tabs notebook-regions">
+      ${hasPlace ? '<button type="button" data-nb-tab="place" class="active">이 장소</button>' : ''}
+      <button type="button" data-nb-tab="themes"${hasPlace ? '' : ' class="active"'}>주제별 (6)</button>
+      ${regions.map((title, index) => `<button type="button" data-nb-tab="region-${index}">${esc(title)}</button>`).join('')}
+    </div>
     <div data-nb-content>${bodyHTML()}</div>
     <button type="button" class="btn" data-continue>닫기</button>`, 'discover-notebook-dialog');
 
@@ -1115,6 +1509,27 @@
     }
 
     function hydrate() {
+      dialog.querySelector('[data-region-card]')?.addEventListener('click', async event => {
+        const button = event.currentTarget, index = Number(button.dataset.regionCard);
+        const collection = regionCollection(index, log);
+        if (!collection.done) return;
+        button.disabled = true;
+        let view = session?.view;
+        if (!view || session.room || regionForSite(siteKey(session.id)) !== index) {
+          await enter(collection.rep);
+          view = session?.view;
+        }
+        const host = document.querySelector('#app main');
+        const image = view?.panorama();
+        if (!image) {
+          Field.showSheet(host, collection.title, '<p class="discover-fact">전경을 찍으려면 3D 탐험을 열어 줘.</p>');
+          return;
+        }
+        Fame.checkNew();
+        Field.showCard(host, collection.title + ' 전경 카드',
+          () => Card.drawRegionPanorama(collection, image, collection.ids.map(id => all[id].title)),
+          'REGION-' + index, collection.title + ' 전경과 발견 목록');
+      });
       dialog.querySelectorAll('img[data-note-thumb]').forEach(img => {
         const key = img.dataset.noteThumb;
         discoverThumbURL(key).then(url => { if (img.isConnected && url) img.src = url; });
@@ -1214,6 +1629,7 @@
 
   function runTryExperience({ root, item, sheep, flat, onComplete, onClose }) {
     const mode = item.tryMode || 'spin';
+    const grain = item.prop === 'grain' || item.prop === 'winnow';
     const react = sheepReaction(item, sheep);
     let pct = 0, finished = false, holdRaf = 0, holding = false, lastHold = 0;
 
@@ -1232,7 +1648,8 @@
         return `<button type="button" class="try-hold-btn" data-hold><i>🌿</i><span>길게 누르기</span></button>`;
       }
       if (mode === 'tap') {
-        return `<div class="try-oven-wrap"><button type="button" class="try-dough" data-dough>반죽 톡톡</button></div>`;
+        if (grain) return `<div class="try-grain-tray"><button type="button" class="try-dough" data-dough><span aria-hidden="true">🌾</span>${esc(item.tryBtn)}</button></div>`;
+        return '<div class="try-oven-wrap"><button type="button" class="try-dough" data-dough>반죽 톡톡</button></div>';
       }
       if (mode === 'wrap') {
         return `<div class="try-wrap-pad" data-wrap><div class="try-wrap-bundle" data-bundle>강보 감기</div></div>`;
@@ -1388,6 +1805,11 @@
       const labels = ['반죽 펴기 톡!', '납작하게 톡!', '화덕 벽에 착!', '익는 중… 톡!', '노릇하게 뒤집기!', '완성!'];
       const doTap = () => {
         taps++;
+        if (grain) {
+          dough.textContent = taps < 5 ? `${item.tryBtn} ${taps}/5` : '완성!';
+          setProgress(taps * 20, 'pop');
+          return;
+        }
         dough.textContent = labels[Math.min(taps, labels.length - 1)];
         dough.style.transform = `scale(${1 + Math.min(taps, 3) * 0.08}, ${1 - Math.min(taps, 2) * 0.04})`;
         if (taps >= 3) dough.classList.add('baked');
@@ -1494,7 +1916,7 @@
         if (entry.site) placed.add(placement);
         const houses = location.houses;
         if (!entry.indoor || !houses.length) return [{ ...entry, site, location, episode, key, pos: location.translate(entry.pos) }];
-        const house = houses.find(h => h.title === entry.house) || houses[0];
+        const house = houses.find(h => h.id === entry.houseDoor || h.title === entry.house) || houses[0];
         const count = roomCount.get(house.id) || 0;
         roomCount.set(house.id, count + 1);
         return [{ ...entry, site, location, episode, key, room: house, pos: slots[count] }];
@@ -1529,12 +1951,65 @@
     soundZone(0);
 
     function closeInspect() {
+      dismissDiscoverReveal();
       if (!activeInspectId && inspectBox.hidden) return;
       activeInspectId = null;
       inspectBox.hidden = true;
       inspectBox.innerHTML = '';
+      inspectBox.className = 'discover-inspect';
       root.classList.remove('is-inspecting');
       getView()?.endInspect?.();
+    }
+
+    let zoneBannerTimer = 0, mapLitTimer = 0, zoneNarrationTimer = 0;
+    function showZoneDiscoverBanner(site) {
+      if (!site || !site.key) return;
+      const isNewSite = !log.visitedSites[site.key];
+      log.visitedSites[site.key] = log.visitedSites[site.key] || day;
+      if (region) {
+        const cell = Math.floor(site.x / regionCell) + ',' + Math.floor(site.z / regionCell);
+        if (!region.visited.has(cell)) {
+          region.visited.add(cell);
+          log.regionWalk[region.index] = [...region.visited];
+        }
+        region.newlyLit = site.key;
+      }
+      Core.save();
+      if (!isNewSite) return;
+      Sound.sfx('zoneDiscover');
+      const placeNarr = root.querySelector('[data-narr-caption]');
+      if (placeNarr) placeNarr.hidden = true;
+      const banner = root.querySelector('[data-zone-banner]');
+      const zoneBtn = root.querySelector('[data-quest-map]');
+      if (zoneBtn) {
+        zoneBtn.classList.add('is-newly-lit');
+        clearTimeout(mapLitTimer);
+        mapLitTimer = setTimeout(() => zoneBtn.classList.remove('is-newly-lit'), 2200);
+      }
+      if (!banner) return;
+      clearTimeout(zoneBannerTimer);
+      banner.classList.toggle('is-flat-banner', !!isFlat());
+      banner.dataset.discoveredSite = site.key;
+      banner.innerHTML = `<span class="zone-banner-line"></span><strong class="zone-banner-text" data-zone-banner-text>📍 새 장소 발견 — ${esc(site.name)}</strong><span class="zone-banner-line"></span>`;
+      banner.hidden = false;
+      const line = window.EXPLORE_ZONE_NARRATION?.[site.key];
+      const caption = root.querySelector('[data-zone-narration]');
+      clearTimeout(zoneNarrationTimer);
+      if (caption) {
+        caption.hidden = !line;
+        caption.textContent = line || '';
+        if (line) {
+          zoneNarrationTimer = setTimeout(() => { caption.hidden = true; }, 4700);
+          if (Sound.on) void Sound.voice('zone-' + site.key);
+        }
+      }
+      zoneBannerTimer = setTimeout(() => {
+        if (banner.isConnected) banner.hidden = true;
+      }, 1600);
+    }
+    if (region?.main) {
+      log.visitedSites[region.main.key] ||= day;
+      Core.save();
     }
 
     function recordDiscovery(entry, markerId) {
@@ -1542,9 +2017,8 @@
       const item = catalog[itemId];
       if (!item) return { isFirst: false };
       const isFirst = !log.discoveries[itemId];
-      let oilBonus = false, themeReward = null;
+      let oilBonus = false, themeReward = null, shot = null;
       if (isFirst) {
-        let shot = null;
         try { shot = getView()?.snapProp?.(markerId); } catch { /* 2D 또는 스냅숏 생략 */ }
         if (shot) void photoFile('discover', itemId, shot);
         log.discoveries[itemId] = { date: day, place: episode, thumb: !!shot };
@@ -1571,7 +2045,7 @@
         statusChanged();
         refresh();
       }
-      return { isFirst, oilBonus, themeReward };
+      return { isFirst, oilBonus, themeReward, shot };
     }
 
     function maybeShowThemeReward(res) {
@@ -1597,13 +2071,14 @@
       }
       view?.sheepReact?.(react.mood, react.line);
       const res = recordDiscovery(entry, markerId);
-      if (res.isFirst) Sound.sfx('star');
+      const rarity = discoverRarity(item, entry.id);
       activeInspectId = markerId;
       const meta = KIND_META[item.kind] || KIND_META.look;
       root.classList.add('is-inspecting');
+      inspectBox.className = `discover-inspect rarity-${rarity}`;
       inspectBox.hidden = false;
       inspectBox.innerHTML = `<div class="discover-inspect-head">
-          <h2>${meta.icon} ${esc(item.title)}</h2>
+          <h2>${meta.icon} ${esc(item.title)} ${rarityBadgeHTML(rarity)}</h2>
           <span class="discover-pill${res.isFirst ? ' is-new' : ''}">${res.isFirst ? `✨ 처음 발견${res.oilBonus ? ' · 기름 +1' : ''}` : meta.label}</span>
         </div>
         ${item.touchLine ? `<p class="discover-touch-line">${esc(item.touchLine)}</p>` : ''}
@@ -1622,6 +2097,7 @@
         Sound.sfx(sfxMap[item.anim] || 'pop');
         view?.sheepReact?.(react.mood, react.line);
       });
+      playDiscoverReveal({ root, item, itemId: entry.id, sheep, res, shotUrl: res.shot });
       feedback(`${sheep.name}: ${react.line}`);
       window.scrollTo(0, 0);
     }
@@ -1643,11 +2119,13 @@
           view?.sheepReact?.(react.mood, react.line);
           Sound.sfx('mission');
           res = recordDiscovery(entry, markerId);
+          playDiscoverReveal({ root, item, itemId: entry.id, sheep, res, shotUrl: res.shot });
           statusChanged(); refresh();
           feedback(`${sheep.name}: ${react.line}`);
           return res;
         },
         onClose() {
+          dismissDiscoverReveal();
           view?.endInspect?.();
           if (res) maybeShowThemeReward(res);
         }
@@ -1683,6 +2161,7 @@
       const view = getView(), now = performance.now();
       const canReach = entry => {
         if (!entry.ability || entry.ability === 'smell' || isUnlocked(entry.ability, entry.episode)) return true;
+        if (entry.ability === 'jump') return isFlat();
         const ability = ABILITIES.find(a => a.id === entry.ability);
         return ability && (Field.mainCare()?.sheep.level >= ability.level || ability.id === 'shine' && day >= '2026-12-20');
       };
@@ -1757,12 +2236,12 @@
     }
 
     function abilitySheet(kind, site) {
-      const abilities = kind ? ABILITIES.filter(a => a.id === kind) : ABILITIES;
+      const abilities = ABILITIES.filter(a => a.id !== 'jump' && (!kind || a.id === kind));
       const dialog = card('양 능력', '', {
         extra: `<div class="adventure-abilities">${abilities.map(ability => {
           const ready = Field.mainCare()?.sheep.level >= ability.level || ability.id === 'shine' && day >= '2026-12-20';
           return `<button type="button" data-ability="${ability.id}" ${ready ? '' : 'disabled'}><i>${ability.icon}</i><b>${ability.title}</b><small>${ready ? ability.detail : ability.stage + '부터 쓸 수 있어.'}</small></button>`;
-        }).join('')}</div>`, button: '돌아가기'
+        }).join('')}</div><p class="discover-fact">🐑 낮은 돌담에서는 양이 지름길을 먼저 보여 줘.</p>`, button: '돌아가기'
       });
       dialog?.querySelectorAll('[data-ability]').forEach(button => button.onclick = () => {
         dialog.querySelector('[data-continue]').click();
@@ -1788,7 +2267,7 @@
       const room = getRoom();
       const dc = !room && activeSite?.extension ? countAtSite(activeSite, entries, log) :
         discoverCount(room?.episode || activeSite?.episode || id, log);
-      if (countEl) countEl.textContent = `발견 ${dc.n}/${dc.max}`;
+      if (countEl) countEl.textContent = dc.max ? `발견 ${dc.n}/${dc.max}` : '둘러보기';
       if (newEl) {
         newEl.hidden = !dc.newLeft || !!(region && !getRoom() && !activeSite?.primary);
         newEl.textContent = `오늘 새 발견 ${dc.newLeft}개`;
@@ -1799,7 +2278,8 @@
       if (bagButton) bagButton.querySelector('small').textContent = bagTotal;
       if (next) next.hidden = discoverCount(id, log).n < 1;
 
-      const markers = discoveryMarkers(entries.filter(entry => entry.room === (room || undefined) && (!isFlat() || room || entry.episode === id)));
+      const markers = discoveryMarkers(entries.filter(entry => entry.room === (room || undefined) &&
+        (!isFlat() || room || entry.episode === id || entry.location.key === 'herod-palace')));
       if (room) return markers;
       for (const npc of spec.storyPeople || []) {
         markers.push({ id: npc.id, type: 'person', actor: npc.actor, pos: npc.pos, title: npc.actor, symbol: '💬', storyNpc: npc });
@@ -1808,7 +2288,7 @@
         if (adv.targets[key]) markers.push({ ...adv.targets[key], id: key });
       }
       for (const site of places.filter(site => !isFlat() || site.primary)) {
-        for (const kind of ['jump', 'push']) {
+        for (const kind of ['push']) {
           const target = site.area.adventure?.targets[kind];
           if (target && entries.some(e => e.episode === site.episode && e.ability === kind) && !isUnlocked(kind, site.episode)) {
             markers.push({ ...target, pos: site.translate(target.pos), id: site.markerId(kind) });
@@ -1867,9 +2347,19 @@
     nbButton.onclick = () => { closeInspect(); openNotebook(root, sheep, id); };
     root.querySelector('[data-quest-map]')?.addEventListener('click', () => {
       const room = getRoom(), view = getView();
-      if (region && view) return card(region.title, '', {
-        extra: regionMapMarkup(region, room?.pos || here(), scent && (room?.pos || scent.pos), log, entries), button: '지도 닫기'
-      });
+      if (region && view) {
+        const palaceLink = region.index === 3 && date() >= '2026-12-19' ?
+          '<button class="btn ghost" type="button" data-palace-travel>🧭 예루살렘 · 헤롯의 궁</button>' : '';
+        const dlg = card(region.title, '', {
+          extra: regionMapMarkup(region, room?.pos || here(), scent && (room?.pos || scent.pos), log, entries) + palaceLink,
+          button: '지도 닫기'
+        });
+        dlg?.querySelector('[data-palace-travel]')?.addEventListener('click', async () => {
+          await enter('1-0');
+          session?.view?.focus('4-0:disc/herod-palace');
+        });
+        return dlg;
+      }
       const unfound = entries.filter(e => !log.discoveries[e.id] && !e.hidden && e.room === (room || undefined));
       const dlg = card('이 장소 둘러보기', '', {
         extra: `<ol class="adventure-zones">${zones.map((name, i) => `<li>${i === zone ? '●' : '○'} ${esc(name)}</li>`).join('')}</ol>
@@ -1890,11 +2380,29 @@
       sceneChanged() {
         clearCompass();
         zone = -1;
-        if (region?.index === 0 && !getRoom()) activeSite = null;
+        if (region && !getRoom()) activeSite = null;
         onNearby(null);
         soundZone(getView()?.moveInfo().zone || 0);
       },
-      dispose() { clearCompass(); closeInspect(); region?.save(); },
+      dispose() { clearTimeout(zoneBannerTimer); clearTimeout(mapLitTimer); clearTimeout(zoneNarrationTimer); clearCompass(); closeInspect(); region?.save(); },
+      discoverSite: showZoneDiscoverBanner,
+      finishWatching(marker) {
+        if (typeof marker.observe !== 'string') return false;
+        const matches = entries.filter(e => e.id === marker.observe && !e.hidden && (!e.ability || isUnlocked(e.ability, e.episode)));
+        const entry = matches.find(e => e.location === region.nearSite(marker.pos)) || matches[0];
+        if (!entry || log.discoveries[entry.id]) return false;
+        const item = catalog[entry.id];
+        if (item.kind === 'try') openTry(entry, item, marker.id);
+        else openLookOrTouch(entry, item, marker.id);
+        return true;
+      },
+      crossedShortcut(episode) {
+        if (episode && !isUnlocked('jump', episode)) {
+          log.discoverUnlock[episode + '/jump'] = true;
+          statusChanged();
+          refresh();
+        }
+      },
       tick(now) {
         showCompass(now);
         if (!region || !getView() || getRoom()) return;
@@ -1904,16 +2412,18 @@
         const site = region.nearSite(pos);
         if (site === activeSite) return;
         activeSite = site;
+        if (site) showZoneDiscoverBanner(site);
         zone = -1;
         if (site?.primary) soundZone(getView().moveInfo().zone);
         else {
           if (zoneText) zoneText.textContent = site?.name || region.title;
           const ambience = { 'outer-court': '모험 장터', 'south-steps': '모험 뜰', 'sheep-gate': '모험 우물',
-            'lower-town': '모험 뜰', siloam: '모험 우물' };
+            'lower-town': '모험 뜰', siloam: '모험 우물', 'david-well': '모험 우물',
+            'village-threshing': '모험 뜰', 'shepherd-cave': '마구간', 'valley-stream': '모험 우물' };
           Sound.ambience(site?.area?.adventure?.ambience[0] || ambience[site?.key] || '모험 산길');
         }
         const dc = site?.extension ? countAtSite(site, entries, log) : discoverCount(site?.episode || id, log);
-        countEl.textContent = `발견 ${dc.n}/${dc.max}`;
+        countEl.textContent = dc.max ? `발견 ${dc.n}/${dc.max}` : '둘러보기';
         newEl.hidden = !site?.primary || !dc.newLeft;
         if (site?.key === 'sheep-gate' && !noticedFlock) {
           noticedFlock = true;
@@ -1936,7 +2446,24 @@
       reach(key) {
         const entry = entries.find(e => e.room === (getRoom() || undefined) && e.key === key);
         if (entry) {
+          if (entry.location && entry.location !== region?.main) showZoneDiscoverBanner(entry.location);
           const item = catalog[entry.id];
+          if (entry.ability === 'jump' && !isUnlocked('jump', entry.episode)) {
+            if (isFlat()) {
+              card(item.title, '양이 먼저 폴짝 넘었어. 낮은 담 너머로 가 보자.', {
+                button: '🐑 담 넘기', action: () => {
+                  log.discoverUnlock[entry.episode + '/jump'] = true;
+                  statusChanged();
+                  if (item.kind === 'try') openTry(entry, item, key);
+                  else openLookOrTouch(entry, item, key);
+                }
+              });
+            } else {
+              feedback('🐑 양이 지름길을 보여 주는 낮은 담을 찾아봐.');
+              if (!getRoom()) getView()?.focus('shortcut/' + entry.episode);
+            }
+            return true;
+          }
           if (entry.ability && entry.ability !== 'smell' && !isUnlocked(entry.ability, entry.episode)) {
             const ab = ABILITIES.find(a => a.id === entry.ability);
             const ready = Field.mainCare()?.sheep.level >= ab.level;
@@ -2013,11 +2540,16 @@
         <button type="button" class="discover-nearby" data-nearby hidden>✨ <span></span></button>
       </section>` : ''}
       <div class="explore-location-main">${narrLine ? `<p class="explore-narr-caption" data-narr-caption hidden aria-live="polite"><i aria-hidden="true">🔈</i><span>${esc(narrLine)}</span></p>` : ''}<div class="explore-stage" aria-label="${esc(area.title)}" data-kit="${area.kit}"><p class="explore-loading">장소를 불러오는 중…</p><div class="explore-room-veil" aria-hidden="true" hidden></div>
-      ${enhanced ? '<button type="button" data-quest-map class="adventure-zone"><i aria-hidden="true">' + (region ? '📍' : '◇') + '</i> <span data-zone></span></button>' : ''}</div>
+      ${enhanced ? '<button type="button" data-quest-map class="adventure-zone"><i aria-hidden="true">' + (region ? '📍' : '◇') + '</i> <span data-zone></span></button>' : ''}</div><div class="explore-zone-banner" data-zone-banner hidden aria-live="polite"></div>
+      ${region ? '<p class="explore-zone-caption" data-zone-narration hidden aria-live="polite"></p>' : ''}
       ${hasDiscover ? '<section class="discover-inspect" data-inspect hidden aria-live="polite"></section>' : ''}
       <p class="explore-status" role="status">${hasDiscover ? `조이스틱이나 바닥을 톡 눌러 ${esc(Core.josa(sheep.name, '이랑'))} 천천히 둘러봐.` : enhanced ? '조이스틱이나 바닥을 톡 눌러 이동해. 오른쪽 화면을 밀면 둘러볼 수 있어.' : `바닥을 톡 누르면 ${esc(Core.josa(sheep.name, '이가'))} 걸어가.`}</p>
       ${hasDiscover ? '' : '<p class="explore-task-line"><span data-score></span><strong data-timer hidden></strong></p>'}</div>
       <div class="explore-flat" hidden></div>
+      ${region ? `<div class="explore-travel-controls">
+        <button class="btn ghost" type="button" data-dismount hidden>🫏 내리기</button>
+        ${(sheep.level || 1) >= 2 && sheep.level < 5 ? '<button class="btn ghost" type="button" data-hold-lamb aria-pressed="false" hidden>🤲 안아 주기</button>' : ''}
+      </div>` : ''}
       ${hasDiscover ? `<footer class="adventure-actions">
         <button type="button" data-abilities><i>🐑</i> 양 능력</button>
         <button type="button" data-notebook><i>📓</i> 발견 노트 <small>0</small></button>
@@ -2038,9 +2570,11 @@
     const next = root.querySelector('[data-field-next]');
     const veil = root.querySelector('.explore-room-veil'), caption = root.querySelector('[data-place-caption]');
     const narrEl = root.querySelector('[data-narr-caption]');
+    const dismountButton = root.querySelector('[data-dismount]');
+    const holdButton = root.querySelector('[data-hold-lamb]');
     const outdoorCaption = caption.textContent;
     let view, dead = false, flat = false, shown = [], task;
-    let room = null, changingRoom = false;
+    let room = null, changingRoom = false, watching = 0, holdingLamb = false;
     let interval = 0, hintTimers = [], curtain = null, photoBusy = false, narrTimer = 0;
     const observer = new MutationObserver(() => { if (!root.isConnected) dispose(); });
     observer.observe(root.parentElement, { childList: true });
@@ -2049,6 +2583,18 @@
     root.querySelector('[data-field-return]').onclick = fieldBack;
     root.querySelector('[data-walked-ending]')?.addEventListener('click', () => ending());
     next.onclick = fieldBack;
+    if (dismountButton) dismountButton.onclick = () => view?.ride();
+    if (holdButton) holdButton.onclick = () => {
+      if (watching || !view?.holdLamb(!holdingLamb)) return;
+      holdingLamb = !holdingLamb;
+      holdButton.setAttribute('aria-pressed', String(holdingLamb));
+      holdButton.textContent = holdingLamb ? '🤲 내려놓기' : '🤲 안아 주기';
+      if (holdingLamb && !log.carriedLamb) {
+        log.carriedLamb = day;
+        Core.save();
+        feedback('“어린 양을 그 팔로 모아 품에 안으시며” (' + window.EXPLORE_CARRY_WORD + ')');
+      }
+    };
     function playPlaceNarration() {
       if (!narrLine || dead) return;
       clearTimeout(narrTimer);
@@ -2088,13 +2634,13 @@
       refresh, getView: () => view, isFlat: () => flat }) : null;
     function dispose() {
       if (dead) return;
-      dead = true; observer.disconnect(); clearInterval(interval); clearTimeout(narrTimer); hintTimers.forEach(clearTimeout);
+      dead = true; observer.disconnect(); clearInterval(interval); clearTimeout(narrTimer); clearTimeout(watching); hintTimers.forEach(clearTimeout);
       if (region) window.removeEventListener('pagehide', region.save);
       discovery?.dispose();
       adventure?.dispose();
       view?.destroy(); view = null;
     }
-    session = { dispose, get view() { return view; }, get room() { return room?.id || null; }, id };
+    session = { dispose, get view() { return view; }, get room() { return room?.id || null; }, id, region, discoverSite: site => discovery?.discoverSite?.(site) };
     function feedback(text) { status.textContent = cueText(text, sheep); }
     function withSymbols(markers) { return markers.map(marker => ({ ...marker, symbol: marker.symbol || icons[marker.type] || '✦' })); }
     function refresh() {
@@ -2197,6 +2743,8 @@
     function no3D() {
       if (dead || flat) return;
       view?.destroy(); view = null; flat = true;
+      if (holdButton) holdButton.hidden = true;
+      if (dismountButton) dismountButton.hidden = true;
       stage.hidden = true; fallback.hidden = false;
       feedback('목록에서 살펴볼 곳을 눌러 봐.');
       refresh();
@@ -2205,6 +2753,7 @@
       if (dead || changingRoom || curtain?.open) return;
       const previous = room;
       if (previous === nextRoom) return;
+      if (nextRoom && view && dismountButton && !dismountButton.hidden) view.ride();
       const useFade = !flat && !matchMedia('(prefers-reduced-motion: reduce)').matches;
       changingRoom = true;
       if (useFade) {
@@ -2478,12 +3027,37 @@
       card(event.title, event.result, { detail: event.oil ? '기름 +1' : '털 +1' });
     }
     function reach(markerId) {
-      if (dead || changingRoom || curtain?.open) return;
+      if (dead || changingRoom || watching || curtain?.open) return;
       const marker = shown.find(m => m.id === markerId);
       if (!marker) return;
       if (marker.type === 'house-door') return changeRoom(marker.house || null);
       if (marker.viewpoint) return photo(marker.viewpoint);
       if (marker.pathPlay) return view?.playAt(marker.id);
+      if (marker.ride) {
+        if (view?.ride(marker.id) && dismountButton && !dismountButton.hidden) {
+          discovery?.finishWatching({ ...marker, observe: 'donkey' });
+        }
+        return;
+      }
+      if (marker.shortcut) {
+        if (view?.takeShortcut(marker)) {
+          Sound.sfx('pop');
+          discovery?.crossedShortcut(marker.episode);
+        } else if (holdingLamb) feedback('양을 내려놓은 뒤 함께 담을 넘어 보자.');
+        return;
+      }
+      if (marker.observe && view) {
+        const scene = view;
+        scene.watch(marker.id);
+        feedback('👀 ' + marker.title);
+        watching = setTimeout(() => {
+          watching = 0;
+          if (dead || scene !== view) return;
+          scene.endInspect();
+          discovery?.finishWatching(marker);
+        }, 3400);
+        return;
+      }
       if (discovery?.reach(markerId)) return;
       if (adventure?.reach(markerId)) return;
       if (marker.type === 'exit') return enter(marker.place);
@@ -2529,16 +3103,19 @@
             blanket: record.woolGifts?.blanket && Object.keys(record.woolGifts.blanket.wool || {}).map(id => window.WOOL_TYPES?.[id]?.color).filter(Boolean) },
           progress: log.quests, found: log.found, sheep, markers: shown, adventure: area.adventure }, {
           companionLine: enhanced ? Field.exploreReaction(sheep) : null,
-          onFootstep: enhanced || room ? () => Sound.sfx('walkExplore') : null,
+          onFootstep: enhanced || room ? mounted => Sound.sfx(mounted ? 'hoofExplore' : 'walkExplore') : null,
+          onRide: mounted => { if (dismountButton) dismountButton.hidden = !mounted; },
           onBearing: room ? null : adventure?.onBearing,
           onZone: discovery?.zoneChanged || (room ? null : adventure?.zoneChanged),
           onNearbyDiscover: discovery?.onNearby,
           onExploreTick: discovery?.tick,
-          canInteract: () => !changingRoom && !curtain?.open && (!hasDiscover || root.querySelector('[data-inspect]')?.hidden !== false),
+          canInteract: () => !changingRoom && !watching && !curtain?.open && (!hasDiscover || root.querySelector('[data-inspect]')?.hidden !== false),
           onReach: reach, onUnavailable: no3D
         });
         if (dead || flat) { engine?.destroy(); return; }
         view = engine;
+        if (holdButton) holdButton.hidden = false;
+        if (holdingLamb) view.holdLamb(true);
         stage.querySelector('.explore-loading')?.remove();
         refresh();
       } catch (error) {
@@ -2794,7 +3371,7 @@
       .map(marker => ({ title: window.EXPLORE[ep.id].title, ref: marker.ref })));
   }
   window.Explore = {
-    map, enter, ending, isOpen, complete, counts, todayEvent, words, newCount, discoverCount,
+    map, enter, ending, isOpen, complete, counts, todayEvent, words, newCount, discoverCount, regionCollection,
     encodeDiscoverCode, decodeDiscoverCode,
     notebook: (placeId = null) => openNotebook(document.querySelector('#app main') || document.body, Field.mainCare()?.sheep, placeId),
     title: id => window.EXPLORE[id]?.title,

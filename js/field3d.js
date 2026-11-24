@@ -2856,9 +2856,32 @@
       actor.userData.gait = { rig, arms, feet, phase: Math.random() * 6, amt: 0, seed: Math.random() * 9, holds: prop === 'staff' || prop === 'jar' || prop === 'basket' || prop === 'lantern', wave: 0 };
       return { actor, arm };
     }
-    function animal(kind) {
-      const bird = ['닭', '비둘기'].includes(kind), hoof = ['나귀', '염소', '어린 양'].includes(kind);
-      const coat = { 나귀: '#9c8e88', 염소: '#cca77d', '어린 양': '#f5e6cc', 닭: '#b66844', 비둘기: '#e5e0ed', 고양이: '#d3a263' }[kind];
+    function animal(kind, saddled = false) {
+      const bird = ['닭', '비둘기', '독수리'].includes(kind), hoof = ['나귀', '염소', '어린 양', '소'].includes(kind);
+      const coat = { 나귀: '#9c8e88', 염소: '#cca77d', '어린 양': '#f5e6cc', 소: '#9b6850', 독수리: '#706264',
+        닭: '#b66844', 비둘기: '#e5e0ed', 고양이: '#d3a263' }[kind];
+      if (saddled) {
+        const mount = new T.Group(), head = new T.Group(), ears = [], feet = [];
+        mount.add(mesh([[ball, coat, 0, .82, 0, .42, .44, .77],
+          [ball, coat, 0, .98, .49, .26, .38, .31, .3], [taper, '#6d615b', 0, .94, -.72, .10, .56, .095, .48],
+          [cube, '#a46655', 0, 1.06, -.12, .83, .25, .6], [cube, '#785445', 0, 1.26, -.12, .52, .14, .56]]));
+        head.position.set(0, 1.19, .60);
+        head.add(mesh([[ball, '#baaa9e', 0, .13, .19, .28, .27, .41],
+          [ball, '#e2d1bc', 0, .084, .44, .217, .17, .2],
+          [cube, ink, -.19, .23, .28, .05, .056, .055], [cube, ink, .19, .23, .28, .05, .056, .055],
+          [cube, '#765647', 0, .11, .43, .45, .071, .07]]));
+        for (const side of [-1, 1]) {
+          const ear = mesh([[taper, coat, 0, .21, 0, .107, .46, .104]]);
+          ear.position.set(side * .13, .31, .08); ear.rotation.z = -side * .30; head.add(ear); ears.push(ear);
+          for (const z of [-.41, .36]) {
+            const foot = mesh([[cube, coat, 0, -.36, 0, .15, .65, .16], [cube, '#67514a', 0, -.67, .034, .17, .14, .19]]);
+            foot.position.set(side * .24, .74, z); mount.add(foot); feet.push(foot);
+          }
+        }
+        mount.add(head);
+        mount.userData.mountRig = { head, ears, feet };
+        return mount;
+      }
       const parts = bird ? [
         [ball, coat, 0, .26, 0, .17, .18, .27], [ball, coat, 0, .40, .18, .114, .12, .131],
         [taper, '#d8a057', 0, .387, .292, .05, .12, .05, Math.PI / 2],
@@ -2882,7 +2905,7 @@
       }
       if (kind === '닭') parts.push([ball, '#b23b3d', 0, .511, .171, .053, .082, .088]);
       const actor = mesh(parts);
-      actor.scale.setScalar(kind === '나귀' ? 1 : kind === '고양이' ? .36 : bird ? .96 : .69);
+      actor.scale.setScalar(kind === '나귀' ? 1 : kind === '소' || kind === '독수리' ? 1.3 : kind === '고양이' ? .36 : bird ? .96 : .69);
       return actor;
     }
     return { person, animal, dispose() {
@@ -2936,7 +2959,8 @@
     const rock = (color, ...shape) => batch(pebble, color, ...shape);
     const round = (color, ...shape) => batch(circle, color, ...shape);
     const stop = (x, z, radius) => blocks.push([x, z, radius]);
-    const wall = temple ? (day ? '#c6ae8d' : '#978fa0') : '#ab866f', cap = temple ? (night ? '#b4a8ae' : '#dfc4a0') : '#d3ad85';
+    const wall = temple ? (regional ? '#c8ae8a' : day ? '#c6ae8d' : '#978fa0') : '#ab866f';
+    const cap = temple ? (regional ? '#e7d0a8' : night ? '#b4a8ae' : '#dfc4a0') : '#d3ad85';
     const wood = '#694452', ochre = '#b27750', fabric = night ? '#8d4c60' : '#a35255';
     const flameMat = mat('#ffca6c', { emissive: '#ff932d', ei: daylight.lamp });
     const roofLine = temple ? '#655a6c' : '#634e64';
@@ -2970,8 +2994,8 @@
     const routeX = z => (visual === 'hills' || openCountry) ? 5 * Math.sin((z + 7) * .10) : 0;
     const groundGeo = new T.PlaneGeometry(regional ? 47.08 : 70, regional ? 47.08 : 68, 52, 54).rotateX(-Math.PI / 2).toNonIndexed();
     const groundPos = groundGeo.attributes.position, colors = [];
-    const groundColor = new T.Color(desert ? '#a68262' : galilee ? '#697e54' : temple ? '#7f7684' : roof ? '#927975' : '#706e5c');
-    const roadColor = new T.Color(desert ? '#c1a179' : temple ? '#a69ba0' : visual === 'hills' ? '#aa926f' : '#ac927e'), tint = new T.Color();
+    const groundColor = new T.Color(desert ? '#a68262' : galilee ? '#697e54' : temple ? regional ? '#a39587' : '#7f7684' : roof ? '#927975' : '#706e5c');
+    const roadColor = new T.Color(desert ? '#c1a179' : temple ? regional ? '#b7a693' : '#a69ba0' : visual === 'hills' ? '#aa926f' : '#ac927e'), tint = new T.Color();
     for (let i = 0; i < groundPos.count; i += 3) {
       const x = (groundPos.getX(i) + groundPos.getX(i + 1) + groundPos.getX(i + 2)) / 3, z = groundPos.getZ(i);
       const dirt = Math.abs(x - routeX(z)) < 3 || Math.abs(z - 11) < 2 || Math.abs(z + 4) < 2 || Math.abs(z + 16) < 1.4;
@@ -3106,7 +3130,7 @@
         stall(side * 15.7, 4.6, '#927448');
         lamp(side * 4.15, -11.75, .94, true);
         lamp(side * 13, 6.9, 1.02, true);
-        olive(side * 15.7, -13, 1.45);
+        if (!regional) olive(side * 15.7, -13, 1.45);
         home(side * 16.5, -20.7, 5.3);
         box(wall, side * 4.65, elevation(-21, 3), -21, 3.65, 6, 1.7);
         box(cap, side * 2.8, elevation(-21, 2.96), -20.05, .68, 5.9, .58);
@@ -3357,7 +3381,7 @@
       walkable: (x, z) => !rail(x, z), signs, climbs: roof ? [[0, -20.7]] : temple ? [[1.65, -18.5]] : [] };
   }
 
-  function jerusalemScenery(group, site, climate) {
+  function districtScenery(group, site, climate) {
     const { key, edge } = site;
     const rand = seeded(hashStr(key));
     const night = climate.time === 'night';
@@ -3377,12 +3401,22 @@
     const round = (color, ...shape) => add(batches, column, color, shape);
     const stair = (distance, step, total) => clamp(Math.floor(distance / step) + 1, 0, total);
     const lowerSlope = z => -.82 - .085 * (z + 9);
+    const mound = (x, z, rise) => .25 + rise * Math.max(0, 1 - (x / edge) ** 2 - (z / edge) ** 2) ** 1.55;
+    const streamX = z => Math.sin(z * .27) * 2.4;
     const groundHeight = (x, z) => {
       if (key === 'olives') return .25 + 12 * Math.max(0, 1 - ((x / 13) ** 2 + (z / 13) ** 2)) ** 1.55;
       if (key === 'outer-court') return 2.8 - 2.4 * clamp((-z - 4) / 7, 0, 1);
       if (key === 'south-steps') return Math.abs(x) <= 3.35 ? 0 : 2.8 * clamp((-z + 5.5) / 12, 0, 1);
       if (key === 'lower-town') return lowerSlope(z);
       if (key === 'siloam') return -2.35;
+      if (key === 'bethlehem-vista') return mound(x, z, 11);
+      if (key === 'eder-tower') return mound(x, z, 4.4);
+      if (key === 'judean-terraces') return 2.5 - z * .22;
+      if (key === 'valley-stream') return Math.min(1.6, Math.abs(x - streamX(z)) * .22) - 1.1;
+      if (key === 'wilderness-edge') return .35 + .12 * Math.sin(z * .4) - .95 * Math.max(0, 1 - Math.abs(x - streamX(z)) / 3);
+      if (key === 'wilderness-vista') return mound(x, z, 10.2);
+      if (key === 'nazareth-cliff') return mound(x, z, 8.8) - 2.6 * clamp((z - 2) / 8, 0, 1);
+      if (key === 'tabor-vista' || key === 'lake-pass') return mound(x, z, key === 'lake-pass' ? 9.6 : 6.3);
       return .16;
     };
     const height = (x, z) => {
@@ -3451,6 +3485,27 @@
         box(face, x + dx, y + .155, z + dz, .093, .31, .11);
       }
     }
+    function olive(x, z, size) {
+      const y = height(x, z);
+      round(wood, x, y + size * .7, z, .16 * size, 1.35 * size, .16 * size, .12, 0, -.2);
+      for (let i = 0; i < 4; i++) {
+        const dx = Math.cos(i * 2.4), dz = Math.sin(i * 2.4);
+        round(wood, x + dx * size * .27, y + size * 1.21, z + dz * size * .27, .068 * size, .84 * size, .068 * size, dz * .7, 0, -dx * .7);
+        rock(['#879368', '#687756', '#93a17a'][i % 3], x + dx * size * .66, y + size * (1.58 + rand() * .32),
+          z + dz * size * .66, size, size * .56, size * .83, 0, i);
+      }
+      blocks.push([x, z, .24 * size]);
+    }
+    function well(x, z) {
+      const y = height(x, z);
+      round(shade, x, y + .45, z, 1.3, .9, 1.3);
+      round(cap, x, y + .92, z, 1.4, .18, 1.4);
+      round('water', x, y + 1.03, z, 1.02, .045, 1.02);
+      for (const dx of [-1.48, 1.48]) box(wood, x + dx, y + 1.39, z, .17, 2.78, .18);
+      box(wood, x, y + 2.70, z, 3.3, .18, .28);
+      box(wood, x + .32, y + 1.78, z, .045, 1.73, .045);
+      solid(x, z, 2.9, 2.6);
+    }
     function basin(x, z, w, d, depth) {
       const y = height(x, z);
       box('water', x, y + .035, z, w -.44, .075, d -.44);
@@ -3494,7 +3549,196 @@
       }
     }
 
-    if (key === 'outer-court') {
+    if (key === 'herod-palace') {
+      pavement(-9.8, -3.5, 15, 10);
+      for (const [x, h] of [[-8, 10.5], [8, 8.4]]) {
+        masonry(x, -6.45, 4.55, h, 5.18);
+        box('#c49559', x, h - 1, -6.45, 4.68, .23, 5.30);
+        for (const dx of [-1.77, -.89, 0, .89, 1.77]) {
+          box(cap, x + dx, h + .49, -4.15, .54, .67, .47);
+        }
+        solid(x, -6.45, 4.55, 5.18);
+      }
+      masonry(0, -7, 12.2, 6.1, 4.15);
+      solid(0, -7, 12.2, 4.15);
+      box('#5f4242', 0, 1.94, -4.89, 2.73, 3.54, .14);
+      for (const x of [-2.3, -1.69, 1.69, 2.3]) {
+        round(wall, x, 2.34, -4.44, .22, 4.32, .25);
+        box(bronze, x, 4.52, -4.44, .56, .25, .59);
+      }
+      box(bronze, 0, 4.69, -4.52, 5.2, .28, .80);
+      for (let x = -1.2; x < 1.3; x += .32) box('#c59b5b', x, 1.94, -4.79, .035, 3.49, .065);
+      for (const [x, color] of [[-6.2, '#9e5466'], [6.2, '#765a82']]) {
+        box(wood, x, 4.55, -3.78, 1.57, .08, .09);
+        box(color, x, 3.48, -3.78, 1.19, 2.1, .08);
+        box(bronze, x, 2.49, -3.72, 1.19, .13, .07);
+        torch(x, .9);
+      }
+    } else if (key === 'nazareth-cliff') {
+      for (let x = -8; x < 9; x += 1.48) {
+        const z = 5.4 - Math.abs(x) * .20, y = height(x, z);
+        rock('#b69376', x, y - .55, z + .65, 1.5, 2.45, 1.38, .12, x);
+        rock('#d0b39a', x, y + .15, z, .70, .34, .60, 0, x);
+      }
+      for (const side of [-1, 1]) {
+        masonry(side * 5, -3.9, 4.1, .7, .5);
+        olive(side * 4.8, -6, 1);
+      }
+      climbs.push([.15, 2]);
+    } else if (key === 'synagogue-yard') {
+      pavement(-5.9, -.1, 9, 5);
+      masonry(0, -4.8, 10.7, 3.45, 6.0);
+      box(shade, 0, 3.69, -4.8, 11.0, .31, 6.15);
+      box('#684746', 0, 1.41, -1.78, 1.63, 2.5, .11);
+      for (const x of [-4, -2, 2, 4]) round(cap, x, 1.6, -1.35, .20, 2.88, .20);
+      solid(0, -4.8, 10.7, 6);
+      for (const side of [-1, 1]) {
+        masonry(side * 4.35, 3.4, 2.6, .42, .70);
+        olive(side * 6.6, 3.05, 1.02);
+      }
+    } else if (key === 'grain-yard') {
+      round('#ba9768', -.9, .16, .1, 5.15, .05, 4.4);
+      masonry(3, -5.4, 7.3, 2.99, 3.5);
+      box(wood, 3, 3.24, -5.4, 7.65, .27, 3.8);
+      box('#4e372c', 3.25, 1.07, -3.62, 1.04, 1.75, .09);
+      solid(3, -5.4, 7.3, 3.5);
+      for (let i = 0; i < 12; i++) {
+        const x = -6.9 + rand() * 3.4, z = -3.6 + rand() * 2.6;
+        rock('#c0a375', x, .46, z, .47, .52, .40, .21, i);
+      }
+      jar(5.1, -2.9); jar(5.8, -2.9); torch(4.1, -2.8);
+    } else if (key === 'olive-cave') {
+      for (const side of [-1, 1]) {
+        rock('#9d8c78', side * 2.95, 1.3, -4.6, 2.6, 2.56, 3.45, .1, side);
+        olive(side * 5.7, .3, 1.05);
+      }
+      rock(wall, 0, 2.72, -4.9, 4.7, 1.56, 2.68, -.22);
+      box('#382e31', 0, 1.23, -3.85, 2.35, 2.1, .19);
+      solid(0, -4.9, 8.15, 3.58);
+      round(shade, 2.9, .37, .7, 1.02, .40, .97);
+      round(cap, 2.9, .65, .7, .83, .21, .82);
+      box(wood, 2.9, .92, .7, 1.96, .15, .15, 0, -.6);
+      blocks.push([2.9, .7, .82]);
+      jar(2.5, 2.15); torch(1.85, -2.12);
+    } else if (key === 'tabor-vista' || key === 'lake-pass') {
+      for (const [x, z, size] of [[-5.5,3,1.02],[-7,-1,1.20],[-4,-5,.94],[3,5,.94]]) olive(x, z, size);
+      for (let i = 0; i < 44; i++) {
+        const x = (rand() - .5) * 20, z = (rand() - .5) * 18;
+        if (Math.hypot(x, z) < 3.3) continue;
+        const y = height(x, z);
+        box('#657047', x, y + .16, z, .028, .32, .028);
+        rock(i % 4 ? '#b7493e' : '#e4c1a2', x, y + .35, z, .13, .055, .13);
+      }
+      climbs.push([0, 0]);
+    } else if (key === 'south-road') {
+      for (const side of [-1, 1]) for (let z = -3; z <= 5; z += 1.5) masonry(side * 2.8, z, .58, .5, 1.46);
+      olive(-4.7, -1, 1.0); olive(4.4, 2.5, 1.13);
+    } else if (key === 'judean-terraces') {
+      for (const z of [-6.8, -2.9, 1.1, 5.1]) {
+        for (const side of [-1, 1]) {
+          masonry(side * 5.7, z, 7.35, .61, .67);
+          if (z < 3) olive(side * 6.9, z - 1.2, 1.07);
+          for (const x of [3.1, 4.25, 5.4, 6.55, 7.7, 8.85]) {
+            const px = side * x, pz = z + .83, y = height(px, pz);
+            box(wood, px, y + .36, pz, .10, .72, .10);
+            rock('#66784e', px, y + .67, pz, .55, .23, .43, 0, x);
+            rock('#76637b', px + .17, y + .58, pz + .12, .14, .14, .14);
+          }
+        }
+      }
+      climbs.push([0, -5.0]);
+    } else if (key === 'village-threshing') {
+      well(-4.9, -1.4);
+      round('#b69a73', 3.3, .17, -1.7, 4.05, .035, 3.45);
+      for (let i = 0; i < 21; i++) {
+        const angle = i * 2.4, radius = 3.6 * Math.sqrt(rand());
+        const x = 3.3 + Math.cos(angle) * radius, z = -1.7 + Math.sin(angle) * radius * .8;
+        box('#d1ad62', x, .20, z, .41, .034, .09, 0, angle);
+      }
+      masonry(4, -7.0, 7.5, 2.7, 3.2);
+      box('#5e4942', 4, 1.15, -5.38, .95, 1.75, .085);
+      solid(4, -7, 7.5, 3.2);
+      jar(-3.6, .15); jar(6.15, -5.1); olive(-7.4, -5.1, 1.25);
+    } else if (key === 'valley-stream' || key === 'wilderness-edge') {
+      const dry = key === 'wilderness-edge';
+      for (let z = -edge + 1; z < edge; z += .85) {
+        const x = streamX(z), y = height(x, z);
+        box(dry ? '#aa835b' : 'water', x, y + .06, z, dry ? 2 : 1.55, .045, 1.06, 0, Math.atan(.65 * Math.cos(z * .27)));
+        for (const side of [-1, 1]) {
+          const px = x + side * (1 + rand() * .85), size = .15 + rand() * .36;
+          rock(dry ? '#d8bf96' : '#a99a83', px, height(px, z), z, size, size * .64, size * .87, 0, z);
+        }
+      }
+      if (dry) {
+        for (const [x, z, size] of [[-8,-5,2.9],[-5,-6,1.6],[6,-7,2.1],[8,4,2.7],[-7,7,1.8],[10,-9,3.2]]) {
+          rock('#c9ad83', x, height(x, z) + .42 * size, z, size, .86 * size, .74 * size, .15, z);
+          blocks.push([x, z, size * .53]);
+        }
+      } else {
+        for (let x = -1.7; x < 2.5; x += .49) box(wood, x, .04, .45, .47, .18, 1.7, 0, .07);
+        olive(-6.6, -1.7, 1.4); olive(6.9, 4.7, 1.22);
+      }
+    } else if (key === 'wilderness-vista') {
+      for (const [x, z, size] of [[-5,-3,1.9],[-4,3,1.3],[4,-3,1.7],[5,1.5,1.55],[-8,1,2.3],[7,-6,2.4]]) {
+        rock('#dbc5a3', x, height(x, z) + .29 * size, z, size, .73 * size, .82 * size, 0, z);
+        blocks.push([x, z, size * .53]);
+      }
+      climbs.push([0, 0]);
+    } else if (key === 'rachel-tomb') {
+      masonry(-1.7, -1.3, 4.6, 1.95, 3.55);
+      round(cap, -1.7, 2.14, -1.3, 2.65, .30, 2.05);
+      rock(wall, -1.7, 2.14, -1.3, 2.66, 1.83, 2.04);
+      box('#47383d', -1.7, .93, .49, .88, 1.56, .06);
+      solid(-1.7, -1.3, 4.6, 3.55);
+      for (const side of [-1, 1]) masonry(-1.7 + side * 4, -3.2, 2.8, .56, .55);
+      torch(-3.8, 1.4);
+    } else if (key === 'david-well') {
+      pavement(-4.7, -4.7, 8, 8);
+      well(0, 0);
+      jar(2.9, .6); torch(-2.7, 2.8);
+    } else if (key === 'boaz-field') {
+      for (const side of [-1, 1]) {
+        for (let row = 0; row < 5; row++) {
+          const x = side * (3.5 + row * 1.25);
+          box('#95724c', x, .16, -.6, 1.11, .045, 16);
+          for (let z = -8; z < 7; z += .52) {
+            const px = x + (rand() - .5) * .86, h = .46 + rand() * .42;
+            const pz = z + rand() * .44;
+            box('#a88e46', px, .17 + h / 2, pz, .023, h, .023, 0, 0, .08);
+            rock(rand() > .5 ? '#dcb571' : '#c49650', px - h * .04, .17 + h, pz, .064, .139, .064, 0, z);
+          }
+        }
+      }
+      for (const z of [-9.3, 8.2]) for (const side of [-1, 1]) masonry(side * 6.9, z, 7, .45, .47);
+    } else if (key === 'eder-tower') {
+      const y = height(0, -3.4);
+      masonry(0, -3.4, 3.85, 6.7, 3.7, y - .32);
+      box('#44383e', 0, y + .97, -1.53, .63, 1.5, .06);
+      for (const axis of [-1, 1]) for (const x of [-1.66, -.83, 0, .83, 1.66]) {
+        box(cap, x, y + 6.68, -3.4 + axis * 1.69, .49, .59, .51);
+      }
+      solid(0, -3.4, 3.85, 3.7);
+      for (const [x, z, yaw] of [[-5, -1, .7], [-5.9, -.1, -1], [-6.2, -1.8, 1.3]]) sheep(x, z, yaw);
+      torch(2.4, -.8);
+      climbs.push([0, 2.3]);
+    } else if (key === 'shepherd-cave') {
+      const caveRock = '#8f7878';
+      for (const side of [-1, 1]) {
+        rock(caveRock, side * 3.15, 1.12, -4.1, 2.6, 2.75, 3.45, .1, side);
+        masonry(side * 4.5, 1.5, .52, .72, 5.3);
+      }
+      rock(wall, 0, 2.37, -4.55, 4.5, 1.52, 2.65, -.22);
+      box('#3a2b3a', 0, 1.12, -3.72, 2.26, 2.03, .22);
+      solid(0, -4.7, 8.1, 3.6);
+      sheep(-2.4, 2.7, .6); sheep(2.4, 3.25, -.8);
+      torch(2.05, -1.85);
+    } else if (key === 'bethlehem-vista') {
+      for (const x of [-3.9, -2.75, -1.6, 1.6, 2.75, 3.9]) {
+        masonry(x, -2.25, 1.20, .48, .58);
+      }
+      torch(-3.1, -.15); torch(3.1, -.15);
+      climbs.push([0, 0]);
+    } else if (key === 'outer-court') {
       pavement(-8.3, -8.3, 13, 13);
       for (const side of [-1, 1]) colonnade(side * 8.8, .6, 16.4, false);
       for (const x of [-5.75, 5.75]) {
@@ -3613,8 +3857,11 @@
     group.add(detail);
     addScenery(detail, details, color => mat(color));
     cube.dispose(); stone.dispose(); column.dispose();
-    const lookAt = key === 'olives' || key === 'wall-walk' ? site.translate([28 - site.x, -31 - site.z]) :
-      site.translate([-28 - site.x, -19 - site.z]);
+    const views = { olives: [28, -31], 'wall-walk': [28, -31], 'bethlehem-vista': [-41, -83],
+      'eder-tower': [24, 25], 'wilderness-vista': [156, 14], 'judean-terraces': [10, 20],
+      'nazareth-cliff': [-56, 115], 'tabor-vista': [135, 72], 'lake-pass': [125, -78] };
+    const [viewX, viewZ] = views[key] || [-28, -19];
+    const lookAt = site.translate([viewX - site.x, viewZ - site.z]);
     return { height, groundHeight, blocks, climbs, lookAt, detail, fx,
       walkable(x, z) {
         if (Math.abs(x) > edge || Math.abs(z) > edge) return true;
@@ -3643,7 +3890,14 @@
       group.position.set(x, 0, z);
       scene.add(group);
       if (site.extension) {
-        const local = jerusalemScenery(group, site, climate);
+        const local = districtScenery(group, site, climate);
+        const drop = site.key === 'wilderness-edge' || site.key === 'wilderness-vista' ? -2.6 : 0;
+        if (drop) {
+          const { height, groundHeight } = local;
+          group.position.y = drop;
+          local.height = (x, z) => height(x, z) + drop;
+          local.groundHeight = (x, z) => groundHeight(x, z) + drop;
+        }
         blocks.push(...local.blocks.map(([px, pz, r]) => [...translate([px, pz]), r]));
         for (const effect of local.fx) {
           effect.cloud.position.x += x; effect.cloud.position.z += z;
@@ -3738,7 +3992,9 @@
       const slope = region.index === 1 || region.index === 2 ? 1.35 : .65;
       const rise = summit ? 5.2 * Math.max(0, 1 - Math.hypot((x - summit[0]) / 11, (z - summit[1]) / 9)) : 0;
       const valley = jerusalem ? -4.1 * Math.max(0, 1 - Math.hypot((px - 54) / 7, (pz + 7) / 40)) : 0;
-      const hills = rise + valley + slope * Math.sin(px * .072) * Math.cos(pz * .065) + .20 * Math.sin(pz * .23);
+      const fall = region.index === 1 ? -3.4 * clamp((px - 37) / 76, 0, 1) :
+        region.index === 0 || region.index === 3 ? -2.4 * clamp((Math.abs(px) - wide * .70) / (wide * .30), 0, 1) : 0;
+      const hills = rise + valley + fall + slope * Math.sin(px * .072) * Math.cos(pz * .065) + .20 * Math.sin(pz * .23);
       let near, gap = 8;
       for (const part of parts) {
         const distance = gapFrom(part.site, x, z);
@@ -3752,18 +4008,19 @@
       const part = partAt(x, z);
       return part ? part.local.height(x - part.site.offset[0], z - part.site.offset[1]) : exterior(x, z);
     };
-    const density = jerusalem ? .94 : 1.25;
+    const density = .94;
     const landGeo = new T.PlaneGeometry(wide * 2 + 4, deep * 2 + 4, Math.ceil(wide * density), Math.ceil(deep * density))
       .rotateX(-Math.PI / 2).translate(-ox, 0, -oz).toNonIndexed();
     const pos = landGeo.attributes.position, colors = new Float32Array(pos.count * 3);
     const earth = new T.Color(['#8c7d78', '#777855', '#677a5a', '#77634f'][region.index]);
     const road = new T.Color(['#b6a296', '#b3986f', '#b69b77', '#ab8967'][region.index]);
-    const color = new T.Color();
+    const color = new T.Color(), dryEarth = new T.Color('#b29670'), dryRoad = new T.Color('#d6b489');
     for (let i = 0; i < pos.count; i += 3) {
       const x = (pos.getX(i) + pos.getX(i + 1) + pos.getX(i + 2)) / 3;
       const z = (pos.getZ(i) + pos.getZ(i + 1) + pos.getZ(i + 2)) / 3;
       const wear = clamp((2.8 - pathDistance(x, z) + rand() * .55) / 1.1, 0, 1);
-      color.copy(earth).lerp(road, wear).multiplyScalar(.91 + rand() * .18);
+      const aridity = region.index === 1 ? clamp((x + ox - 32) / 32, 0, 1) : 0;
+      color.copy(earth).lerp(dryEarth, aridity).lerp(road, wear).lerp(dryRoad, wear * aridity).multiplyScalar(.91 + rand() * .18);
       for (let j = i; j < i + 3; j++) {
         pos.setY(j, exterior(pos.getX(j), pos.getZ(j)) - .07);
         colors.set([color.r, color.g, color.b], j * 3);
@@ -3806,7 +4063,7 @@
     for (let i = 0; i < 17; i++) {
       const x = -wide - 3 + i * (2 * wide + 6) / 16 - ox;
       const z = -deep - 7 - rand() * 7 - oz;
-      const size = 4 + rand() * 9;
+      const size = region.index === 2 && x + ox < -15 ? 2 + rand() * 3 : 4 + rand() * 9;
       add(stone, ['#756c7f', '#616d73', '#536d74', '#645970'][region.index],
         x, size * .26, z, size * 1.45, size * .89, size * 1.35, .15, i * 1.18);
     }
@@ -3814,7 +4071,10 @@
       const [x, z] = positionOf([(rand() * 2 - 1) * (wide - 3), (rand() * 2 - 1) * (deep - 3)]);
       if (pathDistance(x, z) < 3.65 || region.sites.some(site => gapFrom(site, x, z) < 2)) continue;
       const y = height(x, z), size = .13 + rand() * .38;
-      if (i % 8 === 0) tree(x, z, .85 + rand() * .83);
+      const bare = jerusalem || region.index === 1 && x + ox > 42;
+      if (bare) {
+        if (i % 3 === 0) add(stone, region.index === 1 ? '#c8ad87' : wall, x, y + size * .21, z, size, size * .49, size * .66, 0, i);
+      } else if (i % 8 === 0) tree(x, z, .85 + rand() * .83);
       else if (i % 3 === 0) add(stone, wall, x, y + size * .28, z, size, size * .60, size * .74, 0, i);
       else add(cone, foliage, x, y + size * .5, z, size * .65, size, size * .65, .2, i);
     }
@@ -3917,6 +4177,36 @@
       add(stone, '#bd917b', x - 1.9, y + 1.17, z + .2, .17, .19, .17);
       blocks.push([x, z, 1.05]);
     }
+    if (region.index === 1 || region.index === 2) {
+      const lake = region.index === 2;
+      const [x, z] = positionOf(lake ? [123, -76] : [149, 14]);
+      add(column, lake ? '#669ca8' : '#7291a0', x, lake ? -3.6 : -7.3, z, lake ? 13 : 11, .12, lake ? 24 : 38, 0, .11);
+      for (let i = 0; i < 5; i++) {
+        add(cube, lake ? '#9abdc0' : '#cbb1a4', x - 4 + rand() * 13, lake ? -3.51 : -7.21, z - 8 + i * 4, 3.2 + rand() * 4, .028, .18);
+        add(stone, lake ? '#748d89' : '#a38b81', x + 17 + i * 4, -3 + rand() * 2, z - 28 + i * 12, 13, 7.2, 10.5, 0, i);
+      }
+      if (lake) {
+        const [tx, tz] = positionOf([134, 73]);
+        const hill = new T.SphereGeometry(1, 24, 10, 0, 2 * Math.PI, 0, Math.PI / 2);
+        add(hill, '#64856a', tx, -3.4, tz, 19, 18, 16);
+        add(hill, '#8d9b77', tx + 13, -3.5, tz + 9, 19, 9, 15);
+        hill.dispose();
+      }
+    }
+    if (region.index === 3) {
+      const [x, z] = positionOf([-41, -80]);
+      for (const [dx, dz, w, h] of [[-8,-3,6,4],[-2,1,5,3.4],[3,-6,8,5.7],[9,2,4.4,3.2],[13,-2,5,4.1]]) {
+        add(cube, '#a18a94', x + dx, h * .5, z + dz, w, h, 4.2);
+        add(cube, '#cbb4a3', x + dx, h, z + dz, w + .2, .22, 4.4);
+      }
+      const [sx, sz] = positionOf([19, -9]);
+      const star = new T.Sprite(new T.SpriteMaterial({
+        map: starTexture(), color: '#ffe5a3', transparent: true, depthWrite: false, fog: false, blending: T.AdditiveBlending
+      }));
+      star.position.set(sx, 23, sz);
+      star.scale.setScalar(3.7);
+      scene.add(star);
+    }
     let templeSilhouette;
     if (jerusalem) {
       const scenery = new Map(), dusk = climate.time === 'dusk';
@@ -3943,8 +4233,19 @@
     }
     addScenery(scene, patches, color => mat(color));
     cube.dispose(); stone.dispose(); cone.dispose(); column.dispose();
+    const regularFog = scene.fog.far;
+    const horizonFogs = { 'wilderness-vista': 116, 'tabor-vista': 116, 'lake-pass': 124, 'bethlehem-vista': 156 };
+    const horizons = region.sites.filter(site => horizonFogs[site.key]);
     function update(x, z) {
       sky.position.set(x, 0, z);
+      if (horizons.length) {
+        scene.fog.far = regularFog;
+        for (const site of horizons) {
+          const distance = Math.hypot(x - site.offset[0], z - site.offset[1]);
+          const blend = clamp(1 - distance / 9, 0, 1);
+          scene.fog.far = Math.max(scene.fog.far, lerp(regularFog, horizonFogs[site.key], blend));
+        }
+      }
       let group = null, nearest = 8;
       for (const part of parts) {
         if (part.site.extension) {
@@ -3961,7 +4262,9 @@
       }
       if (templeSilhouette) templeSilhouette.visible = !parts.some(part => part.site.key === 'sanctuary' && part.group === group);
     }
-    const titles = { temple: '성전 계단 전망', sanctuary: '성소 계단 전망', roof: '사가랴 집 지붕 전망', gate: '성문 망루 전망' };
+    const titles = { temple: '성전 계단 전망', sanctuary: '성소 계단 전망', roof: '사가랴 집 지붕 전망', gate: '성문 망루 전망',
+      'bethlehem-vista': '베들레헴 언덕 전망', 'wilderness-vista': '광야 길 전망 자리', 'tabor-vista': '다볼산 전망',
+      'lake-pass': '갈릴리 호수 고개 전망' };
     const viewpoints = parts.flatMap(({ site, local }) => (local.climbs || []).map(pos => ({
       pos: site.translate(pos), title: titles[site.key] || site.label + ' 전망',
       episode: site.episode || region.main.episode, lookAt: local.lookAt
@@ -3987,6 +4290,158 @@
         for (const part of ground.children) part.material.dispose();
       }
     };
+  }
+
+  const DISTRICT_WORK = {
+    temple: [3.2, 11, '등잔을 지키는 사람', 'oil-lamp', 'lamp'],
+    sanctuary: [5.5, 11, '등잔대 곁의 제사장', 'menorah', 'menorah'],
+    'outer-court': [4.1, 1.8, '동전을 고르는 환전상', 'money-changer', 'coins'],
+    'south-steps': [4.8, 4.7, '계단에 오르는 순례자', 'ascent-steps', null, 'walk'],
+    'sheep-gate': [-6.2, .2, '양을 모는 목자', 'sheep-gate', 'sheepfold', 'walk'],
+    'wall-walk': [2.3, .7, '성벽을 살피는 파수꾼'],
+    'lower-town': [3.5, 3.9, '화덕 곁에서 빵 굽기', 'clay-oven', 'oven'],
+    siloam: [3.4, 3.9, '못가에서 물 긷기', 'siloam', 'jar', 'draw'],
+    olives: [2.2, 3.7, '올리브를 바구니에 담기', 'mount-of-olives'],
+    'herod-palace': [-4.35, 1.8, '궁 앞을 순찰하는 군인', 'herod-palace', null, 'walk'],
+    roof: [-5.1, 6.6, '맷돌을 돌리는 두 사람', 'millstone', 'millstone', 'grind', 'pair'],
+    hillpath: [-3.1, 4, '산골길을 오르는 나그네', 'traveler-pack', null, 'walk'],
+    elizabeth: [5.2, .6, '천에 쓸 실 잣기', 'loom-spindle', 'loom', 'grind'],
+    'judean-terraces': [-4.8, 2.8, '포도송이를 따는 사람', 'terraced-field', 'vine', 'reach'],
+    'village-threshing': [2, -.9, '곡식과 겨 까부르기', 'thresh-winnow', 'winnow', 'winnow', '소'],
+    'valley-stream': [2.5, 2.6, '시냇가에서 물동이 채우기', 'water-carry', 'jar', 'draw'],
+    'wilderness-edge': [-5, 2.9, '염소 떼를 찾는 목자', 'barren-country', null, 'walk', 'goats'],
+    'wilderness-vista': [-2.5, 1.2, '광야 길을 살피는 나그네', 'wilderness-road', null, null, '독수리'],
+    desert: [-4.6, 8.2, '돌을 골라 길을 살피는 목자', 'wilderness-road', null, 'gather'],
+    nazareth: [-3, 8.8, '골목에서 노는 아이들', 'small-village', null, 'walk', 'pair'],
+    workshop: [3.2, 3.1, '대패로 나무 다듬기', 'carpenter-plane', 'carpenter', 'plane'],
+    well: [-2.1, 4.25, '우물에서 물 긷기', 'well-bucket', 'jar', 'draw', 'pair'],
+    galilee: [3.2, 6.2, '올리브 열매 고르기', 'olive-press', 'olivepress', 'gather'],
+    'south-road': [1.8, 2.15, '남쪽 길로 떠나는 나그네', 'traveler-pack', null, 'walk'],
+    'nazareth-cliff': [-2.2, 1.05, '낭떠러지에서 골짜기 내려다보기', 'hilltown'],
+    'synagogue-yard': [2.15, 1.45, '두루마리를 펼치는 사람', 'scroll-synagogue', 'scroll', 'reach'],
+    'grain-yard': [-1.0, 1.3, '타작판으로 이삭 떨기', 'thresh-winnow', 'grain', 'winnow', '소'],
+    'olive-cave': [3.9, 1.25, '올리브 틀을 돌리는 사람', 'olive-press', 'olivepress', 'grind'],
+    'tabor-vista': [-2.2, .9, '언덕을 지나가는 목자', 'mount-tabor', null, 'walk'],
+    'lake-pass': [3.2, -.5, '그물을 손질하는 어부', 'sea-of-galilee', 'net', 'plane'],
+    gate: [-4.45, 2.7, '성문 곁에서 호적을 적기', 'census', 'tablet'],
+    inn: [3.15, .8, '나귀의 짐 내리기', 'donkey', null, 'reach', '나귀'],
+    field: [2.65, .65, '모닥불에 장작 넣기', 'watch-fire', 'campfire', 'gather'],
+    stable: [2.6, -1.4, '여물통에 볏짚 담기', 'stone-manger', 'manger', 'gather'],
+    'rachel-tomb': [-4.8, 2.85, '길가의 무덤 앞을 지나는 사람', 'rachel-tomb', null, 'walk'],
+    'david-well': [-2.75, .7, '성문 곁에서 두레박 당기기', 'david-well', 'jar', 'draw'],
+    'boaz-field': [3.3, 2.7, '밭 모퉁이에서 이삭 줍기', 'gleaning', 'grain', 'gather'],
+    'eder-tower': [-2.95, 1.05, '망대 아래에서 양 세기', 'eder-tower', null, 'reach'],
+    'shepherd-cave': [-2.45, -.85, '우리 안으로 양 몰기', 'sheepfold', null, 'walk'],
+    'bethlehem-vista': [3.6, 2.05, '언덕에서 들판을 지켜보는 목자'],
+  };
+  const REGIONAL_RIDES = [
+    [[-39, 10], [-21, 38], [9, -36]], [[-24, 3], [-37, 10], [48, 12]],
+    [[-49, 49], [17, 2], [46, -22]], [[-31, -34], [31, -13], [19, 35]]
+  ];
+  const REGIONAL_SHORTCUTS = [
+    [[-41, 19], [15, 20], [35, 9], [26, -41]],
+    [[-49, -4], [-37, 38], [21, 43], [58, 5]],
+    [[-71, 53], [-30, -30], [24, 48], [55, -13]],
+    [[-35, -37], [-23, -9], [39, 32], [10, 43]]
+  ];
+  function makeRegionalLife(scene, region, world, reduced) {
+    const models = world.models, markers = [], workers = [], animals = [], rides = new Map();
+    const [ox, oz] = region.origin;
+    const at = ([x, z]) => [x - ox, z - oz];
+    const propMat = mat('#ffffff', { vertexColors: true, flat: true, rough: .85 });
+    const add = (actor, x, z, yaw, priority = 10) => {
+      actor.position.set(x, world.height(x, z), z);
+      actor.rotation.y = yaw;
+      actor.userData.drawPriority = priority;
+      actor.visible = false;
+      scene.add(actor);
+      return actor;
+    };
+    const addWorker = (name, x, z, i, motion) => {
+      const { actor } = models.person(name, i, true);
+      const y = world.height(x, z);
+      add(actor, x, z, .4);
+      workers.push({ actor, x, y, z, motion, phase: i * 1.83 });
+    };
+    const animalAt = (kind, x, z, yaw, i) => {
+      const actor = add(models.animal(kind), x, z, yaw);
+      animals.push({ actor, kind, x, z, y: actor.position.y, phase: i * 2.1, yaw });
+    };
+    for (const [i, site] of region.sites.entries()) {
+      const work = DISTRICT_WORK[site.key];
+      if (!work) continue;
+      const [dx, dz, title, discover, prop, motion, company] = work;
+      const [x, z] = site.translate([dx, dz]);
+      addWorker(title, x, z, i, motion);
+      if (company === 'pair') addWorker(title, x - .96, z + .35, i + 2, motion);
+      else if (company === 'goats') for (let n = 0; n < 4; n++) animalAt('염소', x + 1.5 + n * .72, z - 2 + Math.sin(n * 2) * .8, n + 1, n);
+      else if (company) animalAt(company, x + 2.1, z - 1.45, .65, i);
+      if (prop) {
+        const tool = add(buildDiscoverProp(prop, propMat, models), x + .3, z + .64, -.43);
+        tool.scale.setScalar(.82);
+        workers.at(-1).tool = tool;
+      }
+      markers.push({ id: 'observe/' + site.key, type: 'observe', title, pos: [x, z], symbol: '👀', quiet: true, observe: discover || true });
+      if (site.key === 'elizabeth') {
+        const [px, pz] = site.translate([-1.8, -1.75]);
+        addWorker('포도 밟는 아이', px - .45, pz, i + 2, 'stomp');
+        addWorker('포도 밟는 아이', px + .38, pz - .21, i + 3, 'stomp');
+        workers.at(-1).tool = add(buildDiscoverProp('winepress', propMat, models), px, pz + .27, .08);
+        markers.push({ id: 'observe/grape-press', type: 'observe', title: '포도를 밟는 아이들', pos: [px, pz + .66],
+          symbol: '👀', quiet: true, observe: 'winepress' });
+      }
+    }
+    for (const [i, point] of REGIONAL_RIDES[region.index].entries()) {
+      const [x, z] = at(point), id = 'ride/' + i;
+      const donkey = add(models.animal('나귀', true), x, z, .6, 12);
+      rides.set(id, donkey);
+      markers.push({ id, type: 'ride', title: '나귀 타기', pos: [x, z], symbol: '🫏', quiet: true, ride: true });
+    }
+    const cube = new T.BoxGeometry(), wall = new Map([['#b09a80', []], ['#ceb69b', []]]);
+    for (const [i, point] of REGIONAL_SHORTCUTS[region.index].entries()) {
+      const [x, z] = at(point);
+      for (let dx = -2.2; dx < 2.4; dx += .64) {
+        const y = world.height(x + dx, z);
+        wall.get('#b09a80').push(place(cube, x + dx, y + .26, z, .64, .53, .43));
+        wall.get('#ceb69b').push(place(cube, x + dx, y + .55, z, .66, .12, .48));
+        world.blocks.push([x + dx, z, .29]);
+      }
+      markers.push({ id: 'shortcut/' + i, type: 'shortcut', title: '담 넘기', pos: [x, z], symbol: '🐑', quiet: true, shortcut: true });
+    }
+    addScenery(scene, wall, color => mat(color));
+    cube.dispose();
+    return { markers, rides, update(p, t, mounted) {
+      for (const { actor, x, y, z, motion, phase, tool } of workers) {
+        const d = Math.hypot(x - p.x, z - p.z);
+        actor.visible = d < 28;
+        if (tool) tool.visible = actor.visible;
+        if (!actor.visible || reduced) continue;
+        const { arms, rig, feet } = actor.userData.gait;
+        const f = t * (motion === 'winnow' ? 2.7 : 3.4) + phase, wave = Math.sin(f);
+        const crouch = motion === 'gather' || motion === 'draw';
+        rig.rotation.x = crouch ? .32 + wave * .15 : motion === 'plane' ? .19 + wave * .09 : wave * .035;
+        rig.position.y = crouch ? -.18 - wave * .07 : 0;
+        arms.forEach((arm, i) => {
+          arm.rotation.x = motion === 'walk' ? wave * (i ? .55 : -.55) :
+            -.38 - Math.max(0, wave) * (motion === 'reach' || motion === 'winnow' ? 1.2 : .64);
+          arm.rotation.z = motion === 'grind' ? .16 * Math.cos(f + i) : 0;
+        });
+        if (motion === 'walk' || motion === 'stomp') {
+          if (motion === 'walk') actor.position.set(x + wave * .6, y, z + Math.cos(f * .5) * .32);
+          feet.forEach((foot, i) => { foot.position.y = .10 + Math.max(0, wave * (i ? 1 : -1)) * .11; });
+        } else if (tool && motion === 'grind') tool.rotation.y = -.43 + .16 * Math.sin(f);
+      }
+      for (const { actor, kind, x, y, z, phase, yaw } of animals) {
+        actor.visible = Math.hypot(x - p.x, z - p.z) < 29;
+        if (!actor.visible || reduced) continue;
+        const angle = t * .61 + phase;
+        actor.position.x = x + Math.sin(angle) * (kind === '독수리' ? 6 : .62);
+        actor.position.z = z + Math.cos(angle) * (kind === '독수리' ? 4 : .40);
+        actor.position.y = kind === '독수리' ? y + 6.1 + Math.sin(angle * 1.5) * .45 : world.height(actor.position.x, actor.position.z);
+        actor.rotation.y = yaw + Math.sin(angle) * .65;
+      }
+      for (const [id, donkey] of rides) donkey.visible = id !== mounted && donkey.position.distanceToSquared(p) < 30 ** 2;
+    } };
   }
 
   function makePathPlay(scene, world, models, reduced, open) {
@@ -4424,6 +4879,72 @@
       add(ball, '#8f8580', .28, .42, -.04, .38, .36, .54);
       add(ball, '#cfc2b4', .26, .58, .22, .22, .22, .26);
       for (const sx of [.18, .34]) add(cube, '#756b66', sx, .78, .18, .06, .24, .08);
+    } else if (prop === 'palace') {
+      add(cube, '#d0b58b', 0, .43, 0, .84, .76, .54);
+      for (const x of [-.46, .46]) {
+        add(cube, '#c7a87a', x, .65, -.04, .29, 1.23, .57);
+        add(cube, '#e4c69b', x, 1.26, -.04, .36, .13, .63);
+      }
+      add(cube, '#653f45', 0, .36, .28, .33, .54, .045);
+      add(cube, '#d4a95f', 0, .65, .31, .51, .07, .11);
+    } else if (prop === 'wadi' || prop === 'wilderness-road' || prop === 'tabor' || prop === 'lake') {
+      const green = prop === 'tabor' || prop === 'lake';
+      add(cube, green ? '#758261' : '#b29370', 0, .11, 0, 1.13, .22, .89);
+      if (prop === 'tabor') add(ball, '#83966b', .07, .31, -.05, .95, .61, .8);
+      else if (prop === 'lake') {
+        add(cyl, '#6499a7', 0, .235, 0, 1.02, .03, .73);
+        add(ball, '#755343', .06, .30, .05, .34, .12, .12);
+        add(cube, '#e8cfad', .07, .42, .05, .044, .30, .04);
+      } else {
+        for (const x of [-.38, .38]) add(ball, '#d3ba90', x, .33, -.15, .39, .42, .54, 0, x);
+        for (const z of [-.27, 0, .25]) add(cube, '#c5a57c', z * .35, .237, z, .26, .028, .33, 0, .23);
+      }
+    } else if (prop === 'camel-coat') {
+      add(cube, '#73513c', 0, .47, 0, .07, .94, .08);
+      add(cube, '#ab8966', 0, .59, 0, .56, .73, .20);
+      for (const x of [-.36, .36]) add(cube, '#b49370', x, .64, .01, .22, .55, .18, 0, 0, x * .85);
+      add(cube, '#6a4732', 0, .48, .11, .58, .085, .032);
+      add(cube, '#bd925e', .06, .48, .131, .10, .10, .028);
+    } else if (prop === 'wild-honey') {
+      add(ball, '#a88466', 0, .14, 0, 1.02, .26, .72);
+      for (const x of [-.20, .04, .26]) add(cyl, '#d49b45', x, .30, -.05, .23, .102, .23, 0, x);
+      add(ball, '#83794d', -.26, .31, .23, .3, .10, .12, 0, .28);
+      for (const z of [.17, .31]) add(cyl, '#766343', -.27, .31, z, .025, .23, .025, Math.PI / 2, 0, -.67);
+    } else if (prop === 'winnow') {
+      add(cyl, '#a87c4d', 0, .27, 0, .95, .23, .71, .12);
+      add(cyl, '#cba966', 0, .40, 0, .86, .038, .62, .12);
+      for (const x of [-.28, -.09, .10, .27]) add(ball, '#e7bd75', x, .43, Math.sin(x * 6) * .14, .12, .04, .09);
+    } else if (prop === 'net') {
+      add(cube, '#6d5344', 0, .54, -.06, 1.21, .10, .10);
+      for (const side of [-1, 1]) {
+        add(cube, '#8d6c50', side * .53, .255, -.07, .095, .51, .11);
+        for (let x = -.40; x <= .49; x += .135) {
+          add(cube, '#d0b68d', x, .30, .05, .024, .53, .023, -.38, 0, side * .32);
+        }
+      }
+    } else if (prop === 'vine') {
+      add(cube, '#735442', 0, .57, 0, .12, 1.14, .11);
+      for (const side of [-1, 1]) {
+        add(ball, '#788754', side * .32, .82, .04, .48, .34, .36, 0, side);
+        for (let i = 0; i < 6; i++) add(ball, '#726281', side * (.26 + i % 3 * .066), .64 - Math.floor(i / 3) * .074, .24, .115, .10, .11);
+      }
+    } else if (prop === 'tomb') {
+      add(cube, '#bcaa8b', 0, .35, 0, .96, .7, .75);
+      add(cyl, '#dcc9a7', 0, .72, 0, 1.03, .13, .83);
+      add(ball, '#d2bb97', 0, .75, 0, 1.1, .77, .85);
+      add(cube, '#57443c', 0, .3, .38, .22, .42, .045);
+    } else if (prop === 'watchtower') {
+      add(cube, '#baa584', 0, .58, 0, .67, 1.16, .63);
+      add(cube, '#705750', 0, .3, .32, .19, .37, .05);
+      for (const x of [-.28, 0, .28]) for (const z of [-.27, .27]) {
+        add(cube, '#ded0ae', x, 1.19, z, .13, .2, .13);
+      }
+    } else if (prop === 'grain') {
+      add(cube, '#987052', 0, .07, 0, .99, .14, .65);
+      for (const x of [-.38, -.25, -.09, .08, .21, .36]) {
+        add(cyl, '#ae8e47', x, .39, .02, .026, .62, .026, 0, 0, x * .73);
+        add(ball, '#dbad59', x * .76, .69, .02, .115, .28, .105, 0, 0, x * .73);
+      }
     } else if (prop === 'greatstar') {
       add(cube, '#8f7b6c', 0, .14, 0, .84, .28, .64);
       add(cube, '#b09a86', 0, .32, 0, .62, .12, .48);
@@ -4469,7 +4990,8 @@
 
   function interiorWorld(scene, room) {
     const models = adventureModels(), blocks = [], walls = [];
-    const stone = room.style === 'stable' ? '#806458' : '#b18c6c';
+    const cave = room.id === 'house/shepherd-cave' || room.id === 'house/olive-cave';
+    const stone = cave ? '#81706b' : room.style === 'stable' ? '#806458' : '#b18c6c';
     const timber = '#66443a', linen = '#966253', height = () => 0;
     const bounds = { x: ROOM_EDGE, z: 5.15 };
     const geometry = new T.BoxGeometry();
@@ -4485,7 +5007,7 @@
       return group;
     }
     const ground = box('#b18a70', 0, -.08, 0, 11.6, .16, 10.7);
-    box(linen, 0, .016, -.75, 2.95, .035, 3.8);
+    if (!cave) box(linen, 0, .016, -.75, 2.95, .035, 3.8);
     for (const side of [-1, 1]) {
       const x = side * (bounds.x + .14), group = wall('x', side);
       box(stone, x, 1.45, -2.97, .31, 2.9, 4.50, group);
@@ -4494,7 +5016,18 @@
       box(stone, x, 2.58, 0, .31, .65, 1.46, group);
       box('#e7b97d', x, 1.30, 0, .70, .12, 1.48, group);
     }
-    box(stone, 0, 1.45, -bounds.z - .14, 11.8, 2.9, .30, wall('z', -1));
+    const rearWall = wall('z', -1);
+    box(stone, 0, 1.45, -bounds.z - .14, 11.8, 2.9, .30, rearWall);
+    if (cave) {
+      const boulder = new T.IcosahedronGeometry(1, 0);
+      const surfaces = new Map([['#8c766c', []], ['#a08c7d', []]]);
+      for (let i = 0; i < 13; i++) {
+        const x = (i - 6) * .85, y = 1.62 + Math.cos(i * 1.61) * .70;
+        surfaces.get(i % 2 ? '#8c766c' : '#a08c7d').push(place(boulder, x, y, -5.02, 1.12, 1.3, .66, .22, i));
+      }
+      addScenery(rearWall, surfaces, color => mat(color));
+      boulder.dispose();
+    }
     const doorway = wall('z', 1);
     for (const side of [-1, 1]) box(stone, side * 3.4, 1.45, bounds.z + .14, 4.95, 2.9, .30, doorway);
     box(stone, 0, 2.58, bounds.z + .14, 2.0, .65, .32, doorway);
@@ -4511,6 +5044,26 @@
       const jar = new T.Mesh(new T.CylinderGeometry(.25, .32, .54, 8), mat(stable ? '#998053' : '#9d6549'));
       jar.position.set(side * 4.82, .30, 3.68); scene.add(jar);
       box('#cc9c71', side * 4.28, .075, 3.15, .80, .15, .52);
+    }
+    if (room.id === 'house/shepherd-cave') {
+      for (const x of [-4.3, -3.2, 3.6]) {
+        const sheep = models.animal('어린 양');
+        sheep.position.set(x, .03, -2.5 - Math.sin(x) * .58);
+        sheep.rotation.y = x * .32;
+        scene.add(sheep);
+      }
+      box('#ae9064', -3.7, .09, -2.75, 2.7, .13, 2.15);
+      box('#ae9064', 3.65, .09, -2.75, 2.4, .13, 2.10);
+      for (const side of [-1, 1]) box(stone, side * 4.0, .34, -.7, 2.65, .69, .42);
+    }
+    if (room.id === 'house/olive-cave') {
+      const disk = new T.CylinderGeometry(1, 1, .38, 16);
+      const bed = new T.Mesh(disk, mat('#a89881'));
+      bed.position.set(-2.9, .23, -1.15); scene.add(bed);
+      const roller = new T.Mesh(disk, mat('#c0ae96'));
+      roller.position.set(-2.9, .82, -1.15); roller.scale.setScalar(.65); roller.rotation.z = Math.PI / 2; scene.add(roller);
+      box(timber, -2.9, .84, -1.15, 2.25, .14, .12);
+      blocks.push([-2.9, -1.15, .93]);
     }
     const lamp = new T.Mesh(new T.ConeGeometry(.10, .20, 7), mat('#ffd588', { emissive: '#ff9724', ei: 2 }));
     lamp.position.set(0, workroom ? 1.09 : .74, tableZ); scene.add(lamp);
@@ -4584,6 +5137,7 @@
     const camPosition = new T.Vector3(), aim = new T.Vector3(), spot = new T.Vector3();
     const elementPos = new T.Vector3(), raycaster = new T.Raycaster(), pointerPos = new T.Vector2();
     const elements = new Map(), effectSprites = new Set();
+    let clearSpots = [];
     const discoverPropMat = new T.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: .85 });
     const propAnims = new Map();
     let inspectState = null, sheepMood = null, lastNearbyId = '', scentEffect = null;
@@ -4666,6 +5220,9 @@
       if (marker.discoverId === 'millstone') return '🛠 맷돌 돌려 보기';
       if (marker.id === 'path/bush') return '✋ 수풀 흔들어 보기';
       if (marker.id === 'path/game') return seated ? '👀 자리에서 일어나기' : '👀 공기놀이 옆에 앉기';
+      if (marker.ride) return mounted ? '🫏 나귀에서 내리기' : '🫏 나귀 타기';
+      if (marker.shortcut) return '🐑 담 넘기';
+      if (marker.observe) return `👀 구경하기 · ${title}`;
       if (marker.type === 'person') return `💬 ${Core.josa(title, '과와')} ${verb}`;
       const icon = { look: '👀', touch: '✋', try: '🛠', person: '💬' }[marker.type] || marker.symbol;
       return `${icon} ${title} · ${verb}`;
@@ -4707,6 +5264,18 @@
     let travel = 0, walking = false, nextStepSound = 0;
     const onGround = (x, z) => [x, world.height(x, z), z];
     const walkPosition = () => (leader || player).position;
+    const life = region ? makeRegionalLife(scene, region, world, reduced) : null;
+    let mounted = null, mountModel, held = false, carriedWordAt = 0, hoofDistance = 0;
+    let sheepHop, crossing;
+    const previewedShortcuts = new Set();
+    const carryPoint = new T.Vector3();
+    const jumpContents = new Set(['carpenter-plane', 'traveler-pack']);
+    const storyShortcuts = region ? region.sites.flatMap(site => {
+      const target = site.area?.adventure?.targets.jump;
+      if (!target || !site.area.discover?.items.some(entry => entry.ability === 'jump' && jumpContents.has(entry.id))) return [];
+      return [{ id: 'shortcut/' + site.episode, type: 'shortcut', title: '담 넘기', pos: site.translate(target.pos),
+        symbol: '🐑', quiet: true, shortcut: true, episode: site.episode, featureId: site.markerId('jump') }];
+    }) : [];
     const blockCells = region && new Map();
     const cellSize = 4;
     if (blockCells) for (const block of world.blocks) {
@@ -4731,15 +5300,115 @@
         const dz = Math.abs(z - feature.position.z - (group?.position.z || 0));
         if (dx < (featureKind === 'jump' ? 1.29 : .78) && dz < .57) return false;
       }
-      for (const { marker } of elements.values()) {
-        if (marker.type === 'clear' && (x - marker.pos[0]) ** 2 + (z - marker.pos[1]) ** 2 < .47 ** 2) return false;
-      }
-      return true;
+      return !clearSpots.some(([px, pz]) => (x - px) ** 2 + (z - pz) ** 2 < .47 ** 2);
     };
     const pathPlay = region ? makePathPlay(scene, world, world.models, reduced, open) : null;
-    const scenicMarkers = region ? pathPlay.markers.concat(world.viewpoints.map((viewpoint, i) => ({
+    const shortcutMarkers = life ? life.markers.filter(marker => marker.shortcut).concat(storyShortcuts) : [];
+    const scenicMarkers = region ? pathPlay.markers.concat(life.markers, storyShortcuts, world.viewpoints.map((viewpoint, i) => ({
       id: 'viewpoint/' + i, type: 'photo', title: viewpoint.title, symbol: '📷', pos: viewpoint.pos, viewpoint
     }))) : [];
+    function ride(id = null) {
+      if (!leader || id && (!life?.rides.has(id) || held || crossing)) return false;
+      if (mounted) id = null;
+      mounted = id;
+      if (id && !mountModel) {
+        mountModel = world.models.animal('나귀', true);
+        mountModel.userData.drawPriority = 90;
+        leader.add(mountModel);
+      }
+      if (mountModel) mountModel.visible = !!id;
+      if (!id) {
+        const { rig, arms, feet } = leader.userData.gait;
+        rig.position.y = 0;
+        rig.scale.y = 1;
+        rig.rotation.x = 0;
+        arms.forEach(arm => { arm.rotation.x = 0; arm.rotation.z = 0; });
+        feet.forEach((foot, i) => { foot.position.set(i ? .127 : -.127, .10, 0); foot.rotation.x = 0; });
+      }
+      handlers.onRide?.(!!id);
+      return true;
+    }
+    function holdLamb(hold) {
+      if (!leader || crossing || (sheep.level || 1) >= 5) return false;
+      if (hold && mounted) ride();
+      held = hold;
+      if (held) {
+        sheepHop = null;
+        carriedWordAt = performance.now() + 5200;
+        kneeling = false;
+      } else {
+        player.position.copy(leader.position);
+        trail.length = 0;
+      }
+      return true;
+    }
+    function shortcutLanding(marker, p) {
+      const [x, z] = marker.pos, direction = p.z > z ? -1 : 1;
+      for (const dx of [0, -.58, .58, -1.05, 1.05]) {
+        const px = x + dx, pz = z + direction * 1.37;
+        if (open(px, pz)) return new T.Vector3(...onGround(px, pz));
+      }
+      return null;
+    }
+    function takeShortcut(marker) {
+      if (!leader || crossing) return false;
+      const to = shortcutLanding(marker, leader.position);
+      if (!to) return false;
+      if (mounted) ride();
+      if (held) return false;
+      const now = performance.now();
+      sheepHop = { start: now - 410, from: player.position.clone(), to, marker };
+      crossing = { start: now, from: leader.position.clone(), to };
+      if (marker.featureId) {
+        const feature = world.features.get(marker.featureId);
+        if (feature) feature.userData.cleared = true;
+      }
+      route = []; waitForTarget = null; goal.visible = false; leaderVel.set(0, 0);
+      return true;
+    }
+    function animateTravel(p, walked, now, t) {
+      if (crossing) {
+        const phase = clamp((now - crossing.start) / 470, 0, 1);
+        p.lerpVectors(crossing.from, crossing.to, reduced ? Number(phase >= 1) : phase);
+        if (!reduced) p.y += Math.sin(phase * Math.PI) * .75;
+        if (phase >= 1) { crossing = null; sheepHop = null; trail.length = 0; }
+      }
+      if (sheepHop) {
+        const phase = clamp((now - sheepHop.start) / 390, 0, 1);
+        player.position.lerpVectors(sheepHop.from, sheepHop.to, reduced ? Number(phase >= 1) : phase);
+        if (!reduced) player.position.y += Math.sin(phase * Math.PI) * .65;
+      }
+      if (mounted) {
+        const stand = region.nearSite([p.x, p.z]);
+        if (['south-steps', 'wall-walk'].includes(stand?.key) || world.climbs.some(([x, z]) => Math.hypot(x - p.x, z - p.z) < 2.35)) {
+          ride();
+          return;
+        }
+        hoofDistance += walked;
+        const { rig, arms, feet } = leader.userData.gait, gait = hoofDistance * 8.4;
+        const { head, ears, feet: hooves } = mountModel.userData.mountRig;
+        const bob = reduced || !walking ? 0 : Math.sin(gait * 2) * .046;
+        rig.position.y = 1.08 + bob;
+        rig.scale.y = .86;
+        rig.rotation.x = .14;
+        arms.forEach((arm, i) => { arm.rotation.x = -.83; arm.rotation.z = i ? -.34 : .34; });
+        feet.forEach((foot, i) => { foot.position.set(i ? .43 : -.43, .82 + bob, .12); foot.rotation.x = -.11; });
+        head.rotation.x = walking && !reduced ? Math.sin(gait) * .10 : 0;
+        ears.forEach((ear, i) => { ear.rotation.x = reduced ? 0 : .13 * Math.sin(t * (3 + i) + i); });
+        hooves.forEach((foot, i) => { foot.rotation.x = walking && !reduced ? Math.sin(gait + (i === 0 || i === 3 ? 0 : Math.PI)) * .54 : 0; });
+      }
+      if (held) {
+        const { arms } = leader.userData.gait;
+        arms.forEach((arm, i) => { arm.rotation.x = -1.30; arm.rotation.z = i ? -.44 : .44; });
+        carryPoint.set(.02, 1.05, .40);
+        player.position.copy(leader.localToWorld(carryPoint));
+        player.rotation.y = leader.rotation.y + 1.26;
+        if (!reduced && now >= carriedWordAt) {
+          carriedWordAt = now + 10500;
+          say('sheep', '♥');
+        }
+      }
+    }
     function playAt(id) {
       if (id === 'path/bush') {
         react(id, 'rustle');
@@ -4974,6 +5643,7 @@
     }
 
     function setMarkers(list) {
+      clearSpots = list.filter(marker => marker.type === 'clear').map(marker => marker.pos);
       const markers = new Map(list.map(marker => [marker.id, marker]));
       for (const [id, previous] of elements) {
         const marker = markers.get(id);
@@ -5096,7 +5766,7 @@
         mark.visible = age > 55 * i;
         mark.scale.setScalar(1 + Math.sin(age * .015 - i) * .19);
       });
-      if (!segments.length || reduced || walking || age >= 1100) return;
+      if (!segments.length || reduced || walking || held || crossing || sheepHop || age >= 1100) return;
       const shift = clamp(age / 870, 0, 1);
       const progress = shift * distance;
       const { from, to, start: offset, length } = segments.find(segment => progress <= segment.start + segment.length) || segments.at(-1);
@@ -5314,7 +5984,7 @@
       const distance = Math.hypot(dx, dz), near = Math.hypot(p.x - s.x, p.z - s.z);
       let trotting = false;
       // 멀수록 빨리, 가까워지면 천천히 — 속도를 부드럽게 올리고 내린다(갑자기 서거나 튀지 않게)
-      const chase = (near > 1.36 || trail.length > 3) && distance > .38 ? clamp((near - 1.1) * 1.6, .9, sheepTopSpeed) : 0;
+      const chase = (near > 1.36 || trail.length > 3) && distance > .38 ? clamp((near - 1.1) * 1.6, .9, mounted ? 9.4 : sheepTopSpeed) : 0;
       sheepSpeed += (chase - sheepSpeed) * Math.min(1, delta * (chase > sheepSpeed ? 4.5 : 6.5));
       if (sheepSpeed > .04 && distance > .05) {
         const step = Math.min(distance, delta * sheepSpeed);
@@ -5444,7 +6114,20 @@
       const turn = Math.atan2(Math.sin(side + 1.3 - az), Math.cos(side + 1.3 - az)), turn2 = Math.atan2(Math.sin(side - 1.3 - az), Math.cos(side - 1.3 - az));
       inspectState = { id, pos: source.clone(), start: performance.now(), baseAz: az + (Math.abs(turn) < Math.abs(turn2) ? turn : turn2) };
     }
-    function endInspect() { inspectState = null; }
+    function watch(id) {
+      inspect(id);
+      if (!inspectState) return;
+      inspectState.watching = true;
+      player.visible = false;
+      if (leader) leader.visible = false;
+    }
+    function endInspect() {
+      if (inspectState?.watching) {
+        player.visible = true;
+        if (leader) leader.visible = true;
+      }
+      inspectState = null;
+    }
     function touchProp(id, anim = 'spark') {
       const now = performance.now();
       propAnims.set(id, { kind: anim, start: now });
@@ -5552,12 +6235,12 @@
       const t = now / 1000, p = walkPosition(), u = player.userData, mover = leader || player;
       const fromX = p.x, fromZ = p.z;
       const requested = waitForTarget;
-      const allowed = handlers.canInteract?.() !== false;
+      const allowed = !crossing && handlers.canInteract?.() !== false;
       const step = allowed ? route[0] : null;
       const running = region && joystick?.pointer != null && Math.hypot(joystick.x, joystick.y) >= .97;
       const walkSpeed = running ? 4.08 : 2.55;
       // 이동: 원하는 속도로 부드럽게 가속·감속(0.1초 남짓), 방향도 천천히 돈다
-      const maxSpeed = adventure ? walkSpeed : 3.45;
+      const maxSpeed = adventure ? walkSpeed * (mounted ? 2 : 1) : 3.45;
       let wantX = 0, wantZ = 0;
       const sheepX = player.position.x, sheepZ = player.position.z;
       const stickOn = joystick && Math.hypot(joystick.x, joystick.y) > .14 && allowed;
@@ -5596,7 +6279,20 @@
       const walked = Math.hypot(p.x - fromX, p.z - fromZ);
       walking = leaderSpeed > .12 && walked > .0008; travel += walked;
       p.y = world.height(p.x, p.z);
-      const sheepWalking = adventure ? followLeader(p, t, now, delta) : !!step;
+      if (!crossing && sheepHop && Math.hypot(p.x - sheepHop.marker.pos[0], p.z - sheepHop.marker.pos[1]) > 4) sheepHop = null;
+      if (region && allowed && !held && !mounted && !sheepHop) {
+        const shortcut = shortcutMarkers.find(marker => !previewedShortcuts.has(marker.id) &&
+          Math.hypot(p.x - marker.pos[0], p.z - marker.pos[1]) < 2.95);
+        if (shortcut) {
+          const to = shortcutLanding(shortcut, p);
+          previewedShortcuts.add(shortcut.id);
+          if (to) {
+            sheepHop = { start: now, from: player.position.clone(), to, marker: shortcut };
+            say('sheep', '따라와!');
+          }
+        }
+      }
+      const sheepWalking = adventure ? !held && !sheepHop && !crossing && followLeader(p, t, now, delta) : !!step;
       if (adventure) {
         animateVillage(p, t, now, delta);
         const zone = moveInfo().zone;
@@ -5609,9 +6305,10 @@
           gaitPerson(leader, Math.min(walked, delta * 6), delta, t, reduced);
           // 발이 땅에 닿는 순간에 발소리
           const foot = Math.floor(leader.userData.gait.phase / Math.PI + .5);
-          if (foot !== footIndex) { footIndex = foot; if (walking && now > nextStepSound) { handlers.onFootstep?.(); nextStepSound = now + 240; } }
+          if (foot !== footIndex) { footIndex = foot; if (walking && now > nextStepSound) { handlers.onFootstep?.(!!mounted); nextStepSound = now + (mounted ? 155 : 240); } }
         }
       }
+      if (leader) animateTravel(p, walked, now, t);
       if (seated && walking) seated = kneeling = false;
       if (seated && guide) {
         const pose = leader.userData.gait;
@@ -5734,6 +6431,7 @@
       }
       renderActions();
       world.update?.(p.x, p.z);
+      life?.update(p, t, mounted);
       pathPlay?.update(p, now, t);
       checkNearbyDiscover(p);
       handlers.onExploreTick?.(now);
@@ -5795,19 +6493,29 @@
       scene.traverse(obj => { if (obj.isPoints || world.fx.some(f => f.cloud === obj)) obj.material.dispose(); });
       renderer.dispose(); renderer.forceContextLoss(); wrap.remove();
     };
-    return { setMarkers, scenicMarkers, playAt, spawnPickup, react, say, setCarry, kneel, setWaypoint, setEscort, revealAbility, restoreAbility, moveAnimal, moveInfo,
-      inspect, endInspect, touchProp, sheepReact, snapProp, routeInfo, scentAngle, showScent,
-      showResident(id, visible) { const resident = world.residents?.get(id); if (resident) resident.hidden = !visible; }, position: () => [walkPosition().x, walkPosition().z], tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo(viewpoint) {
+    return { setMarkers, scenicMarkers, playAt, ride, holdLamb, takeShortcut, spawnPickup, react, say, setCarry, kneel, setWaypoint, setEscort, revealAbility, restoreAbility, moveAnimal, moveInfo,
+      inspect, watch, endInspect, touchProp, sheepReact, snapProp, routeInfo, scentAngle, showScent,
+      showResident(id, visible) { const resident = world.residents?.get(id); if (resident) resident.hidden = !visible; }, position: () => [walkPosition().x, walkPosition().z], tendFire(lit) { fireStrength = lit ? 1 : .3; }, photo(viewpoint, panorama = false) {
       const old = camera.position.clone();
       const oldQuaternion = camera.quaternion.clone();
+      const oldSize = panorama ? renderer.getSize(new T.Vector2()) : null;
+      const oldAspect = camera.aspect;
+      if (panorama) {
+        renderer.setSize(680, 386, false);
+        camera.aspect = 680 / 386;
+        camera.updateProjectionMatrix();
+      }
       const p = player.position, oldFacing = player.rotation.y;
       const masks = Array.from(elements.values(), ({ obj }) => [obj, obj.visible]);
       if (leader) masks.push([leader, leader.visible]);
       for (const [obj] of masks) obj.visible = false;
       if (viewpoint) {
-        const pos = walkPosition();
-        aim.set(pos.x - Math.sin(az) * 6, pos.y + .4, pos.z - Math.cos(az) * 6);
-        camera.position.set(pos.x + Math.sin(az) * 15, pos.y + 12.6, pos.z + Math.cos(az) * 15);
+        const pos = panorama ? new T.Vector3(...onGround(...viewpoint.pos)) : walkPosition();
+        const lookAt = viewpoint.lookAt || region?.origin.map(value => -value);
+        const yaw = panorama && lookAt ? Math.atan2(pos.x - lookAt[0], pos.z - lookAt[1]) : az;
+        if (panorama) world.update?.(pos.x, pos.z);
+        aim.set(pos.x - Math.sin(yaw) * 6, pos.y + .4, pos.z - Math.cos(yaw) * 6);
+        camera.position.set(pos.x + Math.sin(yaw) * 15, pos.y + 12.6, pos.z + Math.cos(yaw) * 15);
         camera.lookAt(aim);
       } else if (layout.christmas) {
         camera.position.set(p.x + 4.15, p.y + 2.9, p.z + 4.1);
@@ -5819,20 +6527,32 @@
       }
       renderScene();
       const output = document.createElement('canvas');
-      output.width = 330; output.height = 360;
+      output.width = panorama ? 680 : 330;
+      output.height = panorama ? 386 : 360;
       const crop = Math.min(canvas.width, canvas.height * output.width / output.height);
       const cropHeight = crop * output.height / output.width;
       output.getContext('2d').drawImage(canvas, (canvas.width - crop) / 2, (canvas.height - cropHeight) / 2, crop, cropHeight, 0, 0, output.width, output.height);
       camera.position.copy(old); camera.quaternion.copy(oldQuaternion);
+      if (panorama) {
+        renderer.setSize(oldSize.x, oldSize.y, false);
+        camera.aspect = oldAspect;
+        camera.updateProjectionMatrix();
+        world.update?.(walkPosition().x, walkPosition().z);
+      }
       player.rotation.y = oldFacing;
       for (const [obj, visible] of masks) obj.visible = visible;
       renderScene();
       return output.toDataURL('image/jpeg', .83);
+    }, panorama() {
+      const title = ['감람산 전망', '계단밭 비탈 전망', '갈릴리 호수 고개 전망', '베들레헴 언덕 전망'][region?.index];
+      const viewpoint = world.viewpoints?.find(point => point.title === title);
+      return viewpoint ? this.photo(viewpoint, true) : null;
     }, focus(id) {
       const marker = elements.get(id)?.marker;
       if (marker) moveTo(...marker.pos, id);
     }, destroy, metrics: () => ({ ...metrics, peakCalls }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors,
       destinationRoute, time: climate?.time, weather: climate?.weather, stalls: climate?.stalls, rainDraw: () => climate?.rain?.geometry.drawRange.count || 0, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance, region, viewpoints: world.viewpoints, vistaBlend: () => vistaBlend, seated: () => seated, speed: () => leaderSpeed, animals: pathPlay?.animals,
+      riding: () => !!mounted, holdingLamb: () => held, crossing: () => !!crossing, sheepShortcut: () => sheepHop?.marker.id,
       turnCamera(radians) { azWant = radians; } } };
   }
 
