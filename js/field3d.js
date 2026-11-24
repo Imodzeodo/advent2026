@@ -5177,7 +5177,431 @@
       geo.setAttribute('color', new T.BufferAttribute(colors, 3));
       parts.push(geo);
     };
-    if (prop === 'millstone') {
+    const box = (color, ...pose) => add(cube, color, ...pose);
+    const stone = '#c8b598', trim = '#e7d5b7', shadow = '#a08873', timber = '#855b42';
+    function beam(color, from, to, width, shape = cyl) {
+      const a = new T.Vector3(...from), b = new T.Vector3(...to), delta = b.clone().sub(a);
+      const length = delta.length();
+      const angle = new T.Euler().setFromQuaternion(new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 1, 0), delta.normalize()));
+      add(shape, color, ...a.lerp(b, .5).toArray(), width, length + .015, width, angle.x, angle.y, angle.z);
+    }
+    function arch(x, y, z, radius, depth, color = stone) {
+      for (let i = 0; i <= 10; i++) {
+        const a = i * Math.PI / 10;
+        box(i % 2 ? color : trim, x + Math.cos(a) * radius, y + Math.sin(a) * radius, z,
+          .125, radius * .325, depth, 0, 0, a);
+      }
+    }
+    function pillar(x, y, z, height, diameter = .10) {
+      add(cyl, stone, x, y + height / 2, z, diameter, height, diameter);
+      for (const top of [.038, height]) box(trim, x, y + top, z, diameter * 1.5, .071, diameter * 1.52);
+    }
+    function person(x, z, size, robe, raised = false, base = 0) {
+      const pose = (shape, color, dx, dy, dz, w, h, d, rx, ry, rz) =>
+        add(shape, color, x + dx * size, base + dy * size, z + dz * size, w * size, h * size, d * size, rx, ry, rz);
+      pose(cyl, robe, 0, .37, 0, .34, .67, .28);
+      pose(cyl, '#e0b48c', 0, .76, .02, .16, .19, .17);
+      pose(ball, '#d9c2a4', 0, .87, -.016, .23, .21, .22);
+      pose(cyl, '#9e7456', 0, .49, .015, .344, .047, .284);
+      for (const side of [-1, 1]) {
+        pose(cube, '#725142', side * .081, .052, .072, .098, .091, .21);
+        pose(cyl, robe, side * .18, .59, .052, .10, .28, .11, raised ? -1 : -.39, 0, side * (raised ? -.94 : .4));
+        pose(ball, '#e1b088', side * (raised ? .31 : .24), raised ? .79 : .45, raised ? .22 : .12, .094, .102, .10);
+      }
+    }
+    function stairs(x, z, width, depth, floor, height, count) {
+      for (let i = 0; i < count; i++) {
+        const top = height * (i + 1) / count;
+        box(i % 2 ? stone : trim, x, floor + top / 2, z + (i + .5) * depth / count, width, top, Math.abs(depth) / count + .012);
+      }
+    }
+    if (prop === 'diorama-silver-trumpets') {
+      const horn = new T.LatheGeometry([[.021, 0], [.028, .035], [.026, .07], [.025, .51], [.043, .66],
+        [.094, .76], [.107, .81], [.095, .82], [.082, .783], [.027, .65], [.014, .49]]
+        .map(([r, h]) => new T.Vector2(r, h)), 12);
+      box('#98765d', 0, .082, 0, 1.03, .164, .56);
+      box('#65567c', 0, .17, 0, .98, .042, .50);
+      for (const side of [-1, 1]) {
+        add(horn, '#dadee4', side * -.32, .26, side * .14, 1, 1, 1, 0, 0, -side * Math.PI / 2);
+        add(cyl, '#9da9bc', side * -.302, .26, side * .14, .065, .055, .065, 0, 0, Math.PI / 2);
+        box('#ad95bf', -.05, .209, side * .14, .16, .036, .116);
+      }
+      horn.dispose();
+    } else if (prop === 'diorama-linen-robe') {
+      for (const x of [-.51, .51]) {
+        box(timber, x, .05, 0, .19, .10, .36);
+        box(timber, x, .65, -.135, .063, 1.20, .069);
+      }
+      box(timber, 0, 1.24, -.135, 1.09, .08, .085);
+      const outline = new T.Shape();
+      [[-.086,1.10],[-.21,1.17],[-.47,.94],[-.38,.77],[-.25,.85],[-.28,.176],
+        [.29,.176],[.235,.85],[.38,.78],[.47,.94],[.21,1.17],[.086,1.10],[0,1.055]].forEach(([x, y], i) => i ? outline.lineTo(x,y) : outline.moveTo(x,y));
+      outline.closePath();
+      const robe = new T.ExtrudeGeometry(outline, { depth: .085, bevelEnabled: false });
+      add(robe, '#f0eadd', 0, 0, -.038); robe.dispose();
+      for (const x of [-.18, -.09, .075, .17]) box('#dfd4c8', x, .51, .046, .018, .63, .014, 0, 0, x * -.09);
+      box('#ded0bb', 0, .615, .052, .5, .047, .045);
+      beam(timber, [-.24,1.13,-.035], [0,1.2,-.02], .055);
+      beam(timber, [0,1.2,-.02], [.24,1.13,-.035], .055);
+    } else if (['diorama-mikveh', 'diorama-bethesda', 'diorama-siloam'].includes(prop)) {
+      const mikveh = prop === 'diorama-mikveh', bethesda = prop === 'diorama-bethesda';
+      const width = mikveh ? 1.28 : 1.49, depth = 1.08, edge = depth / 2;
+      box(shadow, 0, .058, 0, width, .116, depth);
+      box(bethesda ? '#65939a' : '#508d9e', 0, .201, -.035, width - .14, .036, depth - .12);
+      for (const side of [-1, 1]) {
+        box(stone, side * (width / 2 - .046), .28, 0, .092, .32, depth);
+        box(trim, side * (width / 2 - .043), .45, 0, .13, .055, depth + .026);
+        box(stone, 0, .29, side * edge, width, .33, .086);
+        if (bethesda) {
+          for (let i = -2; i <= 2; i++) pillar(i * .318, .45, side * edge, .52, .076);
+          box('#d6c6aa', 0, .994, side * edge, width + .04, .09, .22);
+          for (const z of [-.26, 0, .26]) pillar(side * (width / 2 - .058), .45, z, .52, .076);
+          box('#d6c6aa', side * (width / 2 - .058), .994, 0, .22, .09, depth);
+        }
+      }
+      if (bethesda) {
+        for (const x of [-.51, -.19, .19, .51]) pillar(x, .22, 0, .73, .075);
+        box(trim, 0, .969, 0, 1.3, .075, .16);
+      } else stairs(0, .005, mikveh ? .71 : 1.02, .52, .125, .35, mikveh ? 5 : 6);
+      for (let i = 0; i < 9; i++) {
+        const x = Math.sin(i * 2.39) * (width * .38), z = -.26 + (i % 5) * .135;
+        box('#9ac5c9', x, .220, z, .11 + (i % 3) * .033, .004, .013);
+      }
+    } else if (prop === 'diorama-prayer-court') {
+      box(shadow, 0, .055, 0, 1.35, .11, .88);
+      for (let i = -2; i <= 2; i++) for (let j = -1; j <= 1; j++) box(i % 2 ? stone : trim, i * .26, .118, j * .282, .252, .025, .274);
+      person(-.38,-.08,.84,'#8d819e',true,.13);
+      person(0,.13,.91,'#b1866f',true,.13);
+      person(.38,-.06,.85,'#68867a',true,.13);
+    } else if (prop === 'diorama-sheep-gate') {
+      box(stone, 0, .058, 0, 1.39, .116, 1.10);
+      for (const side of [-1, 1]) {
+        box(stone, side * .49, .47, -.26, .36, .77, .39);
+        box(trim, side * .50, .85, -.26, .39, .13, .42);
+        box(shadow, side * .51, .28, -.04, .30, .035, .028);
+      }
+      arch(0,.70,-.26,.365,.41);
+      for (const [x,z] of [[-.30,.23],[.29,.15],[.04,-.02]]) {
+        add(ball, '#eee5d0', x,.286,z,.28,.25,.35);
+        add(ball, '#a58b79', x,.315,z+.147,.13,.16,.16);
+        for (const dx of [-.074,.074]) for (const dz of [-.08,.08]) box('#796557',x+dx,.166,z+dz,.038,.109,.047);
+      }
+    } else if (prop === 'diorama-olives') {
+      add(ball, '#a69577', 0,.183,0,1.48,.415,1.15,0,1.0);
+      for (const [x,y,z,s] of [[-.47,.29,.1,.39],[.05,.386,-.19,.66],[.41,.28,.14,.48],[-.17,.34,.29,.44]]) {
+        beam('#795e44',[x,y,z],[x+.09*s,y+s*.56,z],s*.13);
+        for (let i = 0; i < 4; i++) {
+          const a = i * 2.4, dx = Math.cos(a)*s*.28, dz = Math.sin(a)*s*.27;
+          beam('#8f7150',[x,y+s*.3,z],[x+dx,y+s*.68,z+dz],s*.065);
+          add(ball, ['#718263','#879675','#667b65','#a3a680'][i], x+dx,y+s*.68,z+dz,s*.49,s*.29,s*.41,0,a);
+        }
+      }
+    } else if (prop === 'diorama-gentiles-court') {
+      box(shadow, 0,.07,0,1.61,.14,1.30);
+      for (let i = -3; i <= 3; i++) for (let j = -2; j <= 2; j++) {
+        box((i+j)%3 ? stone : trim,i*.226,.147,j*.257,.218,.03,.248);
+      }
+      for (const z of [-.51,-.23]) for (const x of [-.61,-.31,-.01]) pillar(x,.164,z,.65,.092);
+      box(trim,-.31,.858,-.378,.83,.105,.54);
+      for (const x of [.52,.70]) pillar(x,.164,-.51,.61);
+    } else if (prop === 'diorama-flat-roof' || prop === 'diorama-stone-courtyard') {
+      const roof = prop === 'diorama-flat-roof';
+      box(shadow,0,.065,0,1.49,.13,1.14);
+      const back = roof ? 0 : -.325, height = roof ? .59 : .62, depth = roof ? 1.0 : .49;
+      box(stone,0,.13+height/2,back,1.39,height,depth);
+      box(trim,0,.16+height,back,1.47,.066,depth+.08);
+      box('#5e4b48',0,.38,back+depth/2+.016,.26,.46,.05);
+      for (let i = -2; i <= 2; i++) for (let j = 0; j < 4; j++) {
+        if (i || j === 3) box(j % 2 ? '#ba9f7f' : '#cdb79a', i * .263 + (j%2)*.028, .20+j*.144, back+depth/2+.014, .24,.129,.032);
+      }
+      if (roof) {
+        for (const side of [-1,1]) {
+          box(stone,side*.665,.91,-.018,.115,.29,1.0);
+          box(trim,side*.665,1.074,-.018,.153,.06,1.041);
+          box(stone,side*.49,.91,.468,.39,.29,.12);
+        }
+        box(stone,0,.91,-.474,1.45,.29,.113);
+        box(trim,0,1.074,-.476,1.53,.06,.17);
+        stairs(0,.765,.30,-.27,.225,.475,3);
+      } else {
+        for (const side of [-1,1]) {
+          box(stone,side*.647,.259,.26,.13,.26,.58);
+          box(trim,side*.648,.405,.262,.14,.07,.61);
+          box(stone,side*.475,.224,.506,.38,.199,.091);
+        }
+        for (let i = -2; i <= 2; i++) for (let j = 0; j < 3; j++) box((i+j)%2 ? trim : '#c7a883',i*.22,.137,j*.18-.04,.21,.025,.172);
+        add(cyl,'#a26e54',.45,.237,.25,.20,.23,.20);
+        add(ball,'#c08161',.45,.315,.25,.19,.14,.19);
+      }
+    } else if (prop === 'diorama-clay-lamp') {
+      const clay = '#b57557';
+      const dish = new T.LatheGeometry([[0, .046], [.23,.048], [.36,.11], [.43,.21], [.41,.28], [.355,.285], [.335,.222], [.25,.141], [0,.134]]
+        .map(([r,h])=>new T.Vector2(r,h)),16);
+      add(dish,clay,0,0,0,1,1,.81); dish.dispose();
+      add(cyl,'#897048',0,.152,0,.53,.028,.43);
+      add(ball,clay,0,.17,.32,.41,.23,.54);
+      add(ball,'#514139',0,.278,.407,.122,.041,.12);
+      beam('#6f4e3e',[0,.277,.401],[.009,.346,.428],.045);
+      add(ball,'#f58c3f',.012,.402,.426,.142,.215,.102,0,0,-.18);
+      add(ball,'#ffdc78',.009,.389,.438,.092,.143,.078,0,0,-.18);
+      const handle = new T.TorusGeometry(.12,.026,6,12).rotateY(Math.PI / 2);
+      add(handle,clay,0,.188,-.393,1,1,.73); handle.dispose();
+    } else if (prop === 'diorama-rocking-cradle') {
+      for (const side of [-1,1]) {
+        const x = side * .402;
+        for (let j = -3; j < 3; j++) {
+          const a = j * .145,b = (j+1)*.145;
+          beam(timber,[x,.284-.238*Math.cos(a),.65*Math.sin(a)],[x,.284-.238*Math.cos(b),.65*Math.sin(b)],.092,cube);
+        }
+        box(timber,x,.285,0,.12,.42,.61);
+        box('#b98a68',x,.502,0,.145,.075,.65);
+      }
+      box('#b08060',0,.30,0,.92,.13,.55);
+      for (const side of [-1,1]) {
+        box('#aa7957',0,.379,side*.298,.82,.24,.079);
+        for (let i = -3; i <= 3; i++) box('#866047',i*.11,.452,side*.34,.047,.12,.025);
+      }
+      box('#e7d7bb',0,.377,0,.66,.054,.455);
+    } else if (prop === 'diorama-herod-palace') {
+      box(shadow,0,.064,0,1.62,.128,1.04);
+      box(stone,0,.54,-.11,1.32,.91,.61);
+      box(trim,0,1.024,-.11,1.34,.09,.64);
+      for (const [x,h] of [[-.55,1.40],[.55,1.62]]) {
+        box(stone,x,h/2+.11,-.03,.38,h,.55);
+        box(shadow,x,h+.09,-.03,.445,.106,.62);
+        for (const dx of [-.14,0,.14]) box(trim,x+dx,h+.19,.245,.081,.14,.095);
+        for (const y of [.45,.79,1.14]) box('#8c7268',x,y,.249,.075,.151,.025);
+      }
+      box('#654650',0,.40,.211,.34,.55,.08);
+      arch(0,.64,.272,.206,.19,'#c39b60');
+      for (const x of [-.23,.23]) pillar(x,.13,.297,.53,.067);
+      box('#d5aa65',0,.934,.246,.59,.09,.155);
+      stairs(0,.27,.54,.195,.089,.079,3);
+    } else if (prop === 'diorama-yoke') {
+      beam('#a77750', [-.64, .23, 0], [-.35, .39, 0], .16, cube);
+      beam('#bb885c', [-.35, .39, 0], [.35, .39, 0], .15, cube);
+      beam('#a77750', [.35, .39, 0], [.64, .23, 0], .16, cube);
+      const loop = new T.TorusGeometry(.178, .035, 6, 15);
+      for (const x of [-.35, .35]) {
+        add(loop,'#7d5137', x, .203, .025, .78, .93, 1, 0, x * .24);
+        box('#865c42', x, .39, .062, .086, .166, .086);
+      }
+      loop.dispose();
+    } else if (prop === 'diorama-fig-tree') {
+      add(ball,'#98865b', 0, .077, 0, 1.34, .176, .98, 0, .23);
+      beam('#73533b', [0, .087, 0], [-.052, .69, .006], .19);
+      for (let i = 0; i < 6; i++) {
+        const a = i * 2.4, x = Math.cos(a) * .39, z = Math.sin(a) * .34, y = .78 + (i % 3) * .13;
+        beam('#886243', [-.045, .43 + (i % 2) * .13, 0], [x, y, z], .092);
+        for (let j = 0; j < 4; j++) {
+          const turn = a + j * 1.57, dx = Math.cos(turn) * .14, dz = Math.sin(turn) * .16;
+          add(ball, ['#405f45','#5b7945','#74934e','#879f58'][j], x + dx, y + .045 + (j % 2) * .052, z + dz, .43, .18, .33, dx, turn, -.18);
+          if (j % 2 === 0) add(ball,'#71465a', x + dx, y-.064, z + dz, .099, .103, .096);
+        }
+      }
+    } else if (prop === 'diorama-traveler-pack') {
+      add(ball,'#ba9d77', 0, .052, 0, 1.21, .13, .79);
+      beam('#745137', [-.51, .09, .20], [-.21, 1.18, -.09], .054);
+      beam('#745137', [-.21, 1.18, -.09], [-.075, 1.18, -.085], .057);
+      add(ball,'#966340', -.15, .305, .16, .43, .489, .285);
+      beam('#a9754c', [-.15, .42, .15], [-.21, .60, .15], .163);
+      beam('#533c31', [-.19, .51, .142], [-.21, .56, .15], .16);
+      for (const x of [.08, .325, .51]) add(ball,'#c59a70', x, .29, -.087, .39, .40, .39, 0, x * .71);
+      beam('#ede2b8', [.055, .408, -.23], [.45, .366, .104], .04);
+      beam('#ede2b8', [.10, .398, .087], [.48, .425, -.242], .042);
+      add(ball,'#eee3bd', .28, .49, -.066, .126, .113, .1);
+    } else if (prop === 'diorama-reading-scroll' || prop === 'diorama-census') {
+      const census = prop === 'diorama-census', z = census ? -.28 : 0;
+      if (census) {
+        box(shadow, 0, .057, 0, 1.57, .113, 1.38);
+        person(-.42, .49, .78,'#9a715e', false, .116);
+        person(.32, .37, .75,'#7a8a75', false, .116);
+        person(.42, .68, .69,'#a48090', false, .116);
+        person(-.13, -.57, .84,'#8d7c98', false, .116);
+      }
+      for (const x of [-.34, .34]) box(timber, x, .30, z, .092, .56, .31);
+      box('#a57351', 0, .61, z, .93, .12, .66, census ? 0 : -.24);
+      box('#f3ddb0', 0, .707, z + .055, .617, .042, .458, census ? .05 : -.24);
+      for (const x of [-.323, .323]) beam('#956942', [x, .672, z + .30], [x, .768, z-.18], .089);
+      for (let i = 0; i < 5; i++) for (const x of [-.14, .137]) box('#a58c6d', x, .714 + (census?0:i * .018), z + .194-i * .068, .216, .009, .015, census ? 0 : -.24);
+      if (census) add(cyl,'#5b4c45', .33, .709, z-.144, .115, .122, .115);
+    } else if (prop === 'diorama-roman-soldier') {
+      box(shadow, 0, .064, 0, .75, .127, .62);
+      box('#a14444', 0, .57, -.159, .355, .81, .10, -.17);
+      for (const x of [-.112, .112]) {
+        box('#855f4b', x, .272, .025, .111, .36, .133);
+        box('#543b36', x, .124, .089, .136, .123, .24);
+      }
+      add(cyl,'#8b8d91', 0, .64, 0, .384, .541, .27);
+      for (let i = 0; i < 4; i++) box('#c0b3a1', 0, .522 + i * .074, .132, .34, .034, .036);
+      add(ball,'#c6997a', 0, 1.018, .032, .221, .24, .21);
+      add(ball,'#c0bab0', 0, 1.141, .008, .278, .202, .248);
+      box('#a84c42', 0, 1.255, .015, .10, .161, .27);
+      add(ball,'#803e3d', .227, .59, .205, .42, .63, .116, .10, -.16, -.10);
+      add(ball,'#ba9a62', .226, .586, .258, .137, .14, .092);
+      beam('#765443', [-.33, .08, .037], [-.33, 1.29, .012], .047);
+      add(ball,'#a9aaab', -.33, 1.35, .011, .087, .212, .073);
+    } else if (prop === 'diorama-sling') {
+      add(ball,'#9c8b74', 0, .08, 0, 1.44, .17, 1.02);
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < 8; i++) {
+          const curve = t => [side * (.11 + .539 * t), .173 + .014 * Math.sin(t * 8), -.10 + t * .38 + side * .12 * Math.sin(t * 5.7)];
+          beam(side === 1 ? '#ba824a' : '#8c5836', curve(i/8), curve((i + 1)/8), .038);
+        }
+      }
+      add(ball,'#985a3d', 0, .168, -.10, .34, .065, .235, 0, .1);
+      add(ball,'#77736e', 0, .22, -.095, .184, .15, .162, 0, .33);
+      const ring = new T.TorusGeometry(.056, .016, 5, 12).rotateX(-Math.PI/2);
+      add(ring,'#af8257', .655, .175, .21); ring.dispose();
+      add(ball,'#67625e', -.19, .138, .31, .133, .126, .13);
+    } else if (prop === 'diorama-guestroom') {
+      box(shadow, 0, .062, 0, 1.53, .125, 1.07);
+      box(stone, 0, .714, -.436, 1.45, 1.29, .161);
+      box(stone, -.647, .707, -.088, .155, 1.286, .82);
+      box(stone, .665, .381, -.269, .145, .627, .37);
+      box(trim, 0, .698, -.104, 1.39, .135, .785);
+      box(trim, 0, 1.371, -.324, 1.44, .113, .43);
+      box('#ad7060', -.16, .778, -.118, .81, .026, .55);
+      box(timber, -.31, .869, -.216, .49, .153, .251);
+      box('#d9c9a9', -.33, .963, -.216, .43, .07, .229);
+      add(cyl,'#a9755c', .47, .875, -.34, .17, .25, .17);
+      box('#a78553', .15, .147, -.045, .69, .033, .48);
+      for (const x of [-.35, -.11, .13, .37]) box('#8b6946', x, .355, .238, .068, .446, .067);
+      box('#8b6946', .01, .486, .249, .809, .079, .082);
+      add(ball,'#927462', .18, .423, -.07, .37, .251, .38);
+      add(ball,'#b49679', .18, .493, .108, .174, .166, .177);
+    } else if (prop === 'diorama-david' || prop === 'diorama-tabor' || prop === 'diorama-wilderness-road') {
+      const dry = prop === 'diorama-wilderness-road', tabor = prop === 'diorama-tabor';
+      add(ball, dry?'#a98763':'#988b6c', 0, .081, 0, 1.75, .20, 1.24, 0, .15);
+      if (tabor) {
+        const dome = new T.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI/2);
+        add(dome,'#778963', 0, .122, -.04, .782, .85, .56);
+        dome.dispose();
+        for (const [x, z] of [[-.63, .21], [.51, .39], [.28, .464], [-.46, -.41]]) add(ball,'#8d9a72', x, .188, z, .255, .172, .21);
+      } else if (dry) {
+        for (const [x, y, z, w, h, d] of [[-.585, .22, -.145, .52, .533, .90], [.51, .23, .047, .58, .64, .93], [.25, .27, -.47, .64, .60, .38]]) {
+          add(ball,'#c3a680', x, y, z, w, h, d, .11, x);
+        }
+        for (let i = 0; i < 14; i++) {
+          const z = .53-i * .078, x = .22 * Math.sin((z + .15) * 5);
+          box('#e4c89a', x, .152, z, .21, .029, .108, 0, .64 * Math.cos((z + .15) * 5));
+        }
+        box('#7e5944', -.12, .334, .43, .053, .394, .05);
+        box('#a57e53', -.065, .501, .43, .23, .098, .052, 0, 0, .14);
+      } else {
+        add(ball,'#9f946f', 0, .218, -.08, 1.56, .543, 1.1, 0, .1);
+        for (const [x, y, z, w, h] of [[-.41, .25, .245, .41, .39], [.27, .27, .245, .39, .42], [-.17, .44, -.16, .54, .49], [.36, .34, -.21, .35, .36]]) {
+          box(stone, x, y + h/2, z, w, h, .28);
+          box(trim, x, y + h, z, w + .056, .069, .337);
+          box('#735849', x, y + .113, z + .148, .095, .223, .027);
+        }
+        box(shadow, 0, .238, .47, 1.25, .209, .11);
+        box(trim, 0, .343, .468, 1.30, .053, .135);
+      }
+    } else if (prop === 'diorama-ox-donkey' && models) {
+      for (const [name, x, scale, yaw] of [['소', -.37, .42, .39], ['나귀', .34, .51, -.30]]) {
+        const animal = models.animal(name);
+        animal.position.set(x, 0, 0); animal.scale.multiplyScalar(scale); animal.rotation.y = yaw;
+        animal.updateMatrixWorld(true);
+        animal.traverse(mesh => { if (mesh.isMesh) parts.push(mesh.geometry.clone().applyMatrix4(mesh.matrixWorld)); });
+        if (name === '소') for (const side of [-1, 1]) beam('#e7cfa7', [x + .12 + side * .056, .648, .293], [x + .12 + side * .14, .747, .334], .045);
+        disposeFigure(animal);
+      }
+    } else if (prop === 'diorama-great-star') {
+      const star = new T.Shape();
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI/4, r = i % 2 ? .144 : .48;
+        const x = Math.sin(a) * r, y = Math.cos(a) * r;
+        if (i === 0) star.moveTo(x, y); else star.lineTo(x, y);
+      }
+      star.closePath();
+      const face = new T.ExtrudeGeometry(star, {depth:.073, bevelEnabled:false});
+      add(face,'#ffe373', 0, 1.25, 0);
+      add(face,'#f6cf61', 0, 1.25, 0, 1, 1, 1, 0, Math.PI/2);
+      face.dispose();
+      add(ball,'#fff8c9', 0, 1.25, .04, .281, .30, .281);
+      const ray = new T.CylinderGeometry(.031, .212, .89, 7, 1, true);
+      add(ray,'#e9ae60', 0, .454, 0, 1, 1, 1); ray.dispose();
+      add(cyl,'#ecc37c', 0, .459, 0, .117, .93, .117);
+      add(ball,'#b89b67', 0, .073, 0, .743, .152, .58);
+    } else if (prop === 'diorama-camel-robe') {
+      box(timber, 0, .071, 0, 1.09, .144, .45);
+      box(timber, 0, .68, -.092, .09, 1.22, .09);
+      add(cyl,'#88623f', 0, .55, 0, .62, .87, .238);
+      for (const side of [-1, 1]) box('#9a7452', side * .352, .747, .021, .245, .48, .226, -.13, 0, side * .81);
+      for (let i = 0; i < 45; i++) {
+        const y = .146 + Math.floor(i/9) * .163, x = (i % 9-4) * .069;
+        box(i % 3?'#ae865e':'#6d4d37', x, y, .106 + .015 * Math.sin(i), .038, .075, .037, .16, 0, .24 * Math.sin(i * 3.1));
+      }
+      box('#573b2e', 0, .51, .04, .649, .103, .185);
+      box('#c09261', .05, .518, .148, .149, .095, .033);
+      box('#5f4432', .05, .518, .168, .090, .052, .016);
+    } else if (prop === 'diorama-locusts-honey') {
+      add(ball,'#9b8159', .10, .10, 0, 1.25, .23, .93, 0, .7);
+      const comb = new T.CylinderGeometry(.107, .107, .072, 6);
+      for (let i = 0; i < 9; i++) {
+        const x = .201 + i % 3 * .176, y = .253 + Math.floor(i/3) * .101, z = -.11 + Math.floor(i/3) * .079;
+        add(comb,'#e4ad53', x, y, z, 1, 1, 1, .66, 0, 0);
+        add(cyl,'#9d693e', x, y + .038, z + .028, .105, .012, .105, .66, 0, 0);
+      }
+      comb.dispose();
+      for (const [x, z, s] of [[-.40, -.22, 1], [-.37, .26, .83], [-.096, .13, .85]]) {
+        add(ball,'#73774b', x, .245, z, .137 * s, .109 * s, .375 * s, 0, -.26);
+        add(ball,'#969960', x, .252, z + .164 * s, .118 * s, .106 * s, .12 * s);
+        for (const side of [-1, 1]) {
+          beam('#686a3f', [x, .242, z], [x + side * .126 * s, .344, z-.1 * s], .026);
+          beam('#686a3f', [x + side * .126 * s, .344, z-.1 * s], [x + side * .144 * s, .172, z + .035], .021);
+          beam('#5b6042', [x, .275, z + .17 * s], [x + side * .055, .317, z + .25 * s], .015);
+        }
+      }
+    } else if (prop === 'diorama-galilee') {
+      add(cyl,'#849070', 0, .103, 0, 1.7, .213, 1.07, 0, .25);
+      add(cyl,'#558898', 0, .223, 0, 1.49, .034, .91, 0, .25);
+      for (let i = 0; i < 12; i++) box('#94bdbd', .58 * Math.sin(i * 2.4), .244, .33 * Math.cos(i * 2.4), .16, .006, .017, 0, .34);
+      add(ball,'#835437', 0, .312, 0, .734, .246, .286, 0, -.15);
+      add(ball,'#b68450', 0, .383, 0, .653, .10, .245, 0, -.15);
+      for (const x of [-.147, .12]) box('#ddaa6d', x, .414, 0, .066, .052, .254, 0, -.15);
+      for (const side of [-1, 1]) beam(timber, [-.085, .431, side * .113], [.235, .262, side * .377], .051);
+      beam('#795438', [.034, .40, -.06], [.034, .817, -.06], .047);
+      box('#dfcb9d', .18, .732, -.061, .315, .079, .083);
+    } else if (prop === 'diorama-well-meeting') {
+      box(shadow, 0, .06, 0, 1.64, .12, 1.14);
+      for (let i = 0; i < 13; i++) {
+        const a = i * 2 * Math.PI/13;
+        box(i % 2?stone:trim, .35 * Math.cos(a), .322, -.17 + .30 * Math.sin(a), .126, .403, .17, 0, -a, 0);
+      }
+      add(cyl,'#5e8c95', 0, .25, -.17, .579, .069, .480);
+      for (const x of [-.38, .38]) beam(timber, [x, .134, -.21], [x, .985, -.21], .072);
+      beam(timber, [-.45, .985, -.21], [.45, .985, -.21], .072);
+      beam('#cdb385', [0, .972, -.21], [.023, .54, -.195], .029);
+      add(cyl,'#9f7650', .024, .496, -.207, .153, .187, .153);
+      person(-.59, .30, .78,'#7a8b7d', false, .12);
+      person(.59, .20, .83,'#ac7775', false, .12);
+    } else if (prop === 'diorama-threshing-floor' || prop === 'diorama-gleaning') {
+      const thresh = prop === 'diorama-threshing-floor';
+      if (thresh) {
+        add(cyl,'#a88558', 0, .11, 0, 1.63, .22, 1.27);
+        add(cyl,'#d2ae74', 0, .229, 0, 1.52, .04, 1.14);
+        for (let i = 0; i < 15; i++) {
+          const a = i * (Math.PI * 2/15);
+          add(ball, stone, .76 * Math.cos(a), .24, .59 * Math.sin(a), .22, .129, .176, 0, a);
+        }
+        beam(timber, [-.59, .254, .39], [.31, .348, -.094], .05);
+        beam('#797571', [.19, .352, -.303], [.42, .352, .087], .087);
+        for (const z of [-.28, -.11, .066]) beam('#777772', [.288, .351, z], [.617, .281, z-.15], .056);
+      } else {
+        box('#a18763', 0, .073, 0, 1.40, .147, 1.08);
+        for (const [x, z, tilt] of [[-.39, -.17, -.16], [.09, -.36, .12], [.45, .065, .24]]) {
+          for (let i = -2; i <= 2; i++) {
+            const stalkX = x + i * .065;
+            beam('#ac8644', [stalkX, .149, z], [stalkX + tilt, .74, z + i * .022], .038);
+            add(ball,'#d9b271', stalkX + tilt, .755, z + i * .024, .11, .188, .087, 0, 0, -tilt);
+          }
+          box('#e5cd97', x + tilt * .50, .43, z, .334, .055, .117, 0, 0, -tilt);
+        }
+      }
+      for (let i = 0; i < 21; i++) box(i % 2?'#ba9556':'#e5c584', .64 * Math.cos(i * 2.4), thresh ? .252 : .15, .45 * Math.sin(i * 2.4), .087, .025, .039, 0, i * .54);
+    } else if (prop === 'millstone') {
       add(cyl, '#8f8786', 0, .14, 0, .92, .26, .92);
       add(cyl, '#aba29c', 0, .38, 0, .86, .22, .86);
       add(cyl, '#7d563c', .26, .58, .08, .09, .28, .09);
@@ -5530,7 +5954,8 @@
       add(cyl, '#cfc1b2', 0, .72, 0, .42, .86, .42);
       add(cube, '#e3d5c3', 0, 1.18, 0, .64, .16, .64);
     }
-    const obj = merged(parts, material);
+    const finish = prop === 'diorama-great-star' ? mat('#ffffff', { vertexColors: true, emissive: '#a77637', ei: .32 }) : material;
+    const obj = merged(parts, finish);
     parts.forEach(g => g.dispose());
     cube.dispose(); cyl.dispose(); ball.dispose();
     const wrap = new T.Group();
@@ -7059,6 +7484,7 @@
         renderer.setSize(out.width, out.height, false);
         renderer.autoClear = true;
         renderer.render(scene, photo);
+        const backgroundCalls = renderer.info.render.calls;
         let background;
         if (audit) {
           context.drawImage(canvas, 0, 0);
@@ -7079,7 +7505,8 @@
           left = Math.min(left, x); top = Math.min(top, y); rightEdge = Math.max(rightEdge, x); bottom = Math.max(bottom, y);
           count++;
         }
-        return { url, count, bounds: [left / out.width, top / out.height, (rightEdge + 1) / out.width, (bottom + 1) / out.height] };
+        return { url, count, drawCalls: backgroundCalls + renderer.info.render.calls,
+          bounds: [left / out.width, top / out.height, (rightEdge + 1) / out.width, (bottom + 1) / out.height] };
       } finally {
         for (const obj of hidden) obj.visible = true;
         world.update?.(normalX, normalZ);
