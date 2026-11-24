@@ -78,7 +78,11 @@
       Object.values(window.Field3D?.normalizeWear(window.Field?.mainCare()?.sheep?.wear) || {}).filter(Boolean).length === 5 },
     { id: 'wordCollector', icon: '📜', name: '말씀 수집가', desc: '말씀 비석 15개 읽기', ok: () => (window.Explore?.counts().words || 0) >= 15 },
     { id: 'journeyPhoto', icon: '📷', name: '여정 사진가', desc: '여정 앨범에 사진 20장 담기', ok: () => (window.Explore?.counts().photos || 0) >= 20 },
-    { id: 'legend', icon: '🌟', name: '전설을 만나다', desc: '전설 양 만나기', ok: () => (window.Field?.stats().legends || 0) >= 1 }
+    { id: 'legend', icon: '🌟', name: '전설을 만나다', desc: '전설 양 만나기', ok: () => (window.Field?.stats().legends || 0) >= 1 },
+    ...['예루살렘 성곽지기', '유대 산골 길잡이', '갈릴리 길잡이', '베들레헴 들판지기'].map((name, index) => ({
+      id: 'exploreRegion' + index, name, icon: '📍', desc: '한 지역의 발견을 모두 모았어요',
+      ok: () => !!window.Explore?.regionCollection(index, D().field?.explore || {}).done
+    }))
   ].filter(b => b.id !== 'codes4' || (window.CODES || []).length);
 
   // 새로 딴 배지 목록을 돌려주고 저장

@@ -1116,136 +1116,136 @@
   const DISCOVERIES = {
     // 성전과 예배
     'solomon-colonnade': {
-      title: '솔로몬 행각', kind: 'look', theme: 'temple', prop: 'colonnade', cue: 'worship', icon: '🏛️',
+      title: '솔로몬 행각', kind: 'look', rarity: 'common', theme: 'temple', prop: 'colonnade', cue: 'worship', icon: '🏛️',
       fact: '성전 뜰을 둘러싼 긴 지붕 회랑이야. 사람들이 모여 가르침을 듣던 곳이었어.',
       ref: '요 10:23', sheep: '기둥 그늘이 길게 뻗어 있네. 발소리도 울려.'
     },
     'dove-seller': {
-      title: '비둘기 파는 사람', kind: 'touch', theme: 'temple', prop: 'doves', anim: 'doves', cue: 'animal', icon: '🕊️',
+      title: '비둘기 파는 사람', kind: 'touch', rarity: 'common', theme: 'temple', prop: 'doves', anim: 'doves', cue: 'animal', icon: '🕊️',
       fact: '가난한 사람은 양 대신 비둘기 두 마리를 제물로 드릴 수 있었어.',
       ref: '레 12:8; 눅 2:24', touchLine: '비둘기들이 푸드덕 날아올랐어!', sheep: '우와, 흰 날개가 머리 위로 지나갔어!'
     },
     'money-changer': {
-      title: '환전상의 상', kind: 'look', theme: 'temple', prop: 'coins', cue: 'worship', icon: '🪙',
+      title: '환전상의 상', kind: 'look', rarity: 'common', theme: 'temple', prop: 'coins', cue: 'worship', icon: '🪙',
       fact: '성전세는 정해진 은전으로 내야 해서, 순례자들은 여기서 돈을 바꿨어.',
       sheep: '동전 부딪히는 짤랑 소리에 귀가 쫑긋 서네.'
     },
     'incense-altar': {
-      title: '향단의 향', kind: 'try', theme: 'temple', prop: 'incense', cue: 'fire', icon: '🌿',
+      title: '향단의 향', kind: 'try', rarity: 'legend', theme: 'temple', prop: 'incense', cue: 'fire', icon: '🌿',
       tryMode: 'hold', tryPrompt: '향단 위를 길게 눌러 향을 천천히 올려 봐.', tryBtn: '향 올리기',
       bag: { name: '향기 나는 향', icon: '🌿' },
       fact: '아침저녁 분향할 제사장은 제비로 뽑았고, 평생 한 번 할까 말까 한 일이었어.',
       ref: '눅 1:9', sheep: '은은한 향기가 코끝에 닿아. 숨이 고요해져.'
     },
     menorah: {
-      title: '일곱 등잔대(메노라)', kind: 'look', theme: 'temple', prop: 'menorah', cue: 'fire', icon: '🕎',
+      title: '일곱 등잔대(메노라)', kind: 'look', rarity: 'legend', theme: 'temple', prop: 'menorah', cue: 'fire', icon: '🕎',
       fact: '성소 안을 밝히던 금 등잔대야. 꺼지지 않게 매일 기름을 채웠어.',
       ref: '출 27:20', sheep: '일곱 불빛이 금빛으로 반짝여서 눈이 부셔.'
     },
     'temple-trumpet': {
-      title: '나팔 소리', kind: 'touch', theme: 'temple', prop: 'trumpet', anim: 'trumpet', cue: 'worship', icon: '🎺',
+      title: '나팔 소리', kind: 'touch', rarity: 'common', theme: 'temple', prop: 'trumpet', anim: 'trumpet', cue: 'worship', icon: '🎺',
       fact: '예배와 절기를 알릴 때 나팔을 불었어.',
       ref: '민 10:10', touchLine: '맑은 나팔 소리가 성전 뜰로 퍼졌어!', sheep: '깜짝이야! 나팔 소리가 뜰 끝까지 울려.'
     },
     'priest-linen': {
-      title: '제사장의 흰 세마포 옷', kind: 'look', theme: 'temple', prop: 'linen', cue: 'wool', icon: '👘',
+      title: '제사장의 흰 세마포 옷', kind: 'look', rarity: 'common', theme: 'temple', prop: 'linen', cue: 'wool', icon: '👘',
       fact: '제사장은 고운 흰 베옷을 입고 섬겼어.',
       sheep: '내 털보다 훨씬 곱고 하얀 옷이네.'
     },
     'ascent-steps': {
-      title: '올라가는 계단', kind: 'look', theme: 'temple', prop: 'steps', cue: 'worship', icon: '🪜',
+      title: '올라가는 계단', kind: 'look', rarity: 'common', theme: 'temple', prop: 'steps', cue: 'worship', icon: '🪜',
       fact: '순례자들은 성전에 오르며 \'성전에 올라가는 노래\'(시편 120~134편)를 불렀대.',
       sheep: '한 계단씩 오를 때마다 노랫소리가 들리는 것 같아.'
     },
     mikveh: {
-      title: '정결례 웅덩이', kind: 'look', theme: 'temple', prop: 'mikveh', cue: 'water', icon: '💧',
+      title: '정결례 웅덩이', kind: 'look', rarity: 'common', theme: 'temple', prop: 'mikveh', cue: 'water', icon: '💧',
       fact: '성전에 들어가기 전 몸을 씻던 계단식 물웅덩이야.',
       sheep: '계단 아래로 맑은 물이 고여 있어. 발끝이 시원해 보여.'
     },
     'waiting-court': {
-      title: '사람들이 기다리는 뜰', kind: 'touch', theme: 'temple', prop: 'pray', anim: 'pray', cue: 'worship', icon: '🙏',
+      title: '사람들이 기다리는 뜰', kind: 'touch', rarity: 'common', theme: 'temple', prop: 'pray', anim: 'pray', cue: 'worship', icon: '🙏',
       fact: '분향하는 동안 백성은 밖에서 기도했어.',
       ref: '눅 1:10', touchLine: '뜰에 모인 사람들이 조용히 두 손을 모았어.', sheep: '나도 발소리를 줄이고 옆에 가만히 서 있을게.'
     },
 
     'sheep-gate': {
-      title: '양문', kind: 'look', theme: 'temple', prop: 'sheepGate', cue: 'animal', icon: '🐑',
+      title: '양문', kind: 'look', rarity: 'legend', theme: 'temple', prop: 'sheepGate', cue: 'animal', icon: '🐑',
       fact: "성전 북쪽에 '양문'이라는 성문이 있었어. 제물로 쓸 양들이 이 문으로 들어왔대.",
       ref: '느 3:1; 요 5:2'
     },
     bethesda: {
-      title: '베데스다 못', kind: 'look', theme: 'temple', prop: 'bethesda', cue: 'water', icon: '💧',
+      title: '베데스다 못', kind: 'look', rarity: 'rare', theme: 'temple', prop: 'bethesda', cue: 'water', icon: '💧',
       fact: '양문 곁에 행각 다섯이 둘러싼 베데스다 못이 있었어.', ref: '요 5:2'
     },
     'mount-of-olives': {
-      title: '감람산', kind: 'look', theme: 'temple', prop: 'fig', cue: 'road', icon: '🌿',
+      title: '감람산', kind: 'look', rarity: 'legend', theme: 'temple', prop: 'fig', cue: 'road', icon: '🌿',
       fact: '성전 맞은편 동쪽 산이야. 예수님은 여기 앉아 성전을 바라보며 제자들과 이야기하셨어.', ref: '막 13:3'
     },
     siloam: {
-      title: '실로암 못', kind: 'touch', theme: 'temple', prop: 'water', anim: 'water', cue: 'water', icon: '🏺',
+      title: '실로암 못', kind: 'touch', rarity: 'rare', theme: 'temple', prop: 'water', anim: 'water', cue: 'water', icon: '🏺',
       fact: '예루살렘 남쪽의 못이야. 예수님이 눈먼 사람에게 여기 가서 씻으라고 하셨지.', ref: '요 9:7'
     },
     'gentiles-court': {
-      title: '이방인의 뜰', kind: 'look', theme: 'temple', prop: 'colonnade', cue: 'worship', icon: '🏛️',
+      title: '이방인의 뜰', kind: 'look', rarity: 'common', theme: 'temple', prop: 'colonnade', cue: 'worship', icon: '🏛️',
       fact: '성전 바깥 가장 넓은 뜰이야. 유대인이 아닌 사람도 여기까지는 들어올 수 있었어.'
     },
     'warning-stone': {
-      title: '경고 돌 표지', kind: 'look', theme: 'temple', prop: 'warningStone', cue: 'worship', icon: '🪨',
+      title: '경고 돌 표지', kind: 'look', rarity: 'common', theme: 'temple', prop: 'warningStone', cue: 'worship', icon: '🪨',
       fact: '안쪽 뜰 앞에는 이방인은 더 들어가지 말라는 경고 돌 표지가 있었어.'
     },
 
     // 집과 살림
     'flat-roof': {
-      title: '평평한 지붕과 난간', kind: 'look', theme: 'home', prop: 'roof', cue: 'road', icon: '🏡',
+      title: '평평한 지붕과 난간', kind: 'look', rarity: 'common', theme: 'home', prop: 'roof', cue: 'road', icon: '🏡',
       fact: '지붕은 평평해서 말리고, 기도하고, 여름엔 자기도 했어. 떨어지지 않게 난간을 둘렀지.',
       ref: '신 22:8', sheep: '바람이 시원하게 불어! 난간이 있어서 안심이야.'
     },
     'oil-lamp': {
-      title: '기름 등잔', kind: 'try', theme: 'home', prop: 'lamp', cue: 'fire', icon: '🪔',
+      title: '기름 등잔', kind: 'try', rarity: 'rare', theme: 'home', prop: 'lamp', cue: 'fire', icon: '🪔',
       tryMode: 'order', tryPrompt: '기름 붓기 → 심지 놓기 → 불 붙이기 순서로 눌러 봐.', tryBtn: '다음 단계',
       bag: { name: '불 켠 등잔', icon: '🪔' },
       fact: '손바닥만 한 진흙 등잔에 올리브기름을 부어 불을 켰어.',
       sheep: '작은 등잔인데 불이 켜지니까 주변이 확 따뜻해졌어.'
     },
     'clay-oven': {
-      title: '진흙 화덕에 빵 굽기', kind: 'try', theme: 'home', prop: 'oven', cue: 'food', icon: '🫓',
+      title: '진흙 화덕에 빵 굽기', kind: 'try', rarity: 'rare', theme: 'home', prop: 'oven', cue: 'food', icon: '🫓',
       tryMode: 'tap', tryPrompt: '반죽을 톡톡 펴서 화덕 벽에 붙이고 노릇하게 뒤집어 봐.', tryBtn: '톡톡 굽기',
       bag: { name: '납작한 빵', icon: '🫓' },
       fact: '둥근 화덕 안쪽 벽에 납작한 반죽을 붙여 구웠어.',
       sheep: '킁킁! 고소한 빵 냄새가 화덕에서 솔솔 나!'
     },
     'water-jar': {
-      title: '물 항아리', kind: 'look', theme: 'home', prop: 'jar', cue: 'water', icon: '🏺',
+      title: '물 항아리', kind: 'look', rarity: 'common', theme: 'home', prop: 'jar', cue: 'water', icon: '🏺',
       fact: '하루 쓸 물을 우물에서 길어 와 큰 항아리에 담아 두었어.',
       sheep: '항아리 겉이 서늘하네. 물이 가득 담겼나 봐.'
     },
     'wax-tablet': {
-      title: '밀랍 서판', kind: 'touch', theme: 'home', prop: 'tablet', anim: 'scribe', cue: 'craft', icon: '📝',
+      title: '밀랍 서판', kind: 'touch', rarity: 'rare', theme: 'home', prop: 'tablet', anim: 'scribe', cue: 'craft', icon: '📝',
       fact: '나무판에 밀랍을 입혀 뾰족한 막대로 글을 썼다 지웠다 했어.',
       ref: '눅 1:63', touchLine: '밀랍 위에 뾰족한 막대로 글자를 또박또박 새겼어.', sheep: '사각사각 소리 나네. 다 쓰고 밀면 다시 지워진대!'
     },
     'mud-brick': {
-      title: '진흙 벽돌과 돌 벽', kind: 'look', theme: 'home', prop: 'brick', cue: 'craft', icon: '🧱',
+      title: '진흙 벽돌과 돌 벽', kind: 'look', rarity: 'common', theme: 'home', prop: 'brick', cue: 'craft', icon: '🧱',
       fact: '산지 집은 돌로, 낮은 곳 집은 햇볕에 말린 벽돌로 지었어.',
       sheep: '햇볕을 머금은 벽이 꽤 단단해 보여.'
     },
     'empty-cradle': {
-      title: '빈 요람', kind: 'touch', theme: 'home', prop: 'cradle', anim: 'sway', cue: 'baby', icon: '🛏️',
+      title: '빈 요람', kind: 'touch', rarity: 'rare', theme: 'home', prop: 'cradle', anim: 'sway', cue: 'baby', icon: '🛏️',
       fact: '오래 아이를 기다린 집이야. 조용히 흔들어 볼 수 있어.',
       touchLine: '빈 요람이 천천히 흔들리며 나무 소리를 냈어.', sheep: '요람 옆에서 발소리를 낮추고 가만히 바라보고 있어.'
     },
     'water-carry': {
-      title: '물동이 이기', kind: 'touch', theme: 'home', prop: 'water', anim: 'balance', cue: 'water', icon: '🏺',
+      title: '물동이 이기', kind: 'touch', rarity: 'common', theme: 'home', prop: 'water', anim: 'balance', cue: 'water', icon: '🏺',
       fact: '물동이를 머리에 이고 균형을 잡아 집까지 날랐어.',
       touchLine: '물동이가 살짝 출렁이다가 딱 균형을 잡았어!', sheep: '우와, 한 방울도 안 흘리고 걷다니 대단해!'
     },
     'courtyard-hill': {
-      title: '산골 집 마당', kind: 'look', theme: 'home', prop: 'terrace', cue: 'road', icon: '🏘️',
+      title: '산골 집 마당', kind: 'look', rarity: 'common', theme: 'home', prop: 'terrace', cue: 'road', icon: '🏘️',
       fact: '유대 산지 마을의 돌집과 안뜰이야.',
       sheep: '돌담 안쪽 마당이 아늑해. 여기서 같이 쉬어도 좋겠다.'
     },
     'swaddle-wrap': {
-      title: '아기 강보 싸기', kind: 'try', theme: 'home', prop: 'swaddle', cue: 'baby', icon: '🧣',
+      title: '아기 강보 싸기', kind: 'try', rarity: 'rare', theme: 'home', prop: 'swaddle', cue: 'baby', icon: '🧣',
       tryMode: 'wrap', tryPrompt: '천을 좌우로 감아 아기 강보를 단단히 싸 봐.', tryBtn: '천 감기',
       bag: { name: '아기 강보', icon: '🧣' },
       fact: '갓난아기는 천으로 단단히 감싸 주었어.',
@@ -1254,205 +1254,277 @@
 
     // 일과 연장
     millstone: {
-      title: '맷돌', kind: 'try', theme: 'work', prop: 'millstone', cue: 'food', icon: '⚙️',
+      title: '맷돌', kind: 'try', rarity: 'rare', theme: 'work', prop: 'millstone', cue: 'food', icon: '⚙️',
       tryMode: 'spin', tryPrompt: '손잡이를 잡고 원을 그리며 맷돌을 돌려 봐.', tryBtn: '맷돌 돌리기',
       bag: { name: '고운 밀가루', icon: '🌾' },
       fact: '위아래 돌 두 개로 곡식을 갈아 가루를 냈어. 보통 여자 둘이 마주 앉아 돌렸대.',
       ref: '마 24:41', sheep: '돌 사이로 하얀 가루가 나와! 코끝에 곡식 냄새가 킁킁.'
     },
     'carpenter-plane': {
-      title: '대패·끌·활비비', kind: 'try', theme: 'work', prop: 'carpenter', cue: 'craft', icon: '🪚',
+      title: '대패·끌·활비비', kind: 'try', rarity: 'rare', theme: 'work', prop: 'carpenter', cue: 'craft', icon: '🪚',
       tryMode: 'rub', tryPrompt: '손가락으로 나무 위를 문질러 매끈하게 다듬어 봐.', tryBtn: '나무 다듬기',
       bag: { name: '매끈한 나무판', icon: '🪵' },
       fact: '목수는 집의 문틀·대들보, 쟁기와 멍에도 만들었어.',
       sheep: '대팻밥이 돌돌 말려 나와! 나무 향이 좋다.'
     },
     'olive-press': {
-      title: '올리브기름 짜는 틀', kind: 'try', theme: 'work', prop: 'olivepress', cue: 'food', icon: '🫒',
+      title: '올리브기름 짜는 틀', kind: 'try', rarity: 'rare', theme: 'work', prop: 'olivepress', cue: 'food', icon: '🫒',
       tryMode: 'spin', tryPrompt: '돌을 둥글게 굴려 올리브에서 기름을 짜 봐.', tryBtn: '돌 굴리기',
       bag: { name: '올리브기름 병', icon: '🫒' },
       fact: '올리브를 으깨고 눌러 기름을 냈어. 등잔·요리·약에 다 썼지.',
       sheep: '초록빛 기름이 또르르 떨어져. 등잔에 쓰면 딱이겠다!'
     },
     'well-bucket': {
-      title: '우물에서 물 긷기', kind: 'try', theme: 'work', prop: 'well', cue: 'water', icon: '🪣',
+      title: '우물에서 물 긷기', kind: 'try', rarity: 'rare', theme: 'work', prop: 'well', cue: 'water', icon: '🪣',
       tryMode: 'pull', tryPrompt: '두레박 줄을 아래로 쭉쭉 당겨 물을 길어 올려 봐.', tryBtn: '줄 당기기',
       bag: { name: '물동이', icon: '🏺' },
       fact: '물 긷기는 주로 아침저녁, 마을 소식이 오가는 자리였어.',
       sheep: '첨벙! 시원한 우물물이 가득 올라왔어.'
     },
     'loom-spindle': {
-      title: '베틀과 실잣기', kind: 'try', theme: 'work', prop: 'loom', cue: 'wool', icon: '🧶',
+      title: '베틀과 실잣기', kind: 'try', rarity: 'rare', theme: 'work', prop: 'loom', cue: 'wool', icon: '🧶',
       tryMode: 'spin', tryPrompt: '가락을 빙글빙글 돌려 양털로 실을 꼬아 봐.', tryBtn: '가락 돌리기',
       bag: { name: '실 한 타래', icon: '🧶' },
       fact: '양털을 가락으로 꼬아 실을 만들고 베틀로 천을 짰어.',
       sheep: '어, 내 털이랑 똑같아! 이 실로 옷도 짤 수 있겠다.'
     },
     winepress: {
-      title: '포도 따서 포도즙 틀에 밟기', kind: 'try', theme: 'work', prop: 'winepress', cue: 'food', icon: '🍇',
+      title: '포도 따서 포도즙 틀에 밟기', kind: 'try', rarity: 'rare', theme: 'work', prop: 'winepress', cue: 'food', icon: '🍇',
       tryMode: 'stomp', tryPrompt: '왼발·오른발을 번갈아 톡톡 눌러 포도를 밟아 봐.', tryBtn: '톡톡 밟기',
       bag: { name: '포도즙 병', icon: '🍇' },
       fact: '포도는 돌 틀에서 발로 밟아 즙을 냈어.',
       sheep: '발굽이 보라색이 될 것 같아! 달콤한 포도 향이 퍼져.'
     },
     yoke: {
-      title: '멍에', kind: 'look', theme: 'work', prop: 'yoke', cue: 'craft', icon: '🪵',
+      title: '멍에', kind: 'look', rarity: 'common', theme: 'work', prop: 'yoke', cue: 'craft', icon: '🪵',
       fact: '두 마리 소가 함께 끌도록 어깨에 얹는 나무야. 예수님은 "내 멍에는 쉽고"라고 하셨어.',
       ref: '마 11:30', sheep: '둘이 나란히 걸으면 짐이 가벼워지나 봐.'
     },
     'stone-jar': {
-      title: '돌 정결 항아리', kind: 'look', theme: 'work', prop: 'stonejar', cue: 'water', icon: '🪨',
+      title: '돌 정결 항아리', kind: 'look', rarity: 'common', theme: 'work', prop: 'stonejar', cue: 'water', icon: '🪨',
       fact: '돌 항아리는 부정해지지 않는다고 여겨 정결 예식 물을 담았어.',
       ref: '요 2:6', sheep: '돌을 깎아 만든 항아리라 묵직해 보여.'
     },
 
     // 길과 여행
     'wild-flowers': {
-      title: '들의 꽃', kind: 'look', theme: 'road', prop: 'flowers', cue: 'road', icon: '🌺',
+      title: '들의 꽃', kind: 'look', rarity: 'common', theme: 'road', prop: 'flowers', cue: 'road', icon: '🌺',
       fact: '봄이면 언덕에 붉은 들꽃이 가득했어. "들의 백합화를 생각하여 보라."',
       ref: '마 6:28', sheep: '붉은 꽃잎이 바람에 흔들려. 코를 갖다 대 볼래.'
     },
     'terraced-field': {
-      title: '계단식 밭과 돌담', kind: 'look', theme: 'road', prop: 'terrace', cue: 'road', icon: '⛰️',
+      title: '계단식 밭과 돌담', kind: 'look', rarity: 'common', theme: 'road', prop: 'terrace', cue: 'road', icon: '⛰️',
       fact: '산지는 돌을 쌓아 계단 밭을 만들고 올리브·포도를 심었어.',
       sheep: '돌을 차곡차곡 쌓아 올려서 비탈도 밭이 됐네.'
     },
     'fig-tree': {
-      title: '무화과나무', kind: 'look', theme: 'road', prop: 'fig', cue: 'road', icon: '🌳',
+      title: '무화과나무', kind: 'look', rarity: 'common', theme: 'road', prop: 'fig', cue: 'road', icon: '🌳',
       fact: '그늘이 넓어 그 아래 앉아 쉬거나 성경을 묵상했대.',
       ref: '요 1:48', sheep: '잎이 넓어서 그늘이 진짜 시원해. 잠깐 쉬었다 가자.'
     },
     'traveler-pack': {
-      title: '여행자의 짐', kind: 'look', theme: 'road', prop: 'pack', cue: 'road', icon: '🎒',
+      title: '여행자의 짐', kind: 'look', rarity: 'common', theme: 'road', prop: 'pack', cue: 'road', icon: '🎒',
       fact: '지팡이, 가죽 물주머니, 샌들, 겉옷(밤엔 이불)이면 길을 떠났어.',
       sheep: '단출한데 필요한 건 다 있네. 밤엔 겉옷이 이불이 된대!'
     },
     milestone: {
-      title: '돌 이정표', kind: 'look', theme: 'road', prop: 'milestone', cue: 'road', icon: '🗿',
+      title: '돌 이정표', kind: 'look', rarity: 'common', theme: 'road', prop: 'milestone', cue: 'road', icon: '🗿',
       fact: '로마 사람들이 큰길에 거리를 새긴 돌기둥을 세웠어.',
       sheep: '돌에 글자가 새겨져 있어. 여기서 얼마나 더 가면 될까?'
     },
     donkey: {
-      title: '나귀', kind: 'touch', theme: 'road', prop: 'donkey', anim: 'donkey', cue: 'animal', icon: '🫏',
+      title: '나귀', kind: 'touch', rarity: 'common', theme: 'road', prop: 'donkey', anim: 'donkey', cue: 'animal', icon: '🫏',
       fact: '짐과 사람을 실어 나르던 든든한 동물이야. 산길에 강했어.',
       touchLine: '나귀가 긴 귀를 쫑긋하며 고개를 끄덕였어.', sheep: '움찔! 나귀 귀가 엄청 크네… 그래도 든든해 보여.'
     },
     'scroll-synagogue': {
-      title: '회당과 두루마리', kind: 'look', theme: 'road', prop: 'scroll', cue: 'worship', icon: '📜',
+      title: '회당과 두루마리', kind: 'look', rarity: 'rare', theme: 'road', prop: 'scroll', cue: 'worship', icon: '📜',
       fact: '안식일이면 회당에 모여 두루마리 성경을 읽었어.',
       ref: '눅 4:16', sheep: '돌돌 말린 두루마리를 펼치면 말씀이 가득 적혀 있겠지.'
     },
     'small-village': {
-      title: '작은 마을', kind: 'look', theme: 'road', prop: 'village', cue: 'road', icon: '🏘️',
+      title: '작은 마을', kind: 'look', rarity: 'common', theme: 'road', prop: 'village', cue: 'road', icon: '🏘️',
       fact: '나사렛은 수백 명이 사는 작은 시골 마을이었어. "나사렛에서 무슨 선한 것이 나올 수 있느냐"는 말도 있었지.',
       ref: '요 1:46', sheep: '작고 조용한 마을이라 골목 끝까지 금방 친해지겠어.'
     },
     'city-gate': {
-      title: '성문', kind: 'look', theme: 'road', prop: 'gate', cue: 'road', icon: '🚪',
+      title: '성문', kind: 'look', rarity: 'common', theme: 'road', prop: 'gate', cue: 'road', icon: '🚪',
       fact: '성문은 장로들이 앉아 재판하고 약속을 맺던 마을의 광장이었어.',
       ref: '룻 4:1', sheep: '사람들이 많이 오가는 자리네. 마을 소식이 다 모이겠다.'
     },
     census: {
-      title: '호적 등록', kind: 'look', theme: 'road', prop: 'census', cue: 'road', icon: '📋',
+      title: '호적 등록', kind: 'look', rarity: 'common', theme: 'road', prop: 'census', cue: 'road', icon: '📋',
       fact: '로마 황제의 명령으로 사람들은 조상의 고향에 가서 이름을 올렸어.',
       ref: '눅 2:1-3', sheep: '줄이 길게 늘어섰어. 멀리서 온 사람도 많나 봐.'
     },
     'roman-soldier': {
-      title: '로마 군인', kind: 'look', theme: 'road', prop: 'soldier', cue: 'animal', icon: '🛡️',
+      title: '로마 군인', kind: 'look', rarity: 'common', theme: 'road', prop: 'soldier', cue: 'animal', icon: '🛡️',
       fact: '유대는 로마의 다스림을 받았어.',
       sheep: '갑옷 소리가 철컥거려. 괜히 발걸음이 조심스러워져.'
     },
 
     // 들과 목자
     sheepfold: {
-      title: '돌 양 우리', kind: 'look', theme: 'field', prop: 'sheepfold', cue: 'wool', icon: '🐑',
+      title: '돌 양 우리', kind: 'look', rarity: 'common', theme: 'field', prop: 'sheepfold', cue: 'wool', icon: '🐑',
       fact: '밤이면 양을 돌담 우리에 넣고 목자가 입구에 누워 문이 되었대.',
       ref: '요 10:7', sheep: '목자님이 입구를 지켜 주면 밤에도 하나도 안 무섭겠다.'
     },
     'shepherd-staff': {
-      title: '목자의 지팡이와 막대기', kind: 'touch', theme: 'field', prop: 'staff', anim: 'scribe', cue: 'road', icon: '🦯',
+      title: '목자의 지팡이와 막대기', kind: 'touch', rarity: 'common', theme: 'field', prop: 'staff', anim: 'scribe', cue: 'road', icon: '🦯',
       fact: '지팡이로 양을 이끌고 막대기로 들짐승을 쫓았어.',
       ref: '시 23:4', touchLine: '지팡이 끝으로 바닥을 톡 짚자 든든한 소리가 났어.', sheep: '저 지팡이가 있으면 길을 잃을 걱정이 없겠어.'
     },
     sling: {
-      title: '물매 돌리기', kind: 'try', theme: 'field', prop: 'sling', cue: 'craft', icon: '🪨',
+      title: '물매 돌리기', kind: 'try', rarity: 'rare', theme: 'field', prop: 'sling', cue: 'craft', icon: '🪨',
       tryMode: 'spin', tryPrompt: '원을 그려 물매를 힘차게 돌려 봐.', tryBtn: '물매 돌리기',
       bag: { name: '목자의 물매', icon: '🪨' },
       fact: '다윗도 쓰던 돌팔매야. 목자는 이걸로 양 떼를 지켰어.',
       ref: '삼상 17:40', sheep: '휘잉 소리가 나! 들짐승이 얼씬도 못 하겠다.'
     },
     'watch-fire': {
-      title: '모닥불 지키기', kind: 'try', theme: 'field', prop: 'campfire', cue: 'fire', icon: '🔥',
+      title: '모닥불 지키기', kind: 'try', rarity: 'rare', theme: 'field', prop: 'campfire', cue: 'fire', icon: '🔥',
       tryMode: 'tap', tryPrompt: '장작을 톡톡 넣어 모닥불을 따뜻하게 지켜 봐.', tryBtn: '장작 넣기',
       bag: { name: '따뜻한 불씨', icon: '🔥' },
       fact: '목자들은 밤새 불을 피우고 번갈아 깨어 있었어.',
       ref: '눅 2:8', sheep: '타닥타닥 불꽃이 따뜻해. 불 옆에서 꾸벅 졸릴 것 같아.'
     },
     'hold-lamb': {
-      title: '새끼 양 안기', kind: 'touch', theme: 'field', prop: 'lamb', anim: 'sway', cue: 'baby', icon: '🐑',
+      title: '새끼 양 안기', kind: 'touch', rarity: 'common', theme: 'field', prop: 'lamb', anim: 'sway', cue: 'baby', icon: '🐑',
       fact: '목자는 어린 양을 품에 안아 옮겼어.',
       ref: '사 40:11', touchLine: '새끼 양을 품에 안으니 보드라운 온기가 전해졌어.', sheep: '나도 가끔 그렇게 안아 줘!'
     },
     'feast-table': {
-      title: '잔칫상', kind: 'touch', theme: 'field', prop: 'feast', anim: 'pray', cue: 'food', icon: '🍽️',
+      title: '잔칫상', kind: 'touch', rarity: 'common', theme: 'field', prop: 'feast', anim: 'pray', cue: 'food', icon: '🍽️',
       fact: '아이가 태어나고 여드레째 이름을 짓고 이웃이 함께 기뻐했어.',
       ref: '눅 1:59', touchLine: '이웃들이 모여 아기 이름을 부르며 환하게 웃었어.', sheep: '맛있는 냄새랑 웃음소리가 마당 가득해!'
     },
 
     // 성탄의 밤
     'guest-room': {
-      title: '손님방과 아래층 동물 칸', kind: 'look', theme: 'christmas', prop: 'guestroom', cue: 'animal', icon: '🏠',
+      title: '손님방과 아래층 동물 칸', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'guestroom', cue: 'animal', icon: '🏠',
       fact: '\'여관\'으로 옮긴 말은 집의 손님방을 뜻할 수도 있어. 집 아래층에는 동물이 지내는 칸이 있었대.',
       ref: '눅 2:7', sheep: '아래층에 동물들 자리가 있으면 밤에 꽤 따뜻하겠어.'
     },
     'knock-door': {
-      title: '문 두드리기', kind: 'touch', theme: 'christmas', prop: 'door', anim: 'scribe', cue: 'road', icon: '✊',
+      title: '문 두드리기', kind: 'touch', rarity: 'common', theme: 'christmas', prop: 'door', anim: 'scribe', cue: 'road', icon: '✊',
       fact: '그날 밤 베들레헴은 사람으로 꽉 찼어.',
       touchLine: '똑똑 두드렸지만 안쪽은 이미 사람들로 가득해.', sheep: '빈자리가 있을까? 조금 더 걸어 보자.'
     },
     'city-of-david': {
-      title: '다윗의 동네', kind: 'look', theme: 'christmas', prop: 'david', cue: 'worship', icon: '👑',
+      title: '다윗의 동네', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'david', cue: 'worship', icon: '👑',
       fact: '베들레헴은 다윗 왕이 태어난 마을이야.',
       ref: '눅 2:4', sheep: '오래전 다윗이 양을 치던 언덕이 바로 이 근처래.'
     },
     'stone-manger': {
-      title: '돌 구유', kind: 'look', theme: 'christmas', prop: 'manger', cue: 'baby', icon: '🪨',
+      title: '돌 구유', kind: 'look', rarity: 'legend', theme: 'christmas', prop: 'manger', cue: 'baby', icon: '🪨',
       fact: '구유는 가축의 먹이를 담는 돌이나 나무 여물통이야.',
       ref: '눅 2:7', sheep: '여물통에 아기가 누웠다니… 발소리를 낮추게 돼.'
     },
     'cave-stable': {
-      title: '동굴 마구간', kind: 'look', theme: 'christmas', prop: 'cave', cue: 'quiet', icon: '🪨',
+      title: '동굴 마구간', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'cave', cue: 'quiet', icon: '🪨',
       fact: '베들레헴에선 동굴을 가축 우리로 쓰기도 했대.',
       sheep: '바위 안쪽이라 찬 바람이 덜 들어오네.'
     },
     'ox-donkey': {
-      title: '소와 나귀', kind: 'touch', theme: 'christmas', prop: 'oxdonkey', anim: 'donkey', cue: 'animal', icon: '🐂',
+      title: '소와 나귀', kind: 'touch', rarity: 'common', theme: 'christmas', prop: 'oxdonkey', anim: 'donkey', cue: 'animal', icon: '🐂',
       fact: '따뜻한 숨을 쉬는 가축들이야.',
       touchLine: '소와 나귀가 하얀 입김을 내쉬며 조용히 고개를 끄덕였어.', sheep: '따뜻한 숨결 덕분에 마구간이 포근해.'
     },
     'great-star': {
-      title: '큰 별', kind: 'look', theme: 'christmas', prop: 'greatstar', cue: 'worship', icon: '⭐',
+      title: '큰 별', kind: 'look', rarity: 'legend', theme: 'christmas', prop: 'greatstar', cue: 'worship', icon: '⭐',
       fact: '동방에서 온 사람들은 별을 따라왔어.',
       ref: '마 2:2', sheep: '저 별 진짜 밝다! 밤하늘에서 눈을 못 떼겠어.'
     },
     'well-stone-lid': {
-      title: '우물 돌 뚜껑', kind: 'look', theme: 'work', prop: 'millstone', cue: 'water', icon: '🪨',
+      title: '우물 돌 뚜껑', kind: 'look', rarity: 'common', theme: 'work', prop: 'millstone', cue: 'water', icon: '🪨',
       fact: '우물 입구를 큰 돌로 덮어 두었다가, 양 떼가 모이면 돌을 굴려 물을 먹였어.',
       ref: '창 29:2-3', sheep: '돌이 꽤 커 보여! 양들이 다 모일 때까지 우물을 지켜 줬나 봐.'
     },
     'well-trough': {
-      title: '우물가 물통', kind: 'look', theme: 'field', prop: 'mikveh', cue: 'water', icon: '🪣',
+      title: '우물가 물통', kind: 'look', rarity: 'common', theme: 'field', prop: 'mikveh', cue: 'water', icon: '🪣',
       fact: '우물 옆엔 가축이 마실 물통이 있었어. 리브가는 물동이 물을 여기 붓고 낙타들에게 물을 주었지.',
       ref: '창 24:20', sheep: '첨벙! 나도 목마를 때 저 물통에서 시원하게 마시고 싶어.'
     },
     'rope-grooves': {
-      title: '줄에 닳은 홈', kind: 'touch', theme: 'work', prop: 'well', anim: 'scribe', cue: 'craft', icon: '🪢',
+      title: '줄에 닳은 홈', kind: 'touch', rarity: 'common', theme: 'work', prop: 'well', anim: 'scribe', cue: 'craft', icon: '🪢',
       fact: '오래 쓴 우물 돌 테두리엔 두레박 줄에 닳아 생긴 홈이 남아 있대.',
       touchLine: '돌 테두리에 깊게 파인 두레박 줄 자국을 손끝으로 만져 봤어.',
       sheep: '단단한 돌이 닳을 만큼 오랫동안 물을 길어 올렸구나.'
     },
+    'barren-country': {
+      title: '빈 들', kind: 'look', rarity: 'rare', theme: 'road', prop: 'wadi', cue: 'quiet', icon: '🏜️',
+      fact: '아기 요한은 자라며 이스라엘에 나타나기까지 빈 들에 있었어.',
+      ref: '눅 1:80'
+    },
+    'wilderness-road': {
+      title: '광야의 길', kind: 'look', rarity: 'legend', theme: 'road', prop: 'wilderness-road', cue: 'quiet', icon: '🏜️',
+      fact: '"광야에 외치는 자의 소리여 주의 길을 예비하라." 대림절은 이 길을 준비하는 시간이야.',
+      ref: '사 40:3; 눅 3:4'
+    },
+    'camel-hair-belt': {
+      title: '낙타털 옷과 가죽 띠', kind: 'touch', rarity: 'common', theme: 'work', prop: 'camel-coat', cue: 'craft', icon: '🧥',
+      fact: '요한은 낙타털 옷을 입고 허리에 가죽 띠를 띠었어.',
+      ref: '마 3:4'
+    },
+    'locusts-honey': {
+      title: '메뚜기와 들꿀', kind: 'look', rarity: 'common', theme: 'field', prop: 'wild-honey', cue: 'quiet', icon: '🍯',
+      fact: '요한은 광야에서 메뚜기와 들꿀을 먹었어.',
+      ref: '마 3:4'
+    },
+    'judean-village': {
+      title: '유대 산골 한 동네', kind: 'look', rarity: 'common', theme: 'home', prop: 'village', cue: 'quiet', icon: '🏘️',
+      fact: "엘리사벳이 살던 곳은 이름 없이 '유대 산골 한 동네'라고만 나와.",
+      ref: '눅 1:39'
+    },
+    'thresh-winnow': {
+      title: '타작과 까부르기', kind: 'try', rarity: 'rare', theme: 'work', prop: 'winnow', cue: 'craft', icon: '🌾',
+      fact: '곡식은 타작마당에서 떨고, 바람에 까부르면 가벼운 겨는 날아가고 알곡만 남았어.',
+      ref: '룻 3:2; 마 3:12',
+      tryMode: 'tap', tryPrompt: '키를 톡톡 눌러 겨를 바람에 날려 봐.', tryBtn: '키 까부르기'
+    },
+    'hilltown': {
+      title: '산 위 동네', kind: 'look', rarity: 'common', theme: 'home', prop: 'village', cue: 'quiet', icon: '⛰️',
+      fact: '나사렛은 산 위에 세워진 동네였어.',
+      ref: '눅 4:29'
+    },
+    'mount-tabor': {
+      title: '다볼산', kind: 'look', rarity: 'common', theme: 'road', prop: 'tabor', cue: 'quiet', icon: '⛰️',
+      fact: '나사렛 동쪽에 둥근 다볼산이 솟아 있어.',
+      ref: '시 89:12'
+    },
+    'sea-of-galilee': {
+      title: '갈릴리 호수', kind: 'look', rarity: 'common', theme: 'road', prop: 'lake', cue: 'water', icon: '⛵',
+      fact: "갈릴리 호수는 '바다'라고도 불렸어. 고기잡이배가 떠 있었지.",
+      ref: '마 4:18'
+    },
+    'herod-palace': {
+      title: '헤롯의 궁', kind: 'look', rarity: 'common', theme: 'christmas', prop: 'palace', cue: 'quiet', icon: '🏛️',
+      fact: '헤롯 왕은 예루살렘에 화려한 궁을 두었어. 동방에서 온 사람들이 먼저 이곳에 찾아왔지.',
+      ref: '마 2:1-3'
+    },
+    'rachel-tomb': {
+      title: '라헬의 무덤', kind: 'look', rarity: 'rare', theme: 'road', prop: 'tomb', cue: 'quiet', icon: '🪨',
+      fact: '베들레헴 가는 길가에 야곱의 아내 라헬이 묻혔어.',
+      ref: '창 35:19'
+    },
+    'david-well': {
+      title: '다윗의 우물', kind: 'touch', rarity: 'rare', theme: 'work', prop: 'well', cue: 'water', icon: '🪣',
+      fact: '다윗은 베들레헴 성문 곁 우물물을 마시고 싶어 했어.',
+      ref: '삼하 23:15'
+    },
+    'gleaning': {
+      title: '이삭줍기', kind: 'try', rarity: 'rare', theme: 'field', prop: 'grain', cue: 'craft', icon: '🌾',
+      fact: '룻은 베들레헴 보아스의 밭에서 이삭을 주웠어. 밭 모퉁이와 떨어진 이삭은 가난한 사람을 위해 남겨 두었지.',
+      ref: '룻 2:3; 레 19:9-10',
+      tryMode: 'tap', tryPrompt: '밭 모퉁이에 떨어진 이삭을 톡톡 눌러 주워 봐.', tryBtn: '이삭 줍기'
+    },
+    'eder-tower': {
+      title: '에델 망대', kind: 'look', rarity: 'legend', theme: 'field', prop: 'watchtower', cue: 'quiet', icon: '🏰',
+      fact: "베들레헴 근처에 '양 떼의 망대'라는 뜻의 에델 망대가 있었어.",
+      ref: '창 35:21; 미 4:8'
+    },
     'well-meetings': {
-      title: '우물가의 만남', kind: 'look', theme: 'road', prop: 'water', cue: 'water', icon: '💧',
+      title: '우물가의 만남', kind: 'look', rarity: 'common', theme: 'road', prop: 'water', cue: 'water', icon: '💧',
       fact: '성경엔 우물가에서 만난 이야기가 많아. 리브가, 라헬, 그리고 예수님을 만난 사마리아 여인.',
       ref: '창 24:15; 창 29:9-10; 요 4:7', sheep: '물을 길으러 왔다가 반가운 이야기를 나누는 자리가 됐네.'
     }
@@ -1481,12 +1553,12 @@
       ]
     },
     '1-1': {
-      newIds: ['millstone', 'empty-cradle', 'money-changer'],
+      newIds: ['millstone', 'empty-cradle', 'judean-village'],
       storyPeople: [
         { id: 'elizabeth', actor: '엘리사벳', pos: [-4.1, 8.4], lines: cues['1-1'].lines }
       ],
       items: [
-        spot('money-changer', 5, -.8, { site: 'outer-court' }),
+        spot('judean-village', .9, 2.5, { site: 'judean-terraces' }),
         spot('millstone', -1.8, 10.4, { indoor: true }),
         spot('empty-cradle', -3.6, 13.1, { indoor: true }),
         spot('flat-roof', -1.80, -20.34),
@@ -1495,7 +1567,7 @@
         spot('oil-lamp', 2.9, -15.4, { indoor: true }),
         spot('water-jar', -5.4, 15.2, { indoor: true }),
         spot('mud-brick', 11.4, 6.2),
-        spot('carpenter-plane', 8.8, -19.5, { indoor: true, ability: 'jump' })
+        spot('carpenter-plane', 8.8, -19.5, { indoor: true, ability: 'jump', houseDoor: 'house/roof-store' })
       ]
     },
     '1-2': {
@@ -1553,12 +1625,13 @@
       ]
     },
     '1-5': {
-      newIds: ['wild-flowers', 'terraced-field', 'winepress'],
+      newIds: ['wild-flowers', 'terraced-field', 'thresh-winnow'],
       storyPeople: [
         { id: 'start', actor: '사가랴', pos: [2.6, 12.8], lines: cues['1-5'].lines },
         { id: 'elizabeth', actor: '엘리사벳', pos: [1.25, -18.25], lines: [[null, '무사히 돌아오셨군요. 산골길 바람이 꽤 찼을 텐데.']] }
       ],
       items: [
+        spot('thresh-winnow', 3.5, 1.95, { site: 'village-threshing' }),
         spot('wild-flowers', 3.4, 13.5),
         spot('terraced-field', 11.8, -2.4),
         spot('winepress', -10.4, -4.6),
@@ -1588,12 +1661,14 @@
       ]
     },
     '2-0': {
-      newIds: ['milestone', 'traveler-pack', 'donkey'],
+      newIds: ['milestone', 'wilderness-road', 'camel-hair-belt'],
       storyPeople: [
         { id: 'joseph', actor: '요셉', pos: [-2.6, 14.6], lines: cues['2-0'].lines },
         { id: 'guide', actor: '고갯길 목자', pos: [9.9, -13.5], lines: [[null, '물이 빠지고 돌이 남았어. 길을 곧게 닦아 두면 나그네들이 편히 지나갈 거야.']] }
       ],
       items: [
+        spot('wilderness-road', .55, 2.45, { site: 'wilderness-vista' }),
+        spot('camel-hair-belt', -3.6, -1.4, { site: 'wilderness-edge' }),
         spot('milestone', -3.2, 10.5),
         spot('traveler-pack', 4.6, 12.2),
         spot('donkey', 2.8, 14.0),
@@ -1605,12 +1680,13 @@
       ]
     },
     '2-1': {
-      newIds: ['small-village', 'fig-tree', 'mud-brick'],
+      newIds: ['small-village', 'fig-tree', 'hilltown'],
       storyPeople: [
         { id: 'joseph', actor: '요셉', pos: [-3.4, 11.2], lines: cues['2-1'].lines },
         { id: 'waterNeighbor', actor: '우물가 이웃', pos: [-4.7, -15.7], lines: [[null, '오늘은 목공소가 조용하네. 요셉이 먼저 말해 줄 때까지 기다려 주자.']] }
       ],
       items: [
+        spot('hilltown', 1.2, 2.7, { site: 'nazareth-cliff' }),
         spot('small-village', -3.8, 13.5),
         spot('fig-tree', -14.2, -15.4),
         spot('mud-brick', 6.8, 3.2),
@@ -1658,12 +1734,13 @@
       ]
     },
     '2-4': {
-      newIds: ['olive-press', 'ascent-steps', 'scroll-synagogue'],
+      newIds: ['olive-press', 'mount-tabor', 'ascent-steps'],
       storyPeople: [
         { id: 'joseph', actor: '요셉', pos: [-2.9, 13.6], lines: cues['2-4'].lines },
         { id: 'farmer', actor: '올리브 밭 주인', pos: [-8.8, 3.0], lines: [[null, '가을에 딴 올리브를 돌 틀에 으깨고 눌러야 맑은 기름이 나온단다.']] }
       ],
       items: [
+        spot('mount-tabor', 1.8, 1.6, { site: 'tabor-vista' }),
         spot('olive-press', -7.2, 2.2),
         spot('ascent-steps', -3.2, 10.4),
         spot('scroll-synagogue', -10.0, 13.5, { indoor: true, house: '갈릴리 회당' }),
@@ -1693,7 +1770,7 @@
       ]
     },
     '2-6': {
-      newIds: ['well-bucket', 'water-carry', 'water-jar'],
+      newIds: ['well-bucket', 'water-carry', 'well-trough'],
       storyPeople: [
         { id: 'joe', actor: '요셉', pos: [5.2, 12.8], lines: cues['2-6'].lines },
         { id: 'maria', actor: '마리아', pos: [2.9, -17.3], lines: [[null, '우물에서 길어 온 물로 항아리를 채웠어요. 이제 정말 사람 사는 집 같아요.']] }
@@ -1712,7 +1789,7 @@
       ]
     },
     '3-0': {
-      newIds: ['fig-tree', 'loom-spindle', 'small-village'],
+      newIds: ['mud-brick', 'loom-spindle', 'small-village'],
       storyPeople: [
         { id: 'maria', actor: '마리아', pos: [-2.7, -4.7], lines: cues['3-0'].lines }
       ],
@@ -1728,7 +1805,7 @@
       ]
     },
     '3-1': {
-      newIds: ['well-stone-lid', 'well-trough', 'rope-grooves', 'well-meetings'],
+      newIds: ['well-stone-lid', 'rope-grooves', 'well-meetings'],
       storyPeople: [
         { id: 'maria', actor: '마리아', pos: [-3.5, -4.6], lines: cues['3-1'].lines }
       ],
@@ -1779,11 +1856,12 @@
       ]
     },
     '3-4': {
-      newIds: ['wild-flowers', 'terraced-field', 'temple-trumpet'],
+      newIds: ['wild-flowers', 'sea-of-galilee', 'temple-trumpet'],
       storyPeople: [
         { id: 'maria', actor: '마리아', pos: [0, 3.8], lines: cues['3-4'].lines }
       ],
       items: [
+        spot('sea-of-galilee', 2.1, 1.9, { site: 'lake-pass' }),
         spot('wild-flowers', 2.4, 2.4),
         spot('terraced-field', 3.8, -1.6),
         spot('scroll-synagogue', -4.0, 2.5, { indoor: true, house: '언덕 쉼터' }),
@@ -1795,11 +1873,12 @@
       ]
     },
     '3-5': {
-      newIds: ['winepress', 'olive-press'],
+      newIds: ['winepress', 'olive-press', 'locusts-honey'],
       storyPeople: [
         { id: 'maria', actor: '마리아', pos: [0, 2.9], lines: cues['3-5'].lines }
       ],
       items: [
+        spot('locusts-honey', 4.8, 1.5, { site: 'wilderness-edge' }),
         spot('winepress', 4.4, 2.2),
         spot('olive-press', -4.4, 2.0),
         spot('terraced-field', -4.6, -2.4),
@@ -1811,12 +1890,13 @@
       ]
     },
     '3-6': {
-      newIds: ['feast-table', 'wax-tablet'],
+      newIds: ['feast-table', 'wax-tablet', 'barren-country'],
       storyPeople: [
         { id: 'elizabeth', actor: '엘리사벳', pos: [-1.1, 1.5], lines: cues['3-6'].lines },
         { id: 'zach', actor: '사가랴', pos: [1.7, -4.6], lines: zachariahLater }
       ],
       items: [
+        spot('barren-country', 1.4, 4.1, { site: 'wilderness-edge' }),
         spot('feast-table', -3.2, -4.4),
         spot('wax-tablet', 0.4, -5.9, { indoor: true, house: '엘리사벳의 집' }),
         spot('swaddle-wrap', -0.4, -5.9, { indoor: true, house: '엘리사벳의 집' }),
@@ -1829,12 +1909,14 @@
       ]
     },
     '4-0': {
-      newIds: ['city-gate', 'census', 'roman-soldier'],
+      newIds: ['city-gate', 'david-well', 'herod-palace'],
       storyPeople: [
         { id: 'grandpa', actor: '할아버지', pos: [-3.8, 4.6], lines: cues['4-0'].lines }
       ],
       items: [
         spot('city-gate', 0, -5.2),
+        spot('herod-palace', .7, 2.1, { site: 'herod-palace' }),
+        spot('david-well', .9, 2.6, { site: 'david-well' }),
         spot('census', 2.8, -4.8),
         spot('roman-soldier', -4.4, -4.8),
         spot('city-of-david', 3.0, 2.4),
@@ -1845,12 +1927,13 @@
       ]
     },
     '4-1': {
-      newIds: ['guest-room', 'knock-door', 'city-of-david'],
+      newIds: ['guest-room', 'knock-door', 'rachel-tomb'],
       storyPeople: [
         { id: 'innkeeper', actor: '여관 주인', pos: [-0.1, 3.5], lines: cues['4-1'].lines }
       ],
       items: [
         spot('guest-room', -5.4, -5.5, { indoor: true, house: '여관' }),
+        spot('rachel-tomb', 1.35, 1.6, { site: 'rachel-tomb' }),
         spot('knock-door', -3.2, -5.2),
         spot('city-of-david', 2.8, 2.6),
         spot('oil-lamp', -5.0, -5.5, { indoor: true, house: '여관' }),
@@ -1862,12 +1945,13 @@
       ]
     },
     '4-2': {
-      newIds: ['sheepfold', 'shepherd-staff', 'hold-lamb'],
+      newIds: ['sheepfold', 'gleaning', 'hold-lamb'],
       storyPeople: [
         { id: 'grandpa', actor: '할아버지', pos: [0.7, -2.8], lines: cues['4-2'].lines }
       ],
       items: [
         spot('sheepfold', 4.4, -4.4),
+        spot('gleaning', -2.35, 2.8, { site: 'boaz-field' }),
         spot('shepherd-staff', -2.6, -2.4),
         spot('hold-lamb', -4.4, 1.4),
         spot('sling', 3.4, 1.2),
@@ -1878,12 +1962,13 @@
       ]
     },
     '4-3': {
-      newIds: ['watch-fire', 'sling'],
+      newIds: ['watch-fire', 'sling', 'eder-tower'],
       storyPeople: [
         { id: 'grandpa', actor: '할아버지', pos: [-0.1, -3.65], lines: cues['4-3'].lines }
       ],
       items: [
         spot('watch-fire', -1.4, -4.6),
+        spot('eder-tower', 2.2, 2.5, { site: 'eder-tower' }),
         spot('sling', 2.8, -1.6),
         spot('sheepfold', 4.4, -4.4),
         spot('shepherd-staff', -3.2, -2.4),
@@ -1911,7 +1996,7 @@
       ]
     },
     end: {
-      newIds: ['stone-manger', 'swaddle-wrap', 'great-star'],
+      newIds: ['stone-manger', 'shepherd-staff', 'city-of-david'],
       storyPeople: [
         { id: 'joseph', actor: '요셉', pos: [0, -4.38], lines: cues.end.lines }
       ],
@@ -1966,6 +2051,52 @@
       window.EXPLORE[id].voice = 'place-' + id;
     }
   }
+  window.EXPLORE_ZONE_NARRATION = {
+    'outer-court': '성전에서 가장 넓은 뜰이야. 누구나 여기까지는 들어올 수 있어.',
+    'south-steps': '이 계단을 올라 사람들은 성전으로 들어갔어.',
+    'sheep-gate': '양들이 드나드는 문이야. 곁에 못이 하나 있어.',
+    'wall-walk': '성벽 위야. 예루살렘이 한눈에 내려다보여.',
+    'lower-town': '성전 아래 사람들이 사는 골목이야.',
+    'siloam': '예루살렘 남쪽의 못이야. 물 긷는 소리가 들려.',
+    'olives': '성전 맞은편 언덕이야. 올리브 숲 사이로 성전이 보여.',
+    'herod-palace': '헤롯 왕의 궁이야. 높은 탑이 서 있어.',
+    'judean-terraces': '돌을 쌓아 만든 계단밭이야. 올리브와 포도가 자라.',
+    'village-threshing': '산골 마을의 우물과 타작마당이야.',
+    'valley-stream': '골짜기를 따라 물이 흘러.',
+    'wilderness-edge': '여기부터 빈 들이야. 아기 요한이 자란 곳이지.',
+    'wilderness-vista': '광야를 가로지르는 길이야. 주의 길을 예비하라.',
+    'nazareth-cliff': '나사렛은 산 위 동네야. 아래가 까마득해.',
+    'synagogue-yard': '안식일이면 사람들이 이 회당에 모여.',
+    'grain-yard': '곡식을 떨고 까부르는 마당이야.',
+    'olive-cave': '올리브를 으깨 기름을 짜는 동굴이야.',
+    'tabor-vista': '동쪽에 둥근 다볼산이 보여.',
+    'lake-pass': '저 멀리 반짝이는 게 갈릴리 호수야.',
+    'rachel-tomb': '베들레헴 가는 길가, 라헬의 무덤이야.',
+    'david-well': '성문 곁 우물이야. 다윗이 그리워하던 물이지.',
+    'boaz-field': '룻이 이삭을 줍던 보아스의 밭이야.',
+    'eder-tower': '양 떼를 지키던 망대야. 들판이 다 보여.',
+    'shepherd-cave': '밤이면 양들이 이 동굴 우리에서 쉬어.',
+    'bethlehem-vista': '베들레헴 언덕이야. 저 멀리 예루살렘 쪽이 보여.'
+  };
+  window.EXPLORE_GEOGRAPHY = {
+    jerusalem: { title: '예루살렘', point: [175, 228],
+      fact: "해발 약 750m 산 위의 도시야. 그래서 성경은 예루살렘에 '올라간다'고 말해.", ref: '시 122:1' },
+    judea: { title: '유대 산골', point: [119, 250],
+      fact: '예루살렘 서쪽으로 이어지는 산지야. 돌이 많아 계단밭을 만들었어.' },
+    wilderness: { title: '빈 들(광야)', point: [266, 258],
+      fact: '예루살렘 동쪽 산지 너머는 비가 거의 안 와. 메마른 땅이 해발 약 -430m 사해까지 내리막으로 이어져.' },
+    galilee: { title: '나사렛·갈릴리', point: [196, 76],
+      fact: '예루살렘에서 북쪽으로 약 100km. 나사렛은 해발 약 350m 언덕 마을이고, 동쪽에 갈릴리 호수가 있어.' },
+    bethlehem: { title: '베들레헴', point: [188, 321],
+      fact: '예루살렘에서 남쪽으로 약 9km, 해발 약 770m 언덕 마을이야.' }
+  };
+  window.EXPLORE_JOURNEYS = {
+    mary: { title: '마리아 · 나사렛 → 유대 산골', fact: '마리아는 일어나 빨리 유대 산골로 갔어.', ref: '눅 1:39',
+      path: 'M180 62Q153 92 165 121T150 198Q148 233 118 270', color: '#7c3e64' },
+    family: { title: '요셉과 마리아 · 나사렛 → 베들레헴', fact: '약 150km, 며칠 걸리는 길이었어.', ref: '눅 2:4',
+      path: 'M180 62Q211 122 216 161T208 221Q230 272 176 302', color: '#9b5028' }
+  };
+  window.EXPLORE_CARRY_WORD = '사 40:11';
   window.PLACE_NARRATION = placeNarration;
   window.DISCOVER_THEMES = DISCOVER_THEMES;
   window.DISCOVERIES = DISCOVERIES;

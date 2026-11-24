@@ -361,6 +361,7 @@
     door: t => { thud(t, 90, 0.25, 0.3); noise(t + 0.02, 0.25, 0.08, 400, 200); },
     knock: t => [0, 0.18, 0.36].forEach(d => thud(t + d, 180, 0.2, 0.08)),
     walkExplore: t => { thud(t, 106, .055, .021); noise(t, .058, .014, 840, 670); },
+    hoofExplore: t => { thud(t, 147, .085, .062); thud(t + .058, 112, .083, .054); noise(t + .018, .076, .019, 710, 460); },
     steps: t => [0, 0.35, 0.7, 1.05].forEach(d => { thud(t + d, 110, 0.12, 0.1); noise(t + d, 0.08, 0.03, 900, 500); }),
     crowd: t => { noise(t, 2.2, 0.06, 500, 900); noise(t + 0.3, 1.8, 0.04, 1200, 700); },
     wind: t => noise(t, 2.6, 0.07, 300, 1400),
@@ -397,6 +398,64 @@
       [57, 69, 76, 81].forEach((m, i) => bell(m, t + i * 0.14, i ? 0.036 : 0.024));
     },
     angel: t => { pad([72, 76, 79, 84], t, 2.2, 0.03); [84, 88, 91, 96].forEach((m, i) => bell(m, t + 0.15 * i, 0.05)); },
+    revealOrb(t, rarity = 'common') {
+      noise(t, 0.36, rarity === 'legend' ? 0.09 : 0.055, 520, 3200);
+      const notes = rarity === 'legend' ? [67, 72, 76, 79, 84, 88] : rarity === 'rare' ? [69, 74, 78, 81, 86] : [72, 76, 79, 84];
+      notes.forEach((m, i) => musicBox(m, t + i * 0.055, rarity === 'legend' ? 0.095 : 0.07, sfxBus));
+    },
+    revealCharge(t, rarity = 'common') {
+      if (rarity === 'legend') {
+        noise(t, 0.75, 0.085, 420, 3800);
+        [60, 64, 67, 72, 76, 79, 84, 88].forEach((m, i) => musicBox(m, t + i * 0.08, 0.085, sfxBus));
+        thud(t + 0.58, 62, 0.34, 0.45);
+        [84, 88, 91, 96].forEach((m, i) => bell(m, t + 0.58 + i * 0.06, 0.075, sfxBus));
+      } else if (rarity === 'rare') {
+        noise(t, 0.42, 0.065, 500, 2600);
+        [69, 72, 76, 81, 84].forEach((m, i) => musicBox(m, t + i * 0.065, 0.08, sfxBus));
+        bell(88, t + 0.32, 0.07, sfxBus);
+      } else {
+        noise(t, 0.22, 0.045, 600, 1800);
+        musicBox(76, t, 0.065, sfxBus);
+        musicBox(81, t + 0.09, 0.06, sfxBus);
+      }
+    },
+    revealFlip(t, rarity = 'common') {
+      noise(t, 0.16, 0.085, 2200, 680);
+      thud(t, 145, 0.09, 0.09);
+      const c = t + 0.05;
+      if (rarity === 'legend') {
+        const choirDest = out(sfxBus, 0.9, 0.85);
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(1350, c); lp.connect(choirDest);
+        [60, 67, 72, 76, 79, 84].forEach(m => [-8, 0, 8].forEach(det => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = det === 0 ? 'sine' : 'triangle';
+          o.frequency.value = hz(m); o.detune.value = det;
+          g.gain.setValueAtTime(0, c);
+          g.gain.linearRampToValueAtTime(0.032, c + 0.22);
+          g.gain.setValueAtTime(0.028, c + 1.15);
+          g.gain.exponentialRampToValueAtTime(0.0001, c + 2.1);
+          o.connect(g); g.connect(lp);
+          o.start(c); o.stop(c + 2.15);
+        }));
+        [72, 76, 79, 84, 88, 91, 96].forEach((m, i) => bell(m, c + i * 0.085, i >= 4 ? 0.085 : 0.07, sfxBus));
+        thud(c, 55, 0.26, 0.42);
+      } else if (rarity === 'rare') {
+        [72, 76, 79, 83, 88].forEach((m, i) => {
+          musicBox(m, c + i * 0.075, 0.095, sfxBus);
+          if (i >= 2) bell(m, c + i * 0.075 + 0.02, 0.055, sfxBus);
+        });
+      } else {
+        [72, 76, 79].forEach((m, i) => musicBox(m, c + i * 0.07, 0.08, sfxBus));
+        bell(84, c + 0.18, 0.05, sfxBus);
+      }
+    },
+    zoneDiscover(t) {
+      noise(t, 0.28, 0.04, 480, 1900);
+      [67, 74, 79, 83].forEach((m, i) => {
+        musicBox(m, t + i * 0.085, 0.08, sfxBus);
+        if (i >= 2) bell(m, t + i * 0.085 + 0.02, 0.05, sfxBus);
+      });
+    },
     baby: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(660, t + 0.25); o.frequency.linearRampToValueAtTime(480, t + 0.7); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.08); g.gain.linearRampToValueAtTime(0, t + 0.75); o.connect(g); g.connect(out(sfxBus, 1, 0.5)); o.start(t); o.stop(t + 0.8); }
   };
   function bleat(t, pitch = 420) {

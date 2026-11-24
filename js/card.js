@@ -688,23 +688,71 @@
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
     await fontsReady();
-    await starBack(ctx, W, H, STYLE.ch1.frame, 1225);
+    const rawRarity = item?.rarity;
+    const rarity = (rawRarity === 'legend' || rawRarity === 'legendary') ? 'legend'
+      : (rawRarity === 'rare' || item?.kind === 'try') ? 'rare' : 'common';
+    const rarityCfg = {
+      legend: {
+        frame: ['#fff7d1', '#ffd05b', '#9e6310', '#ffe48e', '#fff7d1'],
+        stroke: '#ffd86b',
+        badgeBg: '#3a2710ee',
+        badgeStroke: '#ffd86b',
+        badgeText: '✦ 전설 발견 ✦',
+        badgeColor: '#ffe48f',
+        halo: 'rgba(255, 212, 96, 0.42)'
+      },
+      rare: {
+        frame: ['#e6f6ff', '#62bdff', '#234e8a', '#9fd8ff', '#e6f6ff'],
+        stroke: '#75c6ff',
+        badgeBg: '#132b4aee',
+        badgeStroke: '#75c6ff',
+        badgeText: '✧ 희귀 발견 ✧',
+        badgeColor: '#bfe6ff',
+        halo: 'rgba(104, 190, 255, 0.34)'
+      },
+      common: {
+        frame: ['#ffffff', '#d7cfe6', '#695f80', '#efeaf7', '#ffffff'],
+        stroke: '#dfd6ee',
+        badgeBg: '#27223dee',
+        badgeStroke: '#cfc3e4',
+        badgeText: '일반 발견',
+        badgeColor: '#f2ecf9',
+        halo: 'rgba(225, 215, 245, 0.2)'
+      }
+    }[rarity];
+    await starBack(ctx, W, H, rarityCfg.frame, 1225);
+    const halo = ctx.createRadialGradient(x, 460, 40, x, 460, 440);
+    halo.addColorStop(0, rarityCfg.halo);
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(80, 120, 920, 680);
+
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffd991'; ctx.font = `700 36px ${SANS}`;
-    ctx.fillText('그 밤을 향하여 · 오늘 알게 된 것', x, 124);
-    ctx.fillStyle = '#fff5dc'; ctx.font = `700 72px ${SERIF}`;
-    ctx.fillText(item.title, x, 224, 920);
-    // 3D 스냅숏 또는 아이콘 프레임
+    ctx.fillStyle = rarityCfg.badgeColor; ctx.font = `700 34px ${SANS}`;
+    ctx.fillText('그 밤을 향하여 · 오늘 알게 된 것', x, 114);
+
+    // 등급 배지 알약
     ctx.save();
-    rr(ctx, 170, 268, 740, 424, 28);
+    rr(ctx, x - 140, 132, 280, 46, 23);
+    ctx.fillStyle = rarityCfg.badgeBg; ctx.fill();
+    ctx.strokeStyle = rarityCfg.badgeStroke; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = rarityCfg.badgeColor; ctx.font = `700 26px ${SANS}`;
+    ctx.fillText(rarityCfg.badgeText, x, 164);
+    ctx.restore();
+
+    ctx.fillStyle = '#fff5dc'; ctx.font = `700 68px ${SERIF}`;
+    ctx.fillText(item.title, x, 242, 920);
+    // 3D 스냅숏 또는 아이콘 프레임 (등급별 테두리)
+    ctx.save();
+    rr(ctx, 170, 276, 740, 416, 28);
     ctx.fillStyle = '#242342'; ctx.fill();
-    ctx.strokeStyle = '#f2cc8499'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.strokeStyle = rarityCfg.stroke; ctx.lineWidth = rarity === 'legend' ? 6 : 4.5; ctx.stroke();
     ctx.clip();
     const snap = thumbUrl ? await loadImg(thumbUrl).catch(() => null) : null;
     if (snap) {
-      const ratio = Math.max(740 / snap.width, 424 / snap.height);
+      const ratio = Math.max(740 / snap.width, 416 / snap.height);
       const dw = snap.width * ratio, dh = snap.height * ratio;
-      ctx.drawImage(snap, 170 + (740 - dw) / 2, 268 + (424 - dh) / 2, dw, dh);
+      ctx.drawImage(snap, 170 + (740 - dw) / 2, 276 + (416 - dh) / 2, dw, dh);
     } else {
       ctx.font = `700 180px ${SANS}`; ctx.fillStyle = '#ffe5a8';
       ctx.fillText(item.icon || '✦', x, 540);
@@ -717,7 +765,7 @@
     let y = 756 + factLines.length * 54 + 22;
     if (item.ref) {
       const vs = window.Bible?.verses(item.ref) || [];
-      ctx.fillStyle = '#ffe09e'; ctx.font = `700 31px ${SERIF}`;
+      ctx.fillStyle = rarityCfg.badgeColor; ctx.font = `700 31px ${SERIF}`;
       ctx.fillText(Bible.full(item.ref), x, y, 880);
       if (vs[0]?.text) {
         ctx.fillStyle = '#dfd2ea'; ctx.font = `400 27px ${SERIF}`;
@@ -731,7 +779,7 @@
     ctx.save();
     rr(ctx, 110, boxY, 860, 134, 22);
     ctx.fillStyle = '#2d2848cc'; ctx.fill();
-    ctx.strokeStyle = '#f0cc8544'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.strokeStyle = rarityCfg.stroke + '77'; ctx.lineWidth = 2.5; ctx.stroke();
     ctx.restore();
     if (portrait) ctx.drawImage(portrait, 130, boxY + 11, 112, 112);
     ctx.textAlign = 'left';
@@ -745,7 +793,7 @@
       ctx.save();
       rr(ctx, 290, 1202, 500, 52, 26);
       ctx.fillStyle = '#3b315ee6'; ctx.fill();
-      ctx.strokeStyle = '#ffd99188'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = rarityCfg.stroke + 'aa'; ctx.lineWidth = 2; ctx.stroke();
       ctx.restore();
       ctx.fillStyle = '#ffe5a8'; ctx.font = `700 27px ${SANS}`;
       ctx.fillText(`🤝 나눔 코드 · ${shareCode}`, x, 1237, 460);
@@ -838,5 +886,33 @@
     return cv;
   }
 
-  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawDiscoverNote, drawWalkedTogether, drawPatrol, drawGift, drawGrowth, drawWardrobe, drawExploreChallenge, drawJourney, share, toBlob, fileName, STYLE, cardNo };
+  async function drawRegionPanorama(collection, image, discoveries) {
+    const width = 1080, rows = Math.ceil(discoveries.length / 3);
+    const height = Math.max(1320, 912 + rows * 50);
+    const cv = document.createElement('canvas');
+    cv.width = width; cv.height = height;
+    const ctx = cv.getContext('2d');
+    await fontsReady();
+    await starBack(ctx, width, height, STYLE.ch4.frame, 300 + discoveries.length);
+    const photo = await loadImg(image);
+    if (photo) {
+      const crop = Math.min(photo.height, photo.width * 505 / 936);
+      ctx.save();
+      rr(ctx, 72, 243, 936, 505, 28);
+      ctx.clip();
+      ctx.drawImage(photo, 0, (photo.height - crop) / 2, photo.width, crop, 72, 243, 936, 505);
+      ctx.restore();
+    }
+    ctx.fillStyle = '#ffe2a2'; ctx.textAlign = 'center';
+    ctx.font = `700 34px ${SANS}`;
+    ctx.fillText('그 밤을 향하여 · 성탄 길', 540, 109);
+    ctx.fillStyle = '#fff1d1'; ctx.font = `700 70px ${SERIF}`;
+    ctx.fillText(collection.title, 540, 199);
+    ctx.font = `700 36px ${SERIF}`;
+    ctx.fillText(collection.badge, 540, 819);
+    ctx.font = `600 25px ${SANS}`; ctx.textAlign = 'left';
+    discoveries.forEach((title, i) => ctx.fillText('✦ ' + title, 92 + i % 3 * 310, 899 + Math.floor(i / 3) * 50, 291));
+    return cv;
+  }
+  window.Card = { draw, drawHidden, drawFinale, drawBadge, drawAppoint, drawField, drawDiscover, drawDiscoverNote, drawWalkedTogether, drawPatrol, drawGift, drawGrowth, drawWardrobe, drawExploreChallenge, drawRegionPanorama, drawJourney, share, toBlob, fileName, STYLE, cardNo };
 })();
