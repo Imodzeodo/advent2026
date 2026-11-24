@@ -2361,7 +2361,7 @@
       batches.get(material).push(part);
     };
     const cube = (material, x, y, z, w, h, d, rx, ry, rz) => batch(box, material, x, y, z, w, h, d, rx, ry, rz);
-    const stop = (x, z, r) => blocks.push([x, z, r]);
+    const stop = (x, z, r, h) => blocks.push(h == null ? [x, z, r] : [x, z, r, h]);
     const at = (item, x, z, angle = 0) => {
       const prop = buildItem(item, { lampStrength: day ? .12 : daylight.lamp / DAYLIGHT.night.lamp });
       prop.position.set(x, height(x, z), z); prop.rotation.y = angle;
@@ -3052,7 +3052,7 @@
     const box = (color, ...shape) => batch(cube, color, ...shape);
     const rock = (color, ...shape) => batch(pebble, color, ...shape);
     const round = (color, ...shape) => batch(circle, color, ...shape);
-    const stop = (x, z, radius) => blocks.push([x, z, radius]);
+    const stop = (x, z, radius, h) => blocks.push(h == null ? [x, z, radius] : [x, z, radius, h]);
     const wall = temple ? (regional ? '#c8ae8a' : day ? '#c6ae8d' : '#978fa0') : '#ab866f';
     const cap = temple ? (regional ? '#e7d0a8' : night ? '#b4a8ae' : '#dfc4a0') : '#d3ad85';
     const wood = '#694452', ochre = '#b27750', fabric = night ? '#8d4c60' : '#a35255';
@@ -3142,12 +3142,14 @@
       stop(x, z, .43 * scale);
     }
     function wallRun(x, z, count, axis, h = 1) {
+      // 담 높이 규칙: 낮은 담(LOW_WALL_H 이하)은 점프로 넘고, 그보다 높은 담은 확실히 높게(2m 이상) 보이게
+      h = h <= LOW_WALL_H ? h : Math.max(h, 2.05);
       for (let n = 0; n < count; n++) {
         const px = x + (axis === 'x' ? n * 1.55 : 0), pz = z + (axis === 'z' ? n * 1.55 : 0), y = height(px, pz);
         const [w, d] = axis === 'x' ? [1.54, .52] : [.52, 1.54];
         box(wall, px, y + h / 2, pz, w, h, d);
         box(cap, px, y + h + .055, pz, w + .025, .12, d + .14);
-        stop(px, pz, .76);
+        stop(px, pz, .76, h);
       }
     }
     function column(x, z, h = 3.9) {
@@ -4403,7 +4405,7 @@
           local.height = (x, z) => height(x, z) + drop;
           local.groundHeight = (x, z) => groundHeight(x, z) + drop;
         }
-        blocks.push(...local.blocks.map(([px, pz, r]) => [...translate([px, pz]), r]));
+        blocks.push(...local.blocks.map(([px, pz, r, h]) => h == null ? [...translate([px, pz]), r] : [...translate([px, pz]), r, h]));
         for (const effect of local.fx) {
           effect.cloud.position.x += x; effect.cloud.position.z += z;
           effect.x += x; effect.z += z;
@@ -4441,7 +4443,7 @@
       }
       ground.add(local.ground);
       local.ground.position.set(x, 0, z);
-      blocks.push(...local.blocks.map(([px, pz, r]) => [...translate([px, pz]), r]));
+      blocks.push(...local.blocks.map(([px, pz, r, h]) => h == null ? [...translate([px, pz]), r] : [...translate([px, pz]), r, h]));
       for (const resident of local.actors || []) {
         resident.pos = translate(resident.pos);
         actors.push(resident);
@@ -4576,8 +4578,8 @@
     }
     // The region has a continuous stone boundary, with its road network inside.
     for (const side of [-1, 1]) {
-      for (let x = -wide + 1; x < wide; x += 2) wallAt(x - ox, side * (deep + .15) - oz, 2.10, .66);
-      for (let z = -deep + 1; z < deep; z += 2) wallAt(side * (wide + .15) - ox, z - oz, .66, 2.10);
+      for (let x = -wide + 1; x < wide; x += 2) wallAt(x - ox, side * (deep + .15) - oz, 2.10, .66, 2.3);
+      for (let z = -deep + 1; z < deep; z += 2) wallAt(side * (wide + .15) - ox, z - oz, .66, 2.10, 2.3);
     }
     for (let i = 0; i < 17; i++) {
       const x = -wide - 3 + i * (2 * wide + 6) / 16 - ox;
@@ -6337,7 +6339,7 @@
     const life = region ? makeRegionalLife(scene, region, world, reduced) : null;
     let mounted = null, mountModel, held = false, carriedWordAt = 0, hoofDistance = 0;
     let sheepHop, crossing, jump, sheepJumps = [], lastHop, hopCount = 0, groundContact, jumpMovement = null;
-    let wallHop = false, wallPassUntil = 0;   // 낮은 담: 뛰어서 넘는 중이거나 막 넘은 뒤 잠깐은 지나갈 수 있음(양도 따라 넘음)
+    let wallHop = false, wallPassUntil = 0, lowPass = false, sheepCheck = false;   // lowPass: 점프 중이거나 낮은 담 위를 지나는 중 / sheepCheck: 양은 낮은 담을 폴짝 넘음   // 낮은 담: 뛰어서 넘는 중이거나 막 넘은 뒤 잠깐은 지나갈 수 있음(양도 따라 넘음)
     const surfaces = world.jumpSurfaces || [];
     const jumpFX = leader && new T.Points(new T.BufferGeometry().setAttribute(
       'position', new T.BufferAttribute(new Float32Array(36), 3).setUsage(T.DynamicDrawUsage)
@@ -6355,7 +6357,7 @@
     function jumpLift(now) {
       if (!jump) return 0;
       const arc = clamp((now - jump.start - 85) / 500, 0, 1);
-      return Math.max(0, Math.min(4 * .9 * arc * (1 - arc), (room ? 2.76 - 1.94 : Infinity) - (groundContact?.top || 0)));
+      return Math.max(0, Math.min(4 * 1.2 * arc * (1 - arc), (room ? 2.76 - 1.94 : Infinity) - (groundContact?.top || 0)));
     }
     function startJump() {
       if (!leader || stopped || landmark || jump || held || mounted || crossing || inspectState || handlers.canInteract?.() === false) return false;
@@ -6472,17 +6474,50 @@
       if (surface && !surface.walkOn && jumpMovement?.surface !== surface &&
           (!jumpMovement || jumpMovement.height + .035 < surface.top || surface.top - jumpMovement.base > .701)) return false;
       const blocks = blockCells ? blockCells.get(`${Math.floor(x / cellSize)},${Math.floor(z / cellSize)}`) || [] : world.blocks;
-      if (blocks.some(([ox, oz, r]) => (x - ox) ** 2 + (z - oz) ** 2 < (r + .24) ** 2)) return false;
+      if (blocks.some(block => {
+        const [ox, oz, r] = block;
+        if ((x - ox) ** 2 + (z - oz) ** 2 >= (r + .24) ** 2) return false;
+        if (!(lowPass || sheepCheck)) return true;
+        if (block[3] == null) measureBlock(block);   // 높이를 모르는 장애물은 처음 뛸 때 한 번 재서 기억
+        return !(block[3] <= LOW_WALL_H);
+      })) return false;
       if (adventure) for (const [kind, feature] of world.features) {
         const featureKind = feature.userData.kind || kind;
         if (featureKind === 'shine' || feature.userData.cleared) continue;
         const group = feature.parent === scene ? null : feature.parent;
         const dx = Math.abs(x - feature.position.x - (group?.position.x || 0));
         const dz = Math.abs(z - feature.position.z - (group?.position.z || 0));
-        if (dx < (featureKind === 'jump' ? 1.29 : .78) && dz < .57) { if (featureKind === 'jump' && wallHop) continue; return false; }
+        if (dx < (featureKind === 'jump' ? 1.29 : .78) && dz < .57) { if (featureKind === 'jump' && (wallHop || lowPass || sheepCheck)) continue; return false; }
       }
       return !clearSpots.some(([px, pz]) => (x - px) ** 2 + (z - pz) ** 2 < .47 ** 2);
     };
+    // 위에서 아래로 광선을 쏴서 장애물의 실제 높이를 잰다(큰 건물은 재지 않고 높은 것으로)
+    let measureTargets = null;
+    const measureRay = new T.Raycaster(), measureFrom = new T.Vector3(), measureDown = new T.Vector3(0, -1, 0);
+    function measureBlock(block) {
+      const [bx, bz, r] = block;
+      if (r > 1.35) { block[3] = 9; return; }
+      if (!measureTargets) {
+        measureTargets = [];
+        scene.traverse(o => { if (o.isMesh && !o.isInstancedMesh && o !== goal && !(o.material?.transparent && o.material.opacity < .9) &&
+          !player.getObjectById(o.id) && !(leader && leader.getObjectById(o.id))) measureTargets.push(o); });
+      }
+      const ground = world.height(bx, bz);
+      let top = 0;
+      for (const [dx, dz] of [[0, 0], [r * .45, 0], [-r * .45, 0], [0, r * .45], [0, -r * .45]]) {
+        measureFrom.set(bx + dx, ground + 9, bz + dz);
+        measureRay.set(measureFrom, measureDown); measureRay.far = 10;
+        const hit = measureRay.intersectObjects(measureTargets, false)[0];
+        if (hit) top = Math.max(top, hit.point.y - ground);
+      }
+      block[3] = top;
+    }
+    function insideLowBlock(x, z) {
+      const list = blockCells ? blockCells.get(`${Math.floor(x / cellSize)},${Math.floor(z / cellSize)}`) || [] : world.blocks;
+      return list.some(([ox, oz, r, h]) => h != null && h <= LOW_WALL_H && (x - ox) ** 2 + (z - oz) ** 2 < (r + .24) ** 2) || inLowWall(x, z);
+    }
+    const sheepOpen = (x, z) => { sheepCheck = true; try { return open(x, z); } finally { sheepCheck = false; } };
+    let lastSheepWallHop = 0;
     const pathPlay = region ? makePathPlay(scene, world, world.models, reduced, open) : null;
     const shortcutMarkers = life ? life.markers.filter(marker => marker.shortcut).concat(storyShortcuts) : [];
     const scenicMarkers = region ? pathPlay.markers.concat(life.markers, storyShortcuts, world.viewpoints.map((viewpoint, i) => ({
@@ -7200,8 +7235,9 @@
       if (sheepSpeed > .04 && distance > .05) {
         const step = Math.min(distance, delta * sheepSpeed);
         const x = s.x + dx / distance * step, z = s.z + dz / distance * step;
-        if (open(x, z)) {
+        if (sheepOpen(x, z)) {
           s.x = x; s.z = z; s.y = world.height(x, z); trotting = true; followTimer = 0;
+          if (now - lastSheepWallHop > 900 && insideLowBlock(x, z)) { lastSheepWallHop = now; sheepJumps.push({ start: now }); }   // 낮은 담은 폴짝
           const yaw = Math.atan2(dx, dz) - player.rotation.y;
           player.rotation.y += Math.atan2(Math.sin(yaw), Math.cos(yaw)) * Math.min(1, delta * 6);
         } else { followTimer += delta; sheepSpeed *= .5; }
@@ -7211,7 +7247,7 @@
         player.rotation.y += Math.atan2(Math.sin(yaw), Math.cos(yaw)) * Math.min(1, delta * 1.6);
       }
       if (near > 7 || followTimer > 1.7) {
-        const candidates = [trail.find(point => open(point.x, point.z)), p];
+        const candidates = [trail.find(point => sheepOpen(point.x, point.z)), p];
         const point = candidates.find(Boolean);
         s.copy(point); trail.splice(0, Math.max(0, trail.indexOf(point))); followTimer = 0;
       }
@@ -7558,6 +7594,7 @@
       let wantX = 0, wantZ = 0;
       const sheepX = player.position.x, sheepZ = player.position.z;
       wallHop = (jump && jumpLift(now) > .28) || now < wallPassUntil;
+      lowPass = !!jump || (lowPass && insideLowBlock(p.x, p.z));   // 뛰는 동안, 그리고 담 위를 다 건널 때까지
       const stickOn = joystick && Math.hypot(joystick.x, joystick.y) > .14 && allowed;
       if (stickOn && route.length) { route.length = 0; waitForTarget = null; goal.visible = false; }
       if (step && !stickOn) {
@@ -7905,7 +7942,7 @@
     }, destroy, metrics: () => ({ ...metrics, peakCalls }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors,
       destinationRoute, time: climate?.time, weather: climate?.weather, stalls: climate?.stalls, rainDraw: () => climate?.rain?.geometry.drawRange.count || 0, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance, region, viewpoints: world.viewpoints, vistaBlend: () => vistaBlend, seated: () => seated, speed: () => leaderSpeed, animals: pathPlay?.animals,
       jumpSurfaces: surfaces, jumping: () => !!jump, landing: () => landingEffect,
-      openAt: (x, z) => open(x, z), inLowWall, lowWalls: () => [...world.features].filter(([k, f]) => (f.userData.kind || k) === 'jump').map(([, f]) => { const g = f.parent === scene ? null : f.parent; return [f.position.x + (g?.position.x || 0), f.position.z + (g?.position.z || 0)]; }),
+      openAt: (x, z) => open(x, z), inLowWall, insideLowBlock, measureAll() { const t0 = performance.now(); world.blocks.forEach(b => { if (b[3] == null) measureBlock(b); }); return performance.now() - t0; }, lowBlocks: () => world.blocks.filter(b => b[3] != null && b[3] <= LOW_WALL_H), tallBlocks: () => world.blocks.filter(b => b[3] > LOW_WALL_H).length, lowWalls: () => [...world.features].filter(([k, f]) => (f.userData.kind || k) === 'jump').map(([, f]) => { const g = f.parent === scene ? null : f.parent; return [f.position.x + (g?.position.x || 0), f.position.z + (g?.position.z || 0)]; }),
       riding: () => !!mounted, holdingLamb: () => held, crossing: () => !!crossing, sheepShortcut: () => sheepHop?.marker.id,
       thumbnailFrame: window.Core?.PREVIEW_ALL ? id => snapProp(id, true) : undefined,
       turnCamera(radians) { azWant = radians; } } };
@@ -8002,6 +8039,7 @@
 
   // 캔버스 크기가 실제로 바뀔 때만 다시 잡는다. 같은 크기라도 width를 다시 넣으면 캔버스가 지워져
   // 다음 프레임까지 검게 보인다(카카오톡 인앱 브라우저에서 스크롤·확대·털 깎기 때 주소창이 움직이며 반복됨).
+  const LOW_WALL_H = 1.1;   // 이보다 낮은 담·턱(허리 높이까지)은 점프로 넘을 수 있다. 더 높은 담은 2m 넘게 보이게 만든다
   function sizeChanged(renderer, w, h) {
     const pr = renderer.getPixelRatio(), c = renderer.domElement;
     return c.width !== Math.floor(w * pr) || c.height !== Math.floor(h * pr);
