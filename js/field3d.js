@@ -6968,28 +6968,128 @@
         handlers.onNearbyDiscover(nearest);
       }
     }
-    function snapProp(id) {
+    function snapProp(id, audit = false) {
       const entry = elements.get(id);
-      const resident = world.residents?.get(id);
-      const focus = entry?.obj?.position || resident?.actor?.position;
-      if (!focus) return null;
-      const oldPos = camera.position.clone(), oldQuat = camera.quaternion.clone();
-      const hiddenObjs = [[player, player.visible]];
-      player.visible = false;
-      if (leader) { hiddenObjs.push([leader, leader.visible]); leader.visible = false; }
-      for (const { ring } of elements.values()) { hiddenObjs.push([ring, ring.visible]); ring.visible = false; }
-      camera.position.set(focus.x + 1.45, focus.y + 1.32, focus.z + 2.05);
-      camera.lookAt(focus.x, focus.y + .48, focus.z);
-      renderScene();
+      if (stopped || !entry) return null;
+      const source = entry.sign || world.residents?.get(id)?.actor;
+      const prop = entry.marker.prop || window.DISCOVERIES?.[entry.marker.discoverId]?.prop;
+      if (!source && !prop) return null;
+      const subject = source ? source.clone(true) : buildDiscoverProp(prop, discoverPropMat, world.models);
+      const orientation = new T.Quaternion();
+      if (source) {
+        source.updateWorldMatrix(true, false);
+        source.getWorldQuaternion(orientation);
+        subject.matrix.copy(source.matrixWorld);
+        subject.matrixAutoUpdate = false;
+      } else subject.position.copy(entry.obj.position);
+      subject.visible = true;
+
+      const portrait = new T.Scene();
+      portrait.add(subject);
+      portrait.updateMatrixWorld(true);
+      const bounds = new T.Box3().setFromObject(subject, true);
       const out = document.createElement('canvas');
-      out.width = 220; out.height = 150;
-      const cropW = Math.min(canvas.width, canvas.height * out.width / out.height);
-      const cropH = cropW * out.height / out.width;
-      out.getContext('2d').drawImage(canvas, (canvas.width - cropW) / 2, (canvas.height - cropH) / 2, cropW, cropH, 0, 0, out.width, out.height);
-      camera.position.copy(oldPos); camera.quaternion.copy(oldQuat);
-      for (const [obj, vis] of hiddenObjs) obj.visible = vis;
-      renderScene();
-      return out.toDataURL('image/jpeg', .78);
+      out.width = 384; out.height = 264;
+      const context = out.getContext('2d', audit ? { willReadFrequently: true } : undefined);
+      const photo = new T.PerspectiveCamera(39, out.width / out.height, .055, camera.far);
+      const focus = bounds.getCenter(new T.Vector3()), size = bounds.getSize(new T.Vector3());
+      const forward = new T.Vector3(0, 0, 1).applyQuaternion(orientation);
+      const yaw = Math.atan2(forward.x, forward.z) + .59;
+      const pitch = size.y < Math.max(size.x, size.z) * .48 ? .64 : .33;
+      const direction = new T.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+      photo.position.copy(focus).add(direction);
+      photo.lookAt(focus);
+      photo.updateMatrixWorld(true);
+      const point = new T.Vector3(), projection = photo.projectionMatrix.elements;
+      let distance = .25;
+      subject.traverseVisible(mesh => {
+        const positions = mesh.geometry?.attributes.position;
+        if (!positions) return;
+        for (let i = 0; i < positions.count; i++) {
+          point.fromBufferAttribute(positions, i).applyMatrix4(mesh.matrixWorld).applyMatrix4(photo.matrixWorldInverse);
+          distance = Math.max(distance, 1 + point.z + Math.max(Math.abs(point.x) * projection[0], Math.abs(point.y) * projection[5]) / .384);
+        }
+      });
+      photo.position.copy(focus).addScaledVector(direction, distance);
+      photo.updateMatrixWorld(true);
+
+      const hidden = new Set();
+      const hide = obj => { if (obj?.visible) { hidden.add(obj); obj.visible = false; } };
+      const oldSize = renderer.getSize(new T.Vector2()), oldRatio = renderer.getPixelRatio(), oldClear = renderer.autoClear;
+      const normal = cinematic ? camera.position : walkPosition();
+      const normalX = normal.x, normalZ = normal.z;
+      const time = performance.now() / 1000;
+      try {
+        world.update?.(focus.x, focus.z);
+        world.temple?.update(focus.x, focus.z, reduced ? 0 : time, false);
+        hide(player); hide(leader); hide(goal);
+        for (const actor of world.actors || []) hide(actor.actor);
+        for (const marker of elements.values()) hide(marker.obj);
+        for (const sprite of effectSprites) hide(sprite);
+        scene.updateMatrixWorld(true);
+
+        const scenery = [];
+        scene.traverseVisible(obj => {
+          if (obj.isMesh) scenery.push(obj);
+          if (!obj.isLight) return;
+          const light = obj.clone(false);
+          obj.getWorldPosition(light.position);
+          if (light.target) {
+            obj.target.getWorldPosition(light.target.position);
+            portrait.add(light.target);
+          }
+          portrait.add(light);
+        });
+        const ray = new T.Raycaster(), offset = new T.Vector3();
+        const right = new T.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+        // Cover the center and both sides so walls baked into a scenery mesh can be omitted for this render.
+        for (const side of [0, -.28, .28]) {
+          offset.copy(focus).addScaledVector(right, side * Math.max(size.x, size.z)).sub(photo.position);
+          ray.far = offset.length() - .04;
+          ray.set(photo.position, offset.normalize());
+          for (const hit of ray.intersectObjects(scenery, false)) hide(hit.object);
+        }
+        const rim = new T.DirectionalLight('#ffe0aa', .78);
+        rim.position.copy(focus).addScaledVector(direction, -3).addScaledVector(right, 2);
+        rim.position.y += 2.1;
+        rim.target.position.copy(focus);
+        portrait.add(rim, rim.target, new T.AmbientLight('#f3ded5', .18));
+
+        renderer.setPixelRatio(1);
+        renderer.setSize(out.width, out.height, false);
+        renderer.autoClear = true;
+        renderer.render(scene, photo);
+        let background;
+        if (audit) {
+          context.drawImage(canvas, 0, 0);
+          background = context.getImageData(0, 0, out.width, out.height).data;
+        }
+        // An independent depth pass keeps the portrait visible even when a wall shares a merged scenery mesh.
+        renderer.autoClear = false;
+        renderer.clearDepth();
+        renderer.render(portrait, photo);
+        context.drawImage(canvas, 0, 0);
+        const url = out.toDataURL('image/jpeg', .86);
+        if (!audit) return url;
+        const pixels = context.getImageData(0, 0, out.width, out.height).data;
+        let left = out.width, top = out.height, rightEdge = -1, bottom = -1, count = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          if (Math.max(...[0, 1, 2].map(channel => Math.abs(pixels[i + channel] - background[i + channel]))) < 8) continue;
+          const x = i / 4 % out.width, y = Math.floor(i / (out.width * 4));
+          left = Math.min(left, x); top = Math.min(top, y); rightEdge = Math.max(rightEdge, x); bottom = Math.max(bottom, y);
+          count++;
+        }
+        return { url, count, bounds: [left / out.width, top / out.height, (rightEdge + 1) / out.width, (bottom + 1) / out.height] };
+      } finally {
+        for (const obj of hidden) obj.visible = true;
+        world.update?.(normalX, normalZ);
+        world.temple?.update(normalX, normalZ, reduced ? 0 : time, cinematic);
+        renderer.autoClear = oldClear;
+        renderer.setPixelRatio(oldRatio);
+        renderer.setSize(oldSize.x, oldSize.y, false);
+        if (!source) disposeFigure(subject);
+        renderScene();
+      }
     }
 
     function frame(now) {
@@ -7354,6 +7454,7 @@
       destinationRoute, time: climate?.time, weather: climate?.weather, stalls: climate?.stalls, rainDraw: () => climate?.rain?.geometry.drawRange.count || 0, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance, region, viewpoints: world.viewpoints, vistaBlend: () => vistaBlend, seated: () => seated, speed: () => leaderSpeed, animals: pathPlay?.animals,
       jumpSurfaces: surfaces, jumping: () => !!jump, landing: () => landingEffect,
       riding: () => !!mounted, holdingLamb: () => held, crossing: () => !!crossing, sheepShortcut: () => sheepHop?.marker.id,
+      thumbnailFrame: window.Core?.PREVIEW_ALL ? id => snapProp(id, true) : undefined,
       turnCamera(radians) { azWant = radians; } } };
   }
 
