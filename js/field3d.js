@@ -6337,6 +6337,7 @@
     const life = region ? makeRegionalLife(scene, region, world, reduced) : null;
     let mounted = null, mountModel, held = false, carriedWordAt = 0, hoofDistance = 0;
     let sheepHop, crossing, jump, sheepJumps = [], lastHop, hopCount = 0, groundContact, jumpMovement = null;
+    let wallHop = false, wallPassUntil = 0;   // 낮은 담: 뛰어서 넘는 중이거나 막 넘은 뒤 잠깐은 지나갈 수 있음(양도 따라 넘음)
     const surfaces = world.jumpSurfaces || [];
     const jumpFX = leader && new T.Points(new T.BufferGeometry().setAttribute(
       'position', new T.BufferAttribute(new Float32Array(36), 3).setUsage(T.DynamicDrawUsage)
@@ -6393,6 +6394,15 @@
           event.target.closest?.('button, input, textarea, select, [contenteditable], dialog, [role="button"]')) return;
       if (startJump()) event.preventDefault();
     }
+    function inLowWall(x, z) {
+      if (!adventure) return false;
+      for (const [kind, feature] of world.features) {
+        if ((feature.userData.kind || kind) !== 'jump' || feature.userData.cleared) continue;
+        const group = feature.parent === scene ? null : feature.parent;
+        if (Math.abs(x - feature.position.x - (group?.position.x || 0)) < 1.29 && Math.abs(z - feature.position.z - (group?.position.z || 0)) < .57) return true;
+      }
+      return false;
+    }
     function jumpPose(now, p) {
       if (!jump) return;
       const age = now - jump.start, rig = leader.userData.gait.rig;
@@ -6409,8 +6419,17 @@
       }
       if (age >= 715) { jump = null; return; }
       const press = age < 85 ? Math.sin(Math.PI * age / 85) : landing ? Math.sin(Math.PI * (age - 585) / 130) : 0;
-      rig.position.y += Math.max(0, jumpLift(now) - Math.max(0, p.y - jump.floor)) - (reduced ? .035 : .12) * press;
+      const lift = Math.max(0, jumpLift(now) - Math.max(0, p.y - jump.floor));
+      rig.position.y += lift - (reduced ? .035 : .12) * press;
       rig.scale.y *= 1 - .075 * press;
+      // 발도 몸과 함께 뜬다(예전엔 몸만 떠서 신발이 땅에 남아 보였음). 공중에선 두 발을 모으고 팔을 살짝 든다.
+      const gait = leader.userData.gait, air = Math.min(1, lift * 3);
+      gait.feet.forEach((foot, i) => {
+        foot.position.y += lift;
+        foot.position.z = lerp(foot.position.z, (i ? -1 : 1) * .05, air);
+        foot.rotation.x = lerp(foot.rotation.x, -.3, air);
+      });
+      if (!reduced) gait.arms.forEach(arm => { arm.rotation.x -= .55 * air; });
     }
     function updateLandingEffect(now) {
       if (!landingEffect) return;
@@ -6460,7 +6479,7 @@
         const group = feature.parent === scene ? null : feature.parent;
         const dx = Math.abs(x - feature.position.x - (group?.position.x || 0));
         const dz = Math.abs(z - feature.position.z - (group?.position.z || 0));
-        if (dx < (featureKind === 'jump' ? 1.29 : .78) && dz < .57) return false;
+        if (dx < (featureKind === 'jump' ? 1.29 : .78) && dz < .57) { if (featureKind === 'jump' && wallHop) continue; return false; }
       }
       return !clearSpots.some(([px, pz]) => (x - px) ** 2 + (z - pz) ** 2 < .47 ** 2);
     };
@@ -7005,7 +7024,8 @@
       const jumpButton = document.createElement('button');
       jumpButton.type = 'button'; jumpButton.className = 'explore-jump'; jumpButton.textContent = '⤴';
       jumpButton.setAttribute('aria-label', '점프'); jumpButton.setAttribute('aria-keyshortcuts', 'Space');
-      jumpButton.onpointerdown = event => event.preventDefault();
+      // 조이스틱을 누른 채로도 뛸 수 있게 손가락이 닿는 순간 바로 점프(아이폰은 두 손가락일 때 click이 안 올 때가 있음)
+      jumpButton.onpointerdown = event => { event.preventDefault(); event.stopPropagation(); startJump(); };
       jumpButton.onclick = startJump;
       wrap.append(jumpButton);
       wrap.classList.add('has-jump');
@@ -7537,6 +7557,7 @@
       const maxSpeed = adventure ? walkSpeed * (mounted ? 2 : 1) : 3.45;
       let wantX = 0, wantZ = 0;
       const sheepX = player.position.x, sheepZ = player.position.z;
+      wallHop = (jump && jumpLift(now) > .28) || now < wallPassUntil;
       const stickOn = joystick && Math.hypot(joystick.x, joystick.y) > .14 && allowed;
       if (stickOn && route.length) { route.length = 0; waitForTarget = null; goal.visible = false; }
       if (step && !stickOn) {
@@ -7615,6 +7636,10 @@
         pose.feet.forEach(foot => { foot.position.z = .42; });
       }
       jumpPose(now, p);
+      if (jump && jumpLift(now) > .28 && inLowWall(p.x, p.z)) {
+        wallPassUntil = now + 2600;
+        if (!jump.overWall) { jump.overWall = true; sheepJumps.push({ start: now + 420 }); }
+      }
       updateLandingEffect(now);
       if (step && requested !== 'photo' && requested !== 'activity') kneeling = false;
       const sleep = kneeling;
@@ -7880,6 +7905,7 @@
     }, destroy, metrics: () => ({ ...metrics, peakCalls }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors,
       destinationRoute, time: climate?.time, weather: climate?.weather, stalls: climate?.stalls, rainDraw: () => climate?.rain?.geometry.drawRange.count || 0, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance, region, viewpoints: world.viewpoints, vistaBlend: () => vistaBlend, seated: () => seated, speed: () => leaderSpeed, animals: pathPlay?.animals,
       jumpSurfaces: surfaces, jumping: () => !!jump, landing: () => landingEffect,
+      openAt: (x, z) => open(x, z), inLowWall, lowWalls: () => [...world.features].filter(([k, f]) => (f.userData.kind || k) === 'jump').map(([, f]) => { const g = f.parent === scene ? null : f.parent; return [f.position.x + (g?.position.x || 0), f.position.z + (g?.position.z || 0)]; }),
       riding: () => !!mounted, holdingLamb: () => held, crossing: () => !!crossing, sheepShortcut: () => sheepHop?.marker.id,
       thumbnailFrame: window.Core?.PREVIEW_ALL ? id => snapProp(id, true) : undefined,
       turnCamera(radians) { azWant = radians; } } };
