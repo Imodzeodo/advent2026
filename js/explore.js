@@ -1168,9 +1168,23 @@
     return byItem?.id || '1-0';
   }
 
+  const discoverShots = new Map();
+  const discoverShotStore = 'discover-v74';
+
+  function trackDiscoverShot(itemId, pending) {
+    discoverShots.set(itemId, pending);
+    pending.then(url => { if (discoverShots.get(itemId) === pending) discoverShots.set(itemId, url || null); });
+    return pending;
+  }
+
+  function readDiscoverShot(itemId) {
+    if (discoverShots.has(itemId)) return discoverShots.get(itemId);
+    return trackDiscoverShot(itemId, photoFile(discoverShotStore, itemId));
+  }
+
   async function discoverThumbURL(itemId) {
     const item = window.DISCOVERIES?.[itemId];
-    const saved = await photoFile('discover', itemId);
+    const saved = await readDiscoverShot(itemId);
     return saved || (item ? fallbackThumbSVG(item) : '');
   }
 
@@ -2078,15 +2092,35 @@
       Core.save();
     }
 
+    function discoverySnapshot(itemId, markerId, first) {
+      const cached = discoverShots.get(itemId), view = getView();
+      if (typeof cached === 'string') return cached;
+      if (!view?.snapProp) return null;
+      const take = () => {
+        if (view !== getView()) return null;
+        try {
+          const url = view.snapProp(markerId);
+          if (url) {
+            discoverShots.set(itemId, url);
+            void photoFile(discoverShotStore, itemId, url);
+          }
+          return url;
+        } catch { return null; }
+      };
+      if (first || cached === null) return take();
+      // v73 cards keep their discovery record and get a new image the next time the item is photographed.
+      trackDiscoverShot(itemId, Promise.resolve(readDiscoverShot(itemId)).then(url => url || take()));
+      return null;
+    }
+
     function recordDiscovery(entry, markerId) {
       const { id: itemId, episode } = entry;
       const item = catalog[itemId];
       if (!item) return { isFirst: false };
       const isFirst = !log.discoveries[itemId];
-      let oilBonus = false, themeReward = null, shot = null;
+      const shot = discoverySnapshot(itemId, markerId, isFirst);
+      let oilBonus = false, themeReward = null;
       if (isFirst) {
-        try { shot = getView()?.snapProp?.(markerId); } catch { /* 2D 또는 스냅숏 생략 */ }
-        if (shot) void photoFile('discover', itemId, shot);
         log.discoveries[itemId] = { date: day, place: episode, thumb: !!shot };
         if (log.discoverOil.date !== day) log.discoverOil = { date: day, count: 0 };
         if (log.discoverOil.count < 5) {
