@@ -2361,7 +2361,7 @@
       batches.get(material).push(part);
     };
     const cube = (material, x, y, z, w, h, d, rx, ry, rz) => batch(box, material, x, y, z, w, h, d, rx, ry, rz);
-    const stop = (x, z, r, h) => blocks.push(h == null ? [x, z, r] : [x, z, r, h]);
+    const stop = (x, z, r, h) => blocks.push([x, z, r, h]);
     const at = (item, x, z, angle = 0) => {
       const prop = buildItem(item, { lampStrength: day ? .12 : daylight.lamp / DAYLIGHT.night.lamp });
       prop.position.set(x, height(x, z), z); prop.rotation.y = angle;
@@ -2370,23 +2370,23 @@
       return prop;
     };
     const oliveTree = (x, z, scale = 1, tall = false) => {
-      const y = height(x, z);
-      batch(col, wood, x, y + .79 * scale, z, .14 * scale, 1.6 * scale, .14 * scale, 0, 0, .11);
-      if (tall) batch(cone, juniper, x, y + 2.05 * scale, z, .68 * scale, 3.3 * scale, .68 * scale);
+      const y = height(x, z), vertical = Math.max(1, scale);
+      batch(col, wood, x, y + .79 * vertical, z, .14 * scale, 1.6 * vertical, .14 * scale, 0, 0, .11);
+      if (tall) batch(cone, juniper, x, y + 2.05 * vertical, z, .68 * scale, 3.3 * vertical, .68 * scale);
       else for (let i = 0; i < 5; i++) batch(rock, olive, x + Math.cos(i * 2.4) * .7 * scale,
-        y + (1.7 + rand() * .45) * scale, z + Math.sin(i * 2.4) * .6 * scale, .78 * scale, .56 * scale, .68 * scale, 0, rand() * 6);
-      if (Math.abs(x) < EXPLORE_EDGE && Math.abs(z) < EXPLORE_EDGE) stop(x, z, .52 * scale);
+        y + (1.7 + rand() * .45) * vertical, z + Math.sin(i * 2.4) * .6 * scale, .78 * scale, .56 * vertical, .68 * scale, 0, rand() * 6);
+      if (Math.abs(x) < EXPLORE_EDGE && Math.abs(z) < EXPLORE_EDGE) stop(x, z, .52 * scale, (tall ? 3.7 : 2.63) * vertical);
     };
     const visitor = (x, z, color) => {
       const y = height(x, z), stature = .82 + rand() * .37;
       batch(col, mat(color), x, y + .39 * stature, z, .24, .78 * stature, .24);
       batch(rock, mat('#b8896d'), x, y + .93 * stature, z, .15, .18, .15);
       batch(cone, mat('#dac2a8'), x, y + 1.08 * stature, z, .21, .23, .21);
-      stop(x, z, .33);
+      stop(x, z, .33, 2.05); // 사람은 뛰어넘을 수 없다
     };
     const building = (x, z, s, style = 'house') => {
       const y = height(x, z), house = style === 'house', tavern = style === 'inn';
-      const w = (tavern ? 4.9 : house ? 3.1 : 4.6) * s, h = (tavern ? 3.4 : house ? 2.8 : 2.9) * s;
+      const w = (tavern ? 4.9 : house ? 3.1 : 4.6) * s, h = Math.max(2.05, (tavern ? 3.4 : house ? 2.8 : 2.9) * s);
       const facade = house ? bricks : stone;
       cube(facade, x, y + h * .5, z, w, h, 1.95 * s);
       cube(dark, x, y + h + .04, z, w + .19, .16, 2.1 * s);
@@ -2406,13 +2406,13 @@
         cube(wood, x + dx, y + h * .88, faceZ, .85 * s, .045, .04);
         cube(fabric, x + dx, y + h * .88 - .23 * s, faceZ, .69 * s, .47 * s, .041, -.07);
       }
-      if (z > -9) for (let i = -1; i <= 1; i++) stop(x + i * w * .26, z, .99 * s);
+      if (z > -9) for (let i = -1; i <= 1; i++) stop(x + i * w * .26, z, .99 * s, h + .12);
     };
     const pillar = (x, z, h) => {
       cube(edge, x, .18, z, 1.0, .36, 1.0);
       batch(col, stone, x, h * .5 + .28, z, .34, h, .34);
       cube(edge, x, h + .25, z, .88, .24, .88);
-      stop(x, z, .47);
+      stop(x, z, .47, h + .37 - height(x, z));
     };
 
     const sky = new T.Color(night ? '#252451' : daylight.horizon);
@@ -2502,8 +2502,8 @@
         }
       }
       const altarZ = inner ? -5.8 : -7.28;
-      cube(wood, 0, .54, altarZ, .88, 1.08, .69);
-      cube(edge, 0, 1.08, altarZ, 1.01, .12, .83); stop(0, altarZ, .61);
+      cube(wood, 0, .49, altarZ, .88, .98, .69);
+      cube(edge, 0, 1.04, altarZ, 1.01, .12, .83); stop(0, altarZ, .61, 1.1);
       const smokeGeo = new T.SphereGeometry(.14, 6, 4);
       for (let i = 0; i < 6; i++) {
         const cloud = new T.Mesh(smokeGeo, new T.MeshBasicMaterial({ color: '#e2c5d8', transparent: true, opacity: .22, depthWrite: false }));
@@ -2565,14 +2565,14 @@
       building(5.7, -7.76, 1.07, kit === 'inn' ? 'inn' : 'house');
       if (stand) {
         const tx = 1.8, tz = -5.4, y = height(tx, tz);
-        cube(wood, tx, y + .91, tz, 2.65, .22, 1.05);
-        for (const side of [-1, 1]) cube(wood, tx + side * .93, y + .40, tz, .32, .80, .83);
-        cube(terra, tx + .47, y + 1.054, tz + .19, .51, .18, .16);
-        stop(tx, tz, .85);
+        cube(wood, tx, y + .79, tz, 2.65, .22, 1.05);
+        for (const side of [-1, 1]) cube(wood, tx + side * .93, y + .34, tz, .32, .68, .83);
+        cube(terra, tx + .47, y + .99, tz + .19, .51, .18, .16);
+        stop(tx, tz, .85, 1.08);
         for (let i = 0; i < 7; i++) cube(i % 2 ? wood : edge, 5.5 + .07 * i, y + .15 + .155 * i, tz - .2, 1.92, .153, .22 + .03 * i, 0, i * .17);
       } else {
         const x = kit === 'well' ? -1.9 : 5.8, z = kit === 'well' ? -3.85 : -.73;
-        at('우물', x, z); stop(x, z, .85);
+        at('우물', x, z); stop(x, z, .85, 2.17);
       }
       oliveTree(-6.7, -.4, 1.36);
       if (kit === 'inn') {
@@ -2620,11 +2620,11 @@
         const hz = .93 + (i % 3) * .17;
         batch(caveFace, limestone[(i + layer * 3) % limestone.length], px, py, depth + Math.sin(i * 2.4 + layer) * .26,
           .94 + Math.abs(Math.cos(a)) * .28, .77 + (i % 4) * .11, hz, -.23, i * .29, a - 1.58);
-        if (i < 2 || i > 12) stop(px, depth, .52);
+        if (i < 2 || i > 12) stop(px, depth, .52, 2.2);
       }
       for (let i = -4; i <= 4; i++) {
         batch(caveFace, recess, i * .77, y + 1.35, z - 2.1, 1.05, 2.13, .88, .19, i);
-        stop(i * .77, z - 2.02, .45);
+        stop(i * .77, z - 2.02, .45, 2.45);
         for (let j = 0; j < 6; j++) {
           const px = i * .84 + .11 * (j % 2), pz = z + 2.85 - j * .86;
           cube(j % 4 === 0 ? limestone[2] : stoneFloor, px, height(px, pz) + .014, pz, .80, .027, .82, 0, i * .02);
@@ -2649,7 +2649,7 @@
           cube(wood, side * .54, y + .62, doorZ + .11, 1.05, .13, .08);
         }
         cube(windowLight, 0, y + 1.18, doorZ + .09, .057, 2.28, .028);
-        stop(0, doorZ - .43, .52);
+        stop(0, doorZ - .43, .52, 2.32);
       }
       const straw = mat('#c39a58'), paleStraw = mat('#e5bf76');
       for (let i = 0; i < 60; i++) {
@@ -2688,7 +2688,7 @@
       if (layout.christmas) {
         batch(rock, mat('#f6e7cd'), -.1, y + .875, crib, .47, .15, .24, 0, .04, -.07);
         batch(rock, mat('#dcaf87'), .28, y + .91, crib + .044, .144, .125, .139);
-        stop(0, crib, .58);
+        stop(0, crib, .58, 2.05); // 성탄 구유는 아기 예수가 있는 자리
       }
     } else {
       const village = kit === 'elizabeth' || kit === 'hillpath' && !dry;
@@ -2709,7 +2709,7 @@
           const y = height(x, z);
           cube(wood, x, y + 1.26, z, .16, 2.52, .16);
           cube(stone, x, y + .11, z, .37, .22, .37);
-          stop(x, z, .13);
+          stop(x, z, .13, 2.52);
         }
         for (let i = 0; i < 9; i++) {
           const x = -6.45 + i * .525, top = 2.71 + Math.sin(i * 1.9) * .06;
@@ -2734,7 +2734,7 @@
         batch(rock, terra, hearthX, hearthY + .84, hearthZ - .07, .92, .57, .84);
         const ember = mat('#ffad56', { emissive: '#ff8139', ei: 1.5 });
         for (let i = 0; i < 7; i++) batch(rock, ember, hearthX + (i - 3) * .13, hearthY + .11, hearthZ + .51, .11, .08, .17);
-        stop(hearthX, hearthZ, .80);
+        stop(hearthX, hearthZ, .80, 2.05); // 불이 있는 화덕
         for (const z of [2.7, 6, 9.3, 12.6]) for (let i = 0; i < 11; i++) {
           const x = 4.9 + i * 1.18, pz = z + (x - 4.9) * .2, h = height(x, pz);
           cube(i % 3 ? stone : edge, x, h + .23, pz, 1.16, .49, .45, 0, -.19);
@@ -2742,13 +2742,14 @@
         }
       }
       if (kit === 'field') {
-        const fire = at('모닥불', 0, -5.5); fire.scale.setScalar(1.22); stop(0, -5.5, .75);
+        const fire = at('모닥불', 0, -5.5); fire.scale.setScalar(1.22); stop(0, -5.5, .75, 2.05);
         campfire = fire.userData.flicker;
         if (night) campfire.light.visible = true;
         else {
           const x = 6.8, z = -6.3, y = height(x, z);
           batch(col, mat('#4f90a0', { rough: .25 }), x, y + .023, z, .57, .036, .38);
           for (let i = 0; i < 7; i++) batch(rock, edge, x + .59 * Math.cos(i * .9), y + .06, z + .39 * Math.sin(i * .9), .14, .12, .16);
+          stop(x, z, .57, 2.05);
         }
         at('돌 양 우리', 5.8, -5.7); at('목자 천막', -5.4, -6.6, -.1);
       }
@@ -2819,7 +2820,7 @@
       const z = 5.8 + rand() * .8, y = height(x, z);
       cube(bricks, x, y + .35, z, 1.25, .70, .44, 0, (rand() - .5) * .65);
       cube(edge, x, y + .716, z, 1.28, .12, .48);
-      stop(x, z, .48);
+      stop(x, z, .48, .776);
     }
 
     addScenery(scene, batches, material => material, wind);
@@ -3052,7 +3053,7 @@
     const box = (color, ...shape) => batch(cube, color, ...shape);
     const rock = (color, ...shape) => batch(pebble, color, ...shape);
     const round = (color, ...shape) => batch(circle, color, ...shape);
-    const stop = (x, z, radius, h) => blocks.push(h == null ? [x, z, radius] : [x, z, radius, h]);
+    const stop = (x, z, radius, h) => blocks.push([x, z, radius, h]);
     const wall = temple ? (regional ? '#c8ae8a' : day ? '#c6ae8d' : '#978fa0') : '#ab866f';
     const cap = temple ? (regional ? '#e7d0a8' : night ? '#b4a8ae' : '#dfc4a0') : '#d3ad85';
     const wood = '#694452', ochre = '#b27750', fabric = night ? '#8d4c60' : '#a35255';
@@ -3133,22 +3134,23 @@
       }
     }
     function olive(x, z, scale) {
-      const y = height(x, z);
-      round(wood, x, y + .76 * scale, z, .14 * scale, 1.52 * scale, .14 * scale, 0, 0, .16);
+      const y = height(x, z), vertical = Math.max(1, scale);
+      round(wood, x, y + .76 * vertical, z, .14 * scale, 1.52 * vertical, .14 * scale, 0, 0, .16);
       for (let n = 0; n < 5; n++) {
-        rock(n % 2 ? '#687d59' : '#536b62', x + Math.sin(n * 1.28) * .71 * scale, y + (1.58 + rand() * .47) * scale,
-          z + Math.cos(n * 1.28) * .6 * scale, .84 * scale, .62 * scale, .80 * scale, 0, n);
+        rock(n % 2 ? '#687d59' : '#536b62', x + Math.sin(n * 1.28) * .71 * scale, y + (1.58 + rand() * .47) * vertical,
+          z + Math.cos(n * 1.28) * .6 * scale, .84 * scale, .62 * vertical, .80 * scale, 0, n);
       }
-      stop(x, z, .43 * scale);
+      stop(x, z, .43 * scale, 2.6 * vertical);
     }
     function wallRun(x, z, count, axis, h = 1) {
       // 담 높이 규칙: 낮은 담(LOW_WALL_H 이하)은 점프로 넘고, 그보다 높은 담은 확실히 높게(2m 이상) 보이게
       h = h <= LOW_WALL_H ? h : Math.max(h, 2.05);
+      const capHeight = .12, bodyHeight = h - capHeight;
       for (let n = 0; n < count; n++) {
         const px = x + (axis === 'x' ? n * 1.55 : 0), pz = z + (axis === 'z' ? n * 1.55 : 0), y = height(px, pz);
         const [w, d] = axis === 'x' ? [1.54, .52] : [.52, 1.54];
-        box(wall, px, y + h / 2, pz, w, h, d);
-        box(cap, px, y + h + .055, pz, w + .025, .12, d + .14);
+        box(wall, px, y + bodyHeight / 2, pz, w, bodyHeight, d);
+        box(cap, px, y + h - capHeight / 2, pz, w + .025, capHeight, d + .14);
         stop(px, pz, .76, h);
       }
     }
@@ -3157,7 +3159,7 @@
       box(cap, x, y + .15, z, 1, .3, .96);
       round(wall, x, y + h * .5, z, .38, h, .38);
       box(cap, x, y + h, z, .94, .23, .91);
-      stop(x, z, .47);
+      stop(x, z, .47, h + .115);
     }
     function home(x, z, width, color = wall) {
       const y = height(x, z), front = z + 1.54;
@@ -3171,23 +3173,23 @@
         box(wood, x + side * width * .3, y + 1.85, front + .111, .043, .47, .028);
         box(cap, x + side * width * .3, y + 1.48, front + .10, .73, .10, .30);
       }
-      for (let dx = -width / 2 + .4; dx < width / 2; dx += .9) stop(x + dx, z, 1.49);
+      for (let dx = -width / 2 + .4; dx < width / 2; dx += .9) stop(x + dx, z, 1.49, 3.155);
     }
     function stall(x, z, color) {
       const y = height(x, z);
       for (const side of [-1, 1]) {
         for (const depth of [-.72, .72]) box(wood, x + side * 1.29, y + 1.18, z + depth, .12, 2.36, .12);
-        box(wood, x + 1.01 * side, y + .49, z + .51, .12, .96, .19);
+        box(wood, x + 1.01 * side, y + .40, z + .51, .12, .80, .19);
       }
       for (let i = 0; i < 7; i++) {
         const px = x + (i - 3) * .404, stripe = i % 2 ? color : cap;
         box(stripe, px, y + 2.35, z, .409, .105, 1.72, -.115);
         batch(hangingCloth, stripe, px, y + 2.23, z + .86, .407, .24, .083);
       }
-      box(wood, x, y + .93, z + .50, 2.57, .14, .75);
-      jar(x - .68, z + .47, .65, 1.01); basket(x + .29, z + .55, .67, 1.01);
+      box(wood, x, y + .77, z + .50, 2.57, .14, .75);
+      jar(x - .68, z + .47, .44, .84); basket(x + .29, z + .55, .56, .84);
       jar(x + 1.53, z + .54, 1.27);
-      stop(x, z, .83);
+      stop(x, z, .83, 1.1); // 천막 아래 좌판의 높이
     }
     function well(x, z, dry = false) {
       const y = height(x, z);
@@ -3202,7 +3204,7 @@
         box(wood, x, y + 2.68, z, 2.35, .19, .20);
         box(ochre, x, y + 1.85, z, .041, 1.61, .042);
       }
-      stop(x, z, 1.03);
+      stop(x, z, 1.03, 2.78); // 우물 안으로 들어갈 수 없다
     }
     function laundry(x, z) {
       const y = height(x, z);
@@ -3267,9 +3269,9 @@
         stall(6.85, 8.15, '#76618b');
       }
       if (visual === 'sanctuary') {
-        box(wood, 0, elevation(-18, .5), -18, 1.12, 1, .87);
-        box(cap, 0, elevation(-18, 1.03), -18, 1.17, .12, .91);
-        stop(0, -18, .67); lamp(0, -18, 1.18, true, true);
+        box(wood, 0, elevation(-18, .49), -18, 1.12, .98, .87);
+        box(cap, 0, elevation(-18, 1.04), -18, 1.17, .12, .91);
+        stop(0, -18, .67, 1.1); lamp(1.15, -18, 1.18, true, true);
       } else lamp(-4.7, 6, 1.1, true, true);
     } else if (openCountry) {
       for (const side of [-1, 1]) {
@@ -3287,7 +3289,7 @@
         }
         for (const [x, z, size] of [[-16, 5, 2.6], [15, -2, 3], [-9, -20, 2.5]]) {
           rock('#916f64', x, height(x, z) + size * .64, z, size, size * 1.38, size * .77, 0, .5);
-          stop(x, z, size * .55);
+          stop(x, z, size * .55, size * 1.64);
         }
       } else {
         for (const [x, z] of [[-15, 12], [-10.1, .4], [-6.1, -2], [-2.6, -4.8], [2.2, -7.5], [7.3, -6.2], [14, -4], [17.2, -6.5], [11.8, -15]]) {
@@ -3325,10 +3327,10 @@
         home(.4, -22, 9.3, '#967c79');
         for (const [x, z] of [[-5.8, -19], [13, -2.4], [-14.7, 13.2]]) {
           const y = height(x, z);
-          for (const side of [-1, 1]) box(wood, x + side * .91, y + .44, z, .24, .88, .71);
-          box(ochre, x, y + .91, z, 2.53, .23, .88);
-          for (let i = 0; i < 4; i++) box(i % 2 ? cap : wood, x - .65 + i * .43, y + 1.1, z, .21, .15, .71, 0, (i - 1) * .17);
-          stop(x, z, .61);
+          for (const side of [-1, 1]) box(wood, x + side * .91, y + .425, z, .24, .85, .71);
+          box(ochre, x, y + .905, z, 2.53, .11, .88);
+          for (let i = 0; i < 4; i++) box(i % 2 ? cap : wood, x - .65 + i * .43, y + 1.025, z, .21, .13, .71, 0, (i - 1) * .17);
+          stop(x, z, .61, 1.09);
           if (variant !== 'dream') lamp(x + 1.1, z, 1.05);
         }
         const z = variant === 'dream' ? -20.8 : -18.9;
@@ -3407,7 +3409,7 @@
         const y = height(x, z), low = temple ? .53 : .43;
         box(wall, x, y + low / 2, z, 1.48, low, .48);
         box(cap, x, y + low + .066, z, 1.50, .143, .62);
-        stop(x, z, .75);
+        stop(x, z, .75, low + .138);
       }
       for (const side of [-1, 1]) {
         const x = opening + side * 1.57, y = height(x, z);
@@ -3550,7 +3552,7 @@
           box(shade, cx, base + .13, cz, .59, .26, .62);
           round(wall, cx, (base + y + tall) / 2, cz, .22, y + tall - base, .22);
           box(cap, cx, y + tall - .12, cz, .57, .21, .57);
-          blocks.push([cx, cz, .19]);
+          blocks.push([cx, cz, .19, Math.max(2.05, tall + y - base)]);
         }
       }
       box(roofColor, x, y + tall, z, alongX ? length + .63 : width, .23, alongX ? width : length + .63);
@@ -3586,15 +3588,15 @@
       }
     }
     function olive(x, z, size) {
-      const y = height(x, z);
-      round(wood, x, y + size * .7, z, .16 * size, 1.35 * size, .16 * size, .12, 0, -.2);
+      const y = height(x, z), vertical = Math.max(1, size);
+      round(wood, x, y + vertical * .7, z, .16 * size, 1.35 * vertical, .16 * size, .12, 0, -.2);
       for (let i = 0; i < 4; i++) {
         const dx = Math.cos(i * 2.4), dz = Math.sin(i * 2.4);
-        round(wood, x + dx * size * .27, y + size * 1.21, z + dz * size * .27, .068 * size, .84 * size, .068 * size, dz * .7, 0, -dx * .7);
-        rock(['#879368', '#687756', '#93a17a'][i % 3], x + dx * size * .66, y + size * (1.58 + rand() * .32),
-          z + dz * size * .66, size, size * .56, size * .83, 0, i);
+        round(wood, x + dx * size * .27, y + vertical * 1.21, z + dz * size * .27, .068 * size, .84 * vertical, .068 * size, dz * .7, 0, -dx * .7);
+        rock(['#879368', '#687756', '#93a17a'][i % 3], x + dx * size * .66, y + vertical * (1.58 + rand() * .32),
+          z + dz * size * .66, size, vertical * .56, size * .83, 0, i);
       }
-      blocks.push([x, z, .24 * size]);
+      blocks.push([x, z, .24 * size, 2.4 * vertical]);
     }
     function well(x, z) {
       const y = height(x, z);
@@ -3759,7 +3761,7 @@
       round(shade, 2.9, .37, .7, 1.02, .40, .97);
       round(cap, 2.9, .65, .7, .83, .21, .82);
       box(wood, 2.9, .92, .7, 1.96, .15, .15, 0, -.6);
-      blocks.push([2.9, .7, .82]);
+      blocks.push([2.9, .7, .82, .835]);
       jar(2.5, 2.15); torch(1.85, -2.12);
     } else if (key === 'tabor-vista' || key === 'lake-pass') {
       for (const [x, z, size] of [[-5.5,3,1.02],[-7,-1,1.20],[-4,-5,.94],[3,5,.94]]) olive(x, z, size);
@@ -3812,8 +3814,10 @@
       }
       if (dry) {
         for (const [x, z, size] of [[-8,-5,2.9],[-5,-6,1.6],[6,-7,2.1],[8,4,2.7],[-7,7,1.8],[10,-9,3.2]]) {
-          rock('#c9ad83', x, height(x, z) + .42 * size, z, size, .86 * size, .74 * size, .15, z);
-          blocks.push([x, z, size * .53]);
+          const low = size < 2;
+          rock('#c9ad83', x, height(x, z) + (low ? .48 : .42 * size), z,
+            size, low ? .55 : .86 * size, .74 * size, low ? 0 : .15, z);
+          blocks.push([x, z, size * .53, low ? 1.03 : 1.15 * size]);
         }
       } else {
         for (let x = -1.7; x < 2.5; x += .49) box(wood, x, .04, .45, .47, .18, 1.7, 0, .07);
@@ -3821,8 +3825,10 @@
       }
     } else if (key === 'wilderness-vista') {
       for (const [x, z, size] of [[-5,-3,1.9],[-4,3,1.3],[4,-3,1.7],[5,1.5,1.55],[-8,1,2.3],[7,-6,2.4]]) {
-        rock('#dbc5a3', x, height(x, z) + .29 * size, z, size, .73 * size, .82 * size, 0, z);
-        blocks.push([x, z, size * .53]);
+        const low = size < 2;
+        rock('#dbc5a3', x, height(x, z) + (low ? .48 : .29 * size), z,
+          size, low ? .55 : .73 * size, .82 * size, 0, z);
+        blocks.push([x, z, size * .53, low ? 1.03 : .91 * size]);
       }
       climbs.push([0, 0]);
     } else if (key === 'rachel-tomb') {
@@ -3961,7 +3967,7 @@
       box(wood, 3.1, ovenY + .36, 3, .59, .42, .14);
       rock('flame', 3.1, ovenY + .28, 3.09, .23, .13, .09);
       smoke(3.1, 2.4, ovenY + 1.13);
-      blocks.push([3.1, 2.4, .61]);
+      blocks.push([3.1, 2.4, .61, 2.05]); // 불이 있는 화덕
       person(2.55, 4.3, '#746180', -.3, true);
       jar(-2.6, .85); jar(-3.1, .95); torch(-3.6, .58); torch(2.15, -4.35);
     } else if (key === 'siloam') {
@@ -3982,7 +3988,7 @@
           round(wood, x + dx * .27 * size, y + size * 1.14, z + dz * .27 * size, .075 * size, .81 * size, .075 * size, dz * .72, 0, -dx * .72);
           rock(['#788456', '#5a714f', '#879064'][i % 3], x + dx * .68 * size, y + size * (1.52 + rand() * .34), z + dz * .68 * size, s, s * .63, s * .90, 0, i);
         }
-        blocks.push([x, z, .27 * size]);
+        blocks.push([x, z, .27 * size, 2.4 * size]);
       }
       for (let i = 0; i < 34; i++) {
         const x = (rand() - .5) * 24, z = (rand() - .5) * 24;
@@ -4266,7 +4272,7 @@
         const cx = px + (alongX ? step : offset), cz = pz + (alongX ? offset : step);
         const base = Math.max(groundAt(x + cx, z + cz), 1.19);
         columns.push([cx, base, cz, roofY]);
-        blocks.push([x + cx, z + cz, .32]);
+        blocks.push([x + cx, z + cz, .32, Math.max(2.05, roofY + .24 - base)]);
         if (r === 0) add(far, cube, ivory, cx, (base + roofY) / 2, cz, .40, roofY - base, .40);
       }
       tower(ash, px, roofY, pz, alongX ? length + 1.15 : width + .25, .48, alongX ? width + .25 : length + 1.15);
@@ -4564,7 +4570,7 @@
       add(column, trunk, x, y + size, z, .24 * size, 2 * size, .24 * size);
       for (let i = 0; i < 5; i++) add(stone, foliage, x + Math.cos(i * 2.4) * .88 * size,
         y + (2.0 + canopy[i] * .55) * size, z + Math.sin(i * 2.4) * .88 * size, size, .73 * size, size, 0, i);
-      blocks.push([x, z, .30 * size]);
+      blocks.push([x, z, .30 * size, 3.2 * size]);
     }
     function wallAt(x, z, width, length, h = .7) {
       const y = height(x, z);
@@ -4661,7 +4667,7 @@
           if (tower) add(cube, wall, lx + dx * .71, y + tall + .41, lz + 1.5, .54, .69, .59);
           else add(column, cap, lx + dx, y + tall * .45, lz + 2.25, .27, tall * .9, .27);
         }
-        blocks.push([lx, lz, 2.6]);
+        blocks.push([lx, lz, 2.6, tall + .8]);
       } else if (site.key === 'stable' || site.key === 'field') {
         const stable = site.key === 'stable';
         for (const dx of [-2.8, 2.8]) wallAt(lx + dx, lz, .45, 4, .67);
@@ -4684,10 +4690,10 @@
         add(column, '#617f91', lx, y + .98, lz, 1.40, .07, 1.40);
         for (const dx of [-1.6, 1.6]) add(cube, trunk, lx + dx, y + 1.8, lz, .18, 3.6, .18);
         add(cone, '#b48b63', lx, y + 3.66, lz, 2.8, 1.25, 2.8, 0, .4);
-        blocks.push([lx, lz, 1.8]);
+        blocks.push([lx, lz, 1.8, 4.285]);
       } else if (site.key === 'desert') {
         for (const dx of [-3.5, 0, 2.2]) add(stone, '#9e8566', lx + dx, y + 1.28, lz, 2.4, 2.2, 1.45, 0, dx);
-        blocks.push([lx, lz, 2]);
+        blocks.push([lx, lz, 2, 3.15]);
       } else {
         tree(lx, lz, site.key === 'galilee' ? 2.8 : 1.85);
         for (const side of [-1, 1]) wallAt(lx + side * 2.8, lz + 3.3, 1.9, .64, .52);
@@ -4716,7 +4722,7 @@
       for (const dx of [-.65, 0, .65]) add(column, '#9f6959', x + dx, y + .78, z + .32, .19, .37, .19);
       add(column, '#667b57', x - 1.9, y + .55, z + .2, .23, .98, .23);
       add(stone, '#bd917b', x - 1.9, y + 1.17, z + .2, .17, .19, .17);
-      blocks.push([x, z, 1.05]);
+      blocks.push([x, z, 1.05, .965]); // 천막 아래 좌판의 높이
     }
     if (region.index === 1 || region.index === 2) {
       const lake = region.index === 2;
@@ -4776,11 +4782,11 @@
         const [x, z] = positionOf([px, pz]);
         if (partAt(x, z) || pathDistance(x, z) < 4.1 || (Math.abs(px - 28) < 23.4 && pz < 8) ||
             (Math.abs(px - 31) < 6.8 && pz < 17)) continue;
-        const y = height(x, z), w = 2.4 + city() * 2.75, h = 1.8 + city() * 2.98;
+        const y = height(x, z), w = 2.4 + city() * 2.75, h = Math.max(2.05, 1.8 + city() * 2.98);
         add(cube, ['#a38c88', '#b49684', '#a99b96', '#ccb3a1'][i % 4], x, y + h * .5, z, w, h, 3.7);
         add(cube, '#d0b8a1', x, y + h, z, w + .16, .18, 3.86);
         add(cube, '#795d62', x, y + .69, z + 1.86, .52, 1.36, .07);
-        blocks.push([x, z, w * .39]);
+        blocks.push([x, z, w * .39, h + .09]);
       }
     }
     addScenery(scene, patches, color => mat(color));
@@ -4971,7 +4977,7 @@
         const y = world.height(x + dx, z);
         wall.get('#b09a80').push(place(cube, x + dx, y + .26, z, .64, .53, .43));
         wall.get('#ceb69b').push(place(cube, x + dx, y + .55, z, .66, .12, .48));
-        world.blocks.push([x + dx, z, .29]);
+        world.blocks.push([x + dx, z, .29, .61]);
       }
       markers.push({ id: 'shortcut/' + i, type: 'shortcut', title: '담 넘기', pos: [x, z], symbol: '🐑', quiet: true, shortcut: true });
     }
@@ -5976,7 +5982,7 @@
       ['#e8bd86', x - .97, y + 1.46, z + 1.33, .44, .40, .10]
     ];
     for (const [color, ...shape] of parts) scene.add(new T.Mesh(place(geometry, ...shape), mat(color)));
-    for (const dx of [-1.05, 0, 1.05]) world.blocks.push([x + dx, z, 1.22]);
+    for (const dx of [-1.05, 0, 1.05]) world.blocks.push([x + dx, z, 1.22, 2.35]);
     geometry.dispose();
   }
 
@@ -6029,7 +6035,7 @@
     const tableZ = stable ? -4.18 : workroom ? -1.65 : .20;
     box(timber, 0, workroom ? .86 : .51, tableZ, workroom ? 2.6 : 1.8, .18, .78);
     for (const x of [-.63, .63]) box(timber, x, workroom ? .39 : .21, tableZ, .14, workroom ? .78 : .42, .55);
-    blocks.push([0, tableZ, .60]);
+    blocks.push([0, tableZ, .60, workroom ? .95 : .60]);
     for (const side of [-1, 1]) {
       box(timber, side * 4.62, 1.14, -4.85, 1.58, .15, .63);
       box(timber, side * 4.62, 1.70, -4.85, 1.58, .15, .63);
@@ -6055,7 +6061,7 @@
       const roller = new T.Mesh(disk, mat('#c0ae96'));
       roller.position.set(-2.9, .82, -1.15); roller.scale.setScalar(.65); roller.rotation.z = Math.PI / 2; scene.add(roller);
       box(timber, -2.9, .84, -1.15, 2.25, .14, .12);
-      blocks.push([-2.9, -1.15, .93]);
+      blocks.push([-2.9, -1.15, .93, .97]);
     }
     const crate = { x: 3.35, z: 2.15, halfX: .54, halfZ: .48, top: .46 };
     box(timber, crate.x, .23, crate.z, 1.08, .46, .96);
@@ -6300,10 +6306,13 @@
       return `${icon} ${title} · ${verb}`;
     }
 
+    function inActionRange({ x, y, z }, px, py, pz) {
+      return Math.hypot(x - px, z - pz) <= actionDistance && Math.abs(y - py) < 1.4;
+    }
+
     function canActivate(entry, p = walkPosition()) {
       if (!entry || entry.marker.lit || entry.marker.type === 'house-door') return false;
-      const { x, y, z } = entry.obj.position;
-      return Math.hypot(x - p.x, z - p.z) <= actionDistance && Math.abs(y - p.y) < 1.4;
+      return inActionRange(entry.obj.position, p.x, p.y, p.z);
     }
 
     function activateMarker(id) {
@@ -6905,20 +6914,23 @@
     }
     function destinationRoute(from, x, z, markerId = null) {
       const [tx, tz] = [clamp(x, -edge, edge), clamp(z, -edge, edge)];
+      const entry = elements.get(markerId);
+      const target = entry && entry.marker.type !== 'house-door' && entry.obj.position;
+      const accessible = ([px, pz]) => !target || inActionRange(target, px, world.height(px, pz), pz);
       let end = [tx, tz];
-      if (markerId && !open(tx, tz)) {
+      if (markerId && (!open(tx, tz) || !accessible(end))) {
         const radii = adventure ? [.75, 1.10, 1.39] : [.93];
         const samples = adventure ? 18 : 12;
         const tries = radii.flatMap(r => Array.from({ length: samples }, (_, i) => {
           const angle = i / samples * 2 * Math.PI;
           return [tx + Math.sin(angle) * r, tz + Math.cos(angle) * r];
         }));
-        const options = tries.filter(pt => open(...pt))
+        const options = tries.filter(pt => open(...pt) && accessible(pt))
           .sort((a, b) => Math.hypot(a[0] - from[0], a[1] - from[1]) - Math.hypot(b[0] - from[0], b[1] - from[1]));
         for (const option of options) {
           const path = findPath(from, option);
           const last = path.at(-1) || from;
-          if (Math.hypot(last[0] - tx, last[1] - tz) < enterDistance) return path;
+          if (Math.hypot(last[0] - tx, last[1] - tz) < enterDistance && accessible(last)) return path;
         }
         if (options.length) end = options[0];
       }
