@@ -355,6 +355,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 24px 0; }
 .medi-tag { align-self: flex-start; font-size: 12px; font-weight: 700; background: #8a5a1c; color: #fff; padding: 3px 10px; border-radius: 99px; }
 .medi-ref { font-family: var(--serif); font-size: 22px; font-weight: 700; margin: 8px 0 2px; }
 .medi-help { font-size: 13.5px; color: #6b5536; margin-bottom: 8px; }
+.medi-question-link { margin-bottom: 8px; color: #63421f; text-decoration: underline; }
 .medi-list { overflow-y: auto; flex: 1; min-height: 120px; margin: 0 -6px 10px; padding: 0 6px; -webkit-overflow-scrolling: touch; }
 .mh { font-size: 12px; color: #8d7a5d; margin: 8px 0 2px; }
 .mv { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 10px; padding: 8px 10px; margin: 2px 0; font-family: var(--serif); font-size: 17px; line-height: 1.75; color: #3a2a17; cursor: pointer; }
@@ -632,15 +633,24 @@ html.no-motion .who.speaking { animation: none; }
 .tonight > header h2 { margin: 0; font: 700 21px/1.25 var(--serif); }
 .tonight > header span { color: var(--gold); font-size: 12px; white-space: nowrap; }
 .tonight-steps { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
-.tonight-step { min-width: 0; display: grid; grid-template-columns: 22px minmax(0, 1fr) 16px; gap: 6px; padding: 7px 8px; align-items: start; border-radius: 10px; }
+.tonight-step { min-width: 0; border-radius: 10px; }
+.tonight-row { width: 100%; display: grid; grid-template-columns: 22px minmax(0, 1fr) 16px; gap: 6px; padding: 7px 8px; align-items: start; border-radius: inherit; }
+button.tonight-row { text-align: left; background: transparent; border: 0; cursor: pointer; }
+button.tonight-row:active { background: #fff4cc18; }
+button.tonight-row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
 .tonight-step.is-next { background: #fff4cc16; box-shadow: inset 2px 0 var(--gold); }
 .tonight-step b { font-size: 14px; }
 .tonight-step p, .tonight-step small { display: block; color: var(--dim); margin: 1px 0 0; font-size: 12px; line-height: 1.4; }
-.tonight-step.is-next p { color: #fff0c8; }
-.tonight-step p.tonight-mission-text { font-size: 13px; line-height: 1.5; }
+.tonight-step.is-next small { color: #fff0c8; }
+.tonight-step p.tonight-mission-text { margin: 1px 8px 6px 36px; font-size: 13px; line-height: 1.5; }
 .tonight-step small.tonight-gift { color: #ffd98a; font-weight: 700; }
 .tonight-step small.tonight-lost { color: #ffb4a8; }
-.tonight-ellipsis { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tonight-mission summary { cursor: pointer; list-style: none; }
+.tonight-mission summary::-webkit-details-marker { display: none; }
+.tonight-mission summary small { display: inline; margin-left: 4px; }
+.tonight-mission summary small::after { content: ' ▾'; }
+.tonight-mission[open] summary small::after { content: ' ▴'; }
+.tonight-mission-status { margin: -4px 8px 5px 36px; }
 .tonight-mark { color: #b6bbd6; font-weight: 700; text-align: right; }
 .tonight-step[data-done] .tonight-mark { color: #b4e6bf; }
 .tonight-step.is-next .tonight-mark { color: var(--gold); }
@@ -652,7 +662,7 @@ html.no-motion .who.speaking { animation: none; }
   .home-head .home-star { height: 59px; }
   .home-head .home-star svg { width: 74px; height: 74px; }
   .home-head .home-wreath { width: min(100%, 132px); }
-  .tonight-step { padding-block: 5px; }
+  .tonight-row { padding-block: 5px; }
 }
 
 
@@ -824,7 +834,7 @@ html.no-motion .who.speaking { animation: none; }
 .tonight-event { margin: 9px 2px 2px; font-size: 12px; color: #e4cda0; }
 .explore-word-heading { margin: 16px 0 8px; font: 700 19px var(--serif); color: var(--gold); }
 
-.tonight-step[data-tonight="explore"] { padding-block: 10px; background: #d7a55b1f; border: 1px solid #d4a96c4d; }
+.tonight-step[data-tonight="explore"] { background: #d7a55b1f; border: 1px solid #d4a96c4d; }
+.tonight-step[data-tonight="explore"] .tonight-row { padding-block: 10px; }
 .tonight-step[data-tonight="explore"] b { font-size: 17px; color: #ffedbd; }
 .tonight .tonight-next[data-step="explore"] { min-height: 52px; font-size: 17px; }
-.tonight-next[data-step="explore"] small { display: inline-block; margin-left: 4px; font-size: 11px; }

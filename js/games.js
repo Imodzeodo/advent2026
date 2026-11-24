@@ -7,7 +7,7 @@
   G['등불'] = (box, api) => {
     box.innerHTML = `
       <div class="game-title">등불 받기</div>
-      <div class="game-help">등잔을 <b>꾹 누르고</b> 있으면 불이 붙어요</div>
+      <div class="game-help">등잔을 <b>꾹 누르고</b> 있으면 불이 붙어</div>
       <div class="hold-wrap">
         <svg viewBox="-80 -110 160 150" class="hold-lamp">
           <defs>${Art.LAMP_DEF}</defs>
@@ -47,7 +47,7 @@
         window.removeEventListener('pointercancel', up);
         lamp.classList.add('lit');
         Sound.sfx('ignite');
-        box.querySelector('.game-help').textContent = '불이 붙었어요!';
+        box.querySelector('.game-help').textContent = '불이 붙었어!';
         if (navigator.vibrate) navigator.vibrate(30);
         setTimeout(api.done, 1100);
       }
@@ -416,8 +416,10 @@
 
   /* ---- 엔딩: 모은 별빛 켜기 (길게 누르기) ---- */
   G['빛켜기'] = (box, api) => {
-    const b = Core.starCount() / Core.starTotal();
-    box.innerHTML = head('그 밤의 별', `별을 <b>꾹 누르고</b> 있어 봐. 네가 모은 별빛 ${Core.starCount()}/${Core.starTotal()}`) +
+    // 현재 편의 별을 함께 켜되 이야기 완료 기록은 엔딩 카드에서 남긴다.
+    const stars = Core.starCount() + Number(api.episode === 'end' && !Core.data.done.end);
+    const total = Core.starTotal(), b = stars / total;
+    box.innerHTML = head('그 밤의 별', `별을 <b>꾹 누르고</b> 있어 봐. 네가 모은 별빛 ${stars}/${total}`) +
       `<div class="hold-wrap"><div class="finale-star">${Art.bigStar(0.05, 200)}</div><div class="hold-bar"><i></i></div></div>`;
     const st = box.querySelector('.finale-star'), bar = box.querySelector('.hold-bar i');
     let p = 0, holding = false, done = false, last = 0;
@@ -432,7 +434,7 @@
       if (p >= 1 && !done) {
         done = true; clearInterval(timer); window.removeEventListener('pointerup', up);
         st.classList.add('pulse'); Sound.sfx('star'); setTimeout(() => Sound.sfx('angel'), 500);
-        box.querySelector('.game-help').innerHTML = b >= 0.99 ? '모든 별빛이 켜졌다. 그 밤이 환하다.' : `네가 모은 별빛 ${Core.starCount()}개가 켜졌다. 그 밤을 비추기에 충분하다.`;
+        box.querySelector('.game-help').textContent = stars === total ? '모든 별빛이 켜졌다. 그 밤이 환하다.' : `네가 모은 별빛 ${stars}개가 켜졌다. 그 밤을 비추기에 충분하다.`;
         setTimeout(api.done, 2200);
       }
     }, 40);

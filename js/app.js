@@ -81,7 +81,7 @@
         }
         list += `<button class="${cls}" data-id="${e.id}">
           <span class="ep-date">${esc(Core.dateLabel(e.date))}<em>${esc(e.day)}</em></span>
-          <span class="ep-title">${label}${(() => { const k = started && kindTag(e.id); return k ? `<span class="ep-kind">${k[0]}${open || done ? ' ' + k[1] : ''}</span>` : ''; })()}${!open && !done && started ? `<span class="ep-open">${e.openHour ? Core.hourLabel(e.openHour) + '에' : ''} 열려요</span>` : ''}</span>
+          <span class="ep-title">${label}${(() => { const k = started && kindTag(e.id); return k ? `<span class="ep-kind">${k[0]}${open || done ? ' ' + k[1] : ''}</span>` : ''; })()}${!open && !done && started ? `<span class="ep-open">${e.openHour ? Core.hourLabel(e.openHour) + '에' : ''} 열려</span>` : ''}</span>
           <span class="ep-state">${state}</span>
         </button>`;
       }
@@ -100,12 +100,12 @@
         ${(window.CODES || []).length ? `<button class="home-wreath" data-code-page aria-label="대림 화환 · ${litWeeks().length}개 점등 · 주일 암호">${Art.advent({ lit: litWeeks() })}</button>` : ''}
         ${started ? `<p class="home-who">${esc(D.nickname)}${D.ban ? ' · ' + esc(D.ban) : ''}</p>` : ''}
       </header>
-      ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록이 저장되지 않아요(사생활 보호 모드일 수 있어요). 일반 모드로 열어 주세요.</div>` : ''}
+      ${!Core.canSave ? `<div class="warn">이 브라우저에서는 기록을 저장할 수 없어. 사생활 보호 모드라면 일반 모드로 열어 줘.</div>` : ''}
       ${introducing ? `<section class="home-field-intro" aria-labelledby="home-field-intro-title">
         <svg viewBox="-42 -56 84 75" aria-hidden="true">${Field.sheepArt({ species: 'cotton', level: 1 })}</svg>
-        <div><h2 id="home-field-intro-title">할아버지가 맡긴 새끼 양</h2><p>${esc(Field.GAME_LINE)}</p>
-        <p>${esc(Field.FIRST_STORY_HINT)}</p></div>
-        <button class="btn" id="${started ? 'first-story' : 'start'}">첫 이야기 보기</button>
+        <div><h2 id="home-field-intro-title">할아버지가 맡긴 새끼 양</h2>
+        ${started ? `<p>${esc(Field.FIRST_STORY_HINT)}</p>` : ''}</div>
+        <button class="btn" id="${started ? 'first-story' : 'start'}">${started ? '첫 이야기 보기' : '등불지기 임명식 시작하기'}</button>
       </section>` : ''}
       ${started || introducing ? tonightCard(today, introducing) : '<button class="btn big start" id="start">시작하기</button>'}
       ${window.Field?.has() ? Field.panelHTML() : ''}
@@ -125,16 +125,16 @@
       <footer class="home-foot">
         ${D.done.end ? '<button class="btn ghost small" id="finale">🌟 27일의 기록 다시 보기</button>' : ''}
         ${window.Trailer ? '<button class="btn ghost small" data-trailer>🎬 예고편 다시 보기</button>' : ''}
-        <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼요.<br>${Core.isKakao ? '지금 카톡에서 열었으니 앞으로도 카톡 링크로 들어와 주세요.' : '다음에도 같은 브라우저로 들어와 주세요.'}</p>
+        <p>기록은 <b>이 폰의 이 브라우저</b>에만 저장돼.<br>${Core.isKakao ? '지금 카톡에서 열었으니 다음에도 카톡 링크로 들어와 줘.' : '다음에도 같은 브라우저로 들어와 줘.'}</p>
       </footer>`;
 
     root.querySelectorAll('.ep').forEach(btn => btn.onclick = () => {
       const e = Core.epById(btn.dataset.id);
       if (btn.classList.contains('done')) return doneSheet(e);
       if (btn.classList.contains('open')) return go(e.id);
-      if (btn.classList.contains('soon')) return Player.toast('아직 준비 중인 편이에요');
-      if (!started) return Player.toast(introducing ? '먼저 첫 이야기 보기를 눌러 줘.' : '먼저 시작하기를 눌러 줘.');
-      Player.toast(`${Core.dateLabel(e.date)} ${e.openHour ? Core.hourLabel(e.openHour) + '에' : ''} 열려요`);
+      if (btn.classList.contains('soon')) return Player.toast('아직 준비 중인 편이야');
+      if (!started) return Player.toast(introducing ? '먼저 등불지기 임명식을 시작해 줘.' : '먼저 시작하기를 눌러 줘.');
+      Player.toast(`${Core.dateLabel(e.date)} ${e.openHour ? Core.hourLabel(e.openHour) + '에' : ''} 열려`);
     });
     const s = root.querySelector('#start');
     if (s) s.onclick = async () => {
@@ -163,12 +163,14 @@
     const cs = root.querySelector('#cast'); if (cs) cs.onclick = castPage;
     const fi = root.querySelector('#finale'); if (fi) fi.onclick = finale;
     const nu = root.querySelector('#nudge'); if (nu) nu.onclick = () => sendKey().then(() => { if (Core.data.lastBackup && Date.now() - Core.data.lastBackup < 6e4) nu.remove(); });
-    const next = root.querySelector('.tonight-next');
-    if (next) next.onclick = () => {
-      if (next.dataset.step === 'story') return go(next.dataset.id);
-      if (next.dataset.step === 'explore') return Explore.enter(next.dataset.id);
-      return Field.page({ tonight: next.dataset.id });
-    };
+    root.querySelectorAll('.tonight [data-step]').forEach(button => button.onclick = () => {
+      const { step, id } = button.dataset;
+      if (step === 'appointment') return s?.click();
+      if (step === 'story') return go(id);
+      if (step === 'story-done') return doneSheet(Core.epById(id));
+      if (step === 'explore') return Explore.enter(id);
+      return Field.page({ tonight: id });
+    });
     root.querySelector('.tonight-activity')?.addEventListener('click', () => Explore.map());
     const dismiss = root.querySelector('[data-dismiss-install]');
     if (dismiss) dismiss.onclick = () => { D.a2hsSeen = true; Core.save(); dismiss.closest('.install-note').remove(); };
@@ -206,47 +208,55 @@
     const discoverNew = place ? (Explore.newCount?.(place.id) || 0) : 0;
     const hasDiscover = !!window.EXPLORE[place?.id]?.discover;
     const explored = !!place && Explore.complete(place.id);
-    const exploreNext = !episode && fieldOpen && !!title && !explored && Explore.isOpen(place);
+    const exploreReady = fieldOpen && !!title && Explore.isOpen(place);
+    const exploreNext = !episode && exploreReady && !explored;
     const fieldNext = !episode && !exploreNext && fieldOpen && !fieldDone;
-    const pending = episodes.findLast(e => D.done[e.id] && D.doneOn?.[e.id] !== today && Fame.missionStatus(e) === 'wait');
+    const pending = episodes.findLast(e => D.done[e.id] && (e.id === 'end' || D.doneOn?.[e.id] !== today) && Fame.missionStatus(e) === 'wait');
     const mission = pending || linkedEpisode;
     const missionState = mission ? Fame.missionStatus(mission) : 'none';
     const event = fieldOpen && !introducing ? Explore.todayEvent() : null;
     const storyDone = !episode && (!!playedTonight || !later);
     const watched = D.done.end && !later ? '성탄 이야기까지 봤어' : playedTonight ? '오늘 이야기 봤어' : '다음 이야기를 기다려 줘';
     const openHour = later?.openHour ?? (Core.TEST_DATE && window.EXPLORE[later?.id]?.openHour);
-    const storyLine = episode ? `${episode.date === today ? '' : esc(Core.dateLabel(episode.date)) + ' '}「${esc(episode.title)}」` :
+    const storyLine = !D.done['0'] ? '등불지기 임명식' : episode ? `${episode.date === today ? '' : esc(Core.dateLabel(episode.date)) + ' '}「${esc(episode.title)}」` :
       later ? `${storyDone ? watched + ' · ' : ''}다음 이야기 ${esc(Core.dateLabel(later.date))}${openHour == null ? '' : ' ' + esc(Core.hourLabel(openHour))}에 열려` : watched;
     const exploreSub = !title ? '이야기가 열리면 함께 가자' : hasDiscover
       ? `${esc(title)}${discoverNew ? ` · 새 발견 ${discoverNew}개` : ' · 둘러보기'}`
       : `${esc(title)}${longAdventure ? ' · 약 6분' : ''}`;
     const nextButton = introducing ? '' : episode ? `<button type="button" class="btn tonight-next" data-step="story" data-id="${episode.id}">📖 오늘 이야기 보기</button>` :
-      exploreNext ? `<button type="button" class="btn tonight-next" data-step="explore" data-id="${place.id}">🧭 ${esc(title)}에 가 보자${hasDiscover && discoverNew ? ` <small>새 발견 ${discoverNew}개</small>` : !hasDiscover && longAdventure ? ' <small>약 6분</small>' : ''}</button>` :
+      exploreNext ? `<button type="button" class="btn tonight-next" data-step="explore" data-id="${place.id}">🧭 ${esc(title)}에 가 보자</button>` :
       fieldNext ? `<button type="button" class="btn tonight-next" data-step="field" data-id="${place?.id || ''}">${lost?.lostFromVisit ? '🔦 잃은 양 찾기' : '🐑 ' + esc(care.sheep.name) + ' 돌보기'}</button>` : '';
+    const storyStep = !D.done['0'] ? 'appointment' : episode ? 'story' : linkedEpisode ? 'story-done' : '';
+    const missionDone = missionState === 'yes' || missionState === 'no';
+    const missionRow = `<span aria-hidden="true">🎯</span><span><b>미션</b>
+      ${missionState !== 'none' ? '<small>내용 보기</small>' : ''}</span>${tonightMark(missionDone)}`;
     return `<section class="tonight" aria-labelledby="tonight-title">
       <header><h2 id="tonight-title">🌙 오늘 밤 할 일</h2><span>${esc(christmasLabel(today))}</span></header>
       <ol class="tonight-steps">
-        <li class="tonight-step${episode ? ' is-next' : ''}" data-tonight="story"${storyDone ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">📖</span><div><b>오늘 이야기</b><p>${storyLine}</p></div>${tonightMark(storyDone)}</li>
-        <li class="tonight-step${exploreNext ? ' is-next' : ''}" data-tonight="explore"${explored ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">🧭</span><div><b>${hasDiscover ? `오늘의 장소${discoverNew ? ` · 새 발견 ${discoverNew}개` : ''}` : '오늘의 장소'}</b><p>${exploreSub}</p></div>${tonightMark(explored)}</li>
-        <li class="tonight-step${fieldNext ? ' is-next' : ''}" data-tonight="field"${fieldDone ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">🐑</span><div><b>${care ? esc(care.sheep.name) + ' 돌보기' : '내 양 돌보기'}
+        ${tonightStep('story', '📖', `<b>오늘 이야기</b><small>${storyLine}</small>`, storyDone, !!episode, storyStep, (episode || linkedEpisode)?.id)}
+        ${tonightStep('explore', '🧭', `<b>오늘의 장소</b><small>${exploreSub}</small>`, explored, exploreNext, exploreReady ? 'explore' : '', place?.id)}
+        ${tonightStep('field', '🐑', `<b>${care ? esc(care.sheep.name) + ' 돌보기' : '내 양 돌보기'}
           ${care ? `<span class="tonight-hearts" aria-label="하트 ${care.hearts}/3">${Field.heartMarks(care.hearts)}</span>` : ''}</b>
-          ${!care ? `<p>${esc(Field.FIRST_STORY_HINT)}</p>` : ''}${lost ? `<small class="tonight-lost">🔍 ${esc(Core.josa(lost.name, '이가'))} 들판에서 안 보여</small>` : ''}</div>
-          ${tonightMark(fieldDone)}</li>
-        <li class="tonight-step tonight-step-mission" data-tonight="mission"${missionState === 'yes' || missionState === 'no' ? ' data-done="true"' : ''}>
-          <span aria-hidden="true">🎯</span><div><b>미션</b>
-          ${missionState !== 'none' ? `<small class="tonight-ellipsis">${esc(Bible.full(D.mission[mission.id]))}</small>` : ''}
+          ${lost ? `<small class="tonight-lost">🔍 ${esc(Core.josa(lost.name, '이가'))} 들판에서 안 보여</small>` : ''}`, fieldDone, fieldNext, care ? 'field' : '', place?.id)}
+        <li class="tonight-step tonight-step-mission" data-tonight="mission"${missionDone ? ' data-done="true"' : ''}>
+          ${missionState !== 'none' ? `<details class="tonight-mission"><summary class="tonight-row">${missionRow}</summary>
+            <p class="tonight-mission-text">${esc(Bible.full(D.mission[mission.id]))}</p></details>` : `<div class="tonight-row">${missionRow}</div>`}
+          <div class="tonight-mission-status">
           ${pending ? `<div class="tonight-mission-check"><button class="link" data-m="no" data-id="${pending.id}">못 했어</button>
             <button class="link" data-m="yes" data-id="${pending.id}">했어!</button></div>` : missionState === 'wait' ? '<small>다음에 와서 체크해</small>' :
-            missionState === 'yes' ? '<small>했어</small>' : missionState === 'no' ? '<small>못 했어 · 괜찮아</small>' : '<small>이야기를 마치면 나와</small>'}</div>
-          ${tonightMark(missionState === 'yes' || missionState === 'no')}</li>
+            missionState === 'yes' ? '<small>했어</small>' : missionState === 'no' ? '<small>못 했어 · 괜찮아</small>' : '<small>이야기를 마치면 나와</small>'}</div></li>
       </ol>
       ${nextButton || (!introducing && fieldDone ? '<p class="tonight-done">오늘 밤 할 일 끝! 🌟</p>' : '')}
       ${event ? `<p class="tonight-event">오늘 ${esc(Explore.title(event.ep))}에 무슨 일이 생겼대 🧭</p>` : ''}
       ${fieldDone && !introducing ? '<button class="link tonight-activity" type="button">🧭 지난 장소도 걸어 볼래?</button>' : ''}
     </section>`;
+  }
+
+  function tonightStep(key, icon, copy, done, next, step, id) {
+    const content = `<span aria-hidden="true">${icon}</span><span class="tonight-copy">${copy}</span>${tonightMark(done)}`;
+    const row = step ? `<button type="button" class="tonight-row" data-step="${step}" data-id="${esc(id)}">${content}</button>` :
+      `<div class="tonight-row">${content}</div>`;
+    return `<li class="tonight-step${next ? ' is-next' : ''}" data-tonight="${key}"${done ? ' data-done="true"' : ''}>${row}</li>`;
   }
 
   function tonightMark(done) {
@@ -286,12 +296,12 @@
     return `<section class="sky-panel">
       <h2 class="sec">🌌 나의 밤하늘 <small>별자리 ${st.full}/4</small></h2>
       ${Sky.svg()}
-      <p class="sky-hint">편을 끝내면 별이 뜨고, 그 편의 <b>빛 조각</b>을 다 모으면 별이 환해져요. 한 장의 별이 모두 환해지면 별자리가 이어져요.</p>
+      <p class="sky-hint">편을 끝내면 별이 뜨고, 그 편의 <b>빛 조각</b>을 다 모으면 별이 환해져. 한 장의 별이 모두 환해지면 별자리가 이어져.</p>
       ${(() => {
         // 끝냈지만 빛 조각이 남은 편: 다시 해서 모을 수 있게
         const left = Core.mainEpisodes().filter(e => Sky.level(e.id) === 1);
         if (!left.length) return '';
-        return `<div class="sky-left"><b>✦ 빛 조각이 남은 편</b> <small>다시 하면서 금빛 낱말을 누르면 별이 환해져요</small>
+        return `<div class="sky-left"><b>✦ 빛 조각이 남은 편</b> <small>다시 하면서 금빛 낱말을 누르면 별이 환해져</small>
           ${left.map(e => `<button class="sky-redo" data-id="${e.id}"><span>${esc(Core.dateLabel(e.date))} ${esc(e.title)}</span><em>${((Core.data.gems || {})[e.id] || []).length}/${Sky.gemTotal(e.id)}</em><i>다시 하기 ›</i></button>`).join('')}</div>`;
       })()}
     </section>`;
@@ -755,10 +765,10 @@
       <div class="seg" data-k="motion">${[['on', '켜기'], ['off', '끄기']].map(([v, t]) => `<button data-v="${v}" class="${(D.motion === false ? 'off' : 'on') === v ? 'on' : ''}">${t}</button>`).join('')}</div>
       <hr>
       <h2 class="sec">🔑 기록 열쇠</h2>
-      <p class="page-note">기록은 이 폰의 이 브라우저에만 있어요. 아래 버튼을 눌러 <b>카톡 '나와의 채팅'</b>으로 보내 두면 끝.<br>폰을 바꾸거나 기록이 사라졌을 때, 그 링크를 누르기만 하면 그대로 돌아와요.${D.lastBackup ? `<br>마지막으로 보낸 날: ${new Date(D.lastBackup).toLocaleDateString('ko-KR')}` : ''}</p>
+      <p class="page-note">기록은 이 폰의 이 브라우저에만 있어. 아래 버튼을 눌러 <b>카톡 '나와의 채팅'</b>으로 보내 둬.<br>폰을 바꾸거나 기록이 사라졌을 때 그 링크를 누르면 그대로 돌아와.${D.lastBackup ? `<br>마지막으로 보낸 날: ${new Date(D.lastBackup).toLocaleDateString('ko-KR')}` : ''}</p>
       <button class="btn" id="bk-send">📲 기록 열쇠 나에게 보내기</button>
       <details class="bk-more"><summary>링크가 안 열릴 때 (직접 되살리기)</summary>
-        <p class="page-note">'기록 열쇠' 글 전체를 복사해서 붙여 넣어 주세요.</p>
+        <p class="page-note">'기록 열쇠' 글 전체를 복사해서 붙여 넣어 줘.</p>
         <textarea class="bk-paste" rows="4" placeholder="여기에 붙여 넣기"></textarea>
         <button class="btn ghost" id="bk-apply">이 기록으로 바꾸기</button>
       </details>
@@ -769,7 +779,7 @@
       const n = root.querySelector('.in-nick').value.trim();
       if (!n) return Player.toast('닉네임을 적어 줘');
       D.nickname = n; D.ban = root.querySelector('.in-ban').value.trim();
-      Core.save(); Player.toast('저장했어요');
+      Core.save(); Player.toast('저장했어');
     };
     root.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b => b.onclick = () => {
       const k = seg.dataset.k, v = b.dataset.v;
@@ -782,12 +792,12 @@
     root.querySelector('#bk-apply').onclick = async () => {
       try {
         const obj = await Backup.read(root.querySelector('.bk-paste').value);
-        if (!confirm(`이 기록으로 바꿀까요?\n${Backup.summary(obj)}\n\n지금 이 브라우저의 기록은 이 내용으로 바뀌어요.`)) return;
-        Core.replace(obj); Player.toast('기록을 되살렸어요'); home();
-      } catch (err) { Player.toast(err.message || '읽을 수 없어요'); }
+        if (!confirm(`이 기록으로 바꿀래?\n${Backup.summary(obj)}\n\n지금 이 브라우저의 기록은 이 내용으로 바뀌어.`)) return;
+        Core.replace(obj); Player.toast('기록을 되살렸어'); home();
+      } catch (err) { Player.toast(err.message || '읽을 수 없어'); }
     };
     root.querySelector('#wipe').onclick = () => {
-      if (confirm('일기, 별빛, 기름까지 모두 지워져요. 정말 지울까요?') && confirm('되돌릴 수 없어요. 지울까요?')) {
+      if (confirm('일기, 별빛, 기름까지 모두 지워져. 정말 지울래?') && confirm('되돌릴 수 없어. 지울래?')) {
         Core.reset(); home();
       }
     };
