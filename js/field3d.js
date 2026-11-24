@@ -1294,8 +1294,10 @@
     }
     function resize() {
       const w = wrap.clientWidth || 360, h = wrap.clientHeight || 480;
+      if (!sizeChanged(renderer, w, h)) return;
       renderer.setSize(w, h, false); camera.aspect = w / h;
       camera.fov = w / h < 0.8 ? 52 : 44; camera.updateProjectionMatrix();
+      renderer.render(scene, camera);   // 크기를 바꾸면 캔버스가 지워지므로 바로 다시 그린다(검은 깜빡임 방지)
     }
     const ro = new ResizeObserver(resize); ro.observe(wrap); resize();
 
@@ -2008,7 +2010,7 @@
       const pr = renderer.getPixelRatio(), size = renderer.getSize(new T.Vector2());
       renderer.setPixelRatio(1); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
       renderer.render(scene, camera); const url = renderer.domElement.toDataURL(type, 0.86);
-      renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); resize();
+      renderer.setPixelRatio(pr); renderer.setSize(size.x, size.y, false); camera.aspect = size.x / size.y; camera.fov = camera.aspect < 0.8 ? 52 : 44; camera.updateProjectionMatrix(); renderer.render(scene, camera); resize();
       return url;
     }
     function destroy() {
@@ -2137,10 +2139,12 @@
     let figure, bounds, angle = -.2, pointer = null, lastX = 0, last = 0, idleAfter = 0, raf, spinStart = 0;
     const resize = () => {
       const width = container.clientWidth || 320, height = container.clientHeight || 255;
+      if (!sizeChanged(renderer, width, height)) return;
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       fitStudio(camera, bounds, direction, true);
+      if (figure) renderer.render(scene, camera);
     };
     const update = next => {
       if (figure) { scene.remove(figure); disposeFigure(figure); }
@@ -4820,8 +4824,10 @@
       const width = container.clientWidth, height = container.clientHeight;
       if (!width || !height) return;
       markerWidth = width; markerHeight = height;
+      if (!sizeChanged(renderer, width, height)) return;
       renderer.setSize(width, height, false);
       camera.aspect = width / height; camera.updateProjectionMatrix();
+      renderScene();   // 검은 깜빡임 방지
     }
     const observer = new ResizeObserver(resize);
     observer.observe(container); resize();
@@ -5768,7 +5774,7 @@
       if (now - lastMetric > 1400) {
         metrics = { fps: frameTime ? Math.round(frames * 1000 / frameTime) : 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, ratio: resolution };
         if (metrics.fps < 48 && resolution > .75) sinceSlow++; else sinceSlow = 0;
-        if (sinceSlow >= 2) { resolution = Math.max(.75, resolution * .83); renderer.setPixelRatio(resolution); resize(); sinceSlow = 0; }
+        if (sinceSlow >= 2) { resolution = Math.max(.75, resolution * .83); renderer.setPixelRatio(resolution); resize(); renderScene(); sinceSlow = 0; }
         lastMetric = now; frames = 0; frameTime = 0;
       }
     }
@@ -5917,6 +5923,13 @@
       leg.rotation.x = Math.sin(t * 13) * strength * (i === 0 || i === 3 ? .58 : -.58);
       leg.scale.y = lerp(leg.scale.y, rest ? .31 : 1, .17);
     }
+  }
+
+  // 캔버스 크기가 실제로 바뀔 때만 다시 잡는다. 같은 크기라도 width를 다시 넣으면 캔버스가 지워져
+  // 다음 프레임까지 검게 보인다(카카오톡 인앱 브라우저에서 스크롤·확대·털 깎기 때 주소창이 움직이며 반복됨).
+  function sizeChanged(renderer, w, h) {
+    const pr = renderer.getPixelRatio(), c = renderer.domElement;
+    return c.width !== Math.floor(w * pr) || c.height !== Math.floor(h * pr);
   }
 
   let webGLAvailable;

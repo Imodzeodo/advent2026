@@ -2,6 +2,8 @@
 (function () {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const app = document.getElementById('app');
+  // 두 손가락 확대 막기(iOS 사파리·카카오톡 인앱은 viewport 설정을 무시할 때가 있다). 확대 중 3D 화면이 검게 깜빡였다.
+  ['gesturestart', 'gesturechange'].forEach(type => document.addEventListener(type, e => e.preventDefault(), { passive: false }));
 
   // 글자 크기·움직임 설정을 화면 전체에 적용
   function applyPrefs() {
