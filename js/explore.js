@@ -226,7 +226,10 @@
     const { title, bounds: [w, h], sites, paths, visited, canonical } = region;
     const [px, pz] = canonical(position);
     const [sx, sz] = scent ? canonical(scent) : [];
-    const { found, ids } = regionCollection(region.index, log);
+    const placements = sites.map(site => countAtSite(site, entries, log));
+    const found = placements.reduce((sum, dc) => sum + dc.n, 0);
+    const total = placements.reduce((sum, dc) => sum + dc.max, 0);
+    const ids = [...new Set(entries.map(entry => entry.id))];
     const visitedCount = sites.filter(site => log.visitedSites?.[site.key] || visited.has(Math.floor(site.x / regionCell) + ',' + Math.floor(site.z / regionCell))).length;
     const legends = ids.filter(id => log.discoveries[id] && discoverRarity(window.DISCOVERIES[id], id) === 'legend').length;
     const siteIcons = { temple: '🏛️', sanctuary: '🕎', roof: '🏠', well: '🪣', 'david-well': '🪣', 'village-threshing': '🌾',
@@ -257,12 +260,10 @@
       <circle cx="${px}" cy="${pz}" r="2.6" fill="#d5fbff" stroke="#254861" data-region-player/>
     </svg>
     <p class="region-map-key">● 지금 위치 ${scent ? ' · 🟠 양이 맡은 냄새' : ''}</p>
-    <p class="region-map-key" data-region-progress>가 본 곳 ${visitedCount}/${sites.length} · 발견 ${found}/${ids.length} · 전설 ${legends}</p>
-    <ul class="region-places">${sites.map(site => {
-      const dc = site.extension || region.index === 0 && site.episode
-        ? countAtSite(site, entries, log)
-        : site.episode ? discoverCount(site.episode, log) : null;
-      return `<li><b>${esc(site.name)}</b><span>${dc?.max ? `발견 ${dc.n}/${dc.max}` : site.extension ? '둘러볼 수 있어' : '아직 이야기가 열리지 않았어'}</span></li>`;
+    <p class="region-map-key" data-region-progress>가 본 곳 ${visitedCount}/${sites.length} · 발견 ${found}/${total} · 전설 ${legends}</p>
+    <ul class="region-places">${sites.map((site, i) => {
+      const dc = placements[i];
+      return `<li><b>${esc(site.name)}</b><span>${dc.max ? `발견 ${dc.n}/${dc.max}` : site.extension || site.episode ? '둘러볼 수 있어' : '아직 이야기가 열리지 않았어'}</span></li>`;
     }).join('')}</ul>`;
   }
 
@@ -457,10 +458,15 @@
     return { n: markers.filter(marker => log.found[foundKey(id, marker.id)]).length, max: markers.length };
   }
   function complete(id) {
-    if (adventureLog(id)?.done || Core.data.field?.explore?.found?.[foundKey(id, 'activity')]) return true;
+    const log = Core.data.field?.explore;
     const spec = window.EXPLORE[id]?.discover;
-    if (!spec) return false;
-    return discoverCount(id).n >= Math.min(2, spec.newIds.length || 2);
+    if (!spec) return !!(adventureLog(id)?.done || log?.found?.[foundKey(id, 'activity')]);
+    if (log?.visits?.[id] > 0) return true;
+    const episodeDate = Core.epById(id)?.date;
+    return spec.newIds.some(itemId => {
+      const discovery = log?.discoveries?.[itemId];
+      return !!discovery && (discovery.place === id || !!episodeDate && discovery.date === episodeDate);
+    });
   }
   function counts() {
     const log = Core.data.field?.explore;
@@ -1750,7 +1756,6 @@
       <p class="try-hint" data-try-hint>${esc(item.tryPrompt || '손가락으로 체험해 봐!')}</p>
       <div class="try-meter"><i data-try-bar></i></div>
       <div class="try-stage" data-try-stage>${stageMarkup()}</div>
-      <div class="discover-sheep-box"><i>🐑</i><span><b>${esc(sheep.name)}</b>${esc(react.line)}</span></div>
       <button type="button" class="btn ghost try-fallback-btn" data-try-step>${esc(item.tryBtn || '체험 진행하기')}</button>
       <button type="button" class="link" data-try-cancel style="display:block;margin:6px auto 0">그만하기</button>
     </div>`, 'discover-try-dialog', () => { cancelAnimationFrame(holdRaf); onClose?.(); });
@@ -2644,15 +2649,15 @@
         <button type="button" class="discover-nearby" data-nearby hidden>✨ <span></span></button>
       </section>` : ''}
       <div class="explore-location-main">${narrLine ? `<p class="explore-narr-caption" data-narr-caption hidden aria-live="polite"><i aria-hidden="true">🔈</i><span>${esc(narrLine)}</span></p>` : ''}<div class="explore-stage" aria-label="${esc(area.title)}" data-kit="${area.kit}"><p class="explore-loading">장소를 불러오는 중…</p><div class="explore-room-veil" aria-hidden="true" hidden></div>
-      ${enhanced ? '<button type="button" data-quest-map class="adventure-zone"><i aria-hidden="true">' + (region ? '📍' : '◇') + '</i> <span data-zone></span></button>' : ''}</div><div class="explore-zone-banner" data-zone-banner hidden aria-live="polite"></div>
+      ${enhanced ? '<button type="button" data-quest-map class="adventure-zone"><i aria-hidden="true">' + (region ? '📍' : '◇') + '</i> <span data-zone></span></button>' : ''}
+      ${region ? '<button class="btn" type="button" data-dismount hidden>🫏 내리기</button>' : ''}</div><div class="explore-zone-banner" data-zone-banner hidden aria-live="polite"></div>
       ${region ? '<p class="explore-zone-caption" data-zone-narration hidden aria-live="polite"></p>' : ''}
       ${hasDiscover ? '<section class="discover-inspect" data-inspect hidden aria-live="polite"></section>' : ''}
       <p class="explore-status" role="status">${hasDiscover ? `조이스틱이나 바닥을 톡 눌러 ${esc(Core.josa(sheep.name, '이랑'))} 천천히 둘러봐.` : enhanced ? '조이스틱이나 바닥을 톡 눌러 이동해. 오른쪽 화면을 밀면 둘러볼 수 있어.' : `바닥을 톡 누르면 ${esc(Core.josa(sheep.name, '이가'))} 걸어가.`}</p>
       ${hasDiscover ? '' : '<p class="explore-task-line"><span data-score></span><strong data-timer hidden></strong></p>'}</div>
       <div class="explore-flat" hidden></div>
-      ${region ? `<div class="explore-travel-controls">
-        <button class="btn ghost" type="button" data-dismount hidden>🫏 내리기</button>
-        ${(sheep.level || 1) >= 2 && sheep.level < 5 ? '<button class="btn ghost" type="button" data-hold-lamb aria-pressed="false" hidden>🤲 안아 주기</button>' : ''}
+      ${region && (sheep.level || 1) >= 2 && sheep.level < 5 ? `<div class="explore-travel-controls">
+        <button class="btn ghost" type="button" data-hold-lamb aria-pressed="false" hidden>🤲 안아 주기</button>
       </div>` : ''}
       ${hasDiscover ? `<footer class="adventure-actions">
         <button type="button" data-abilities><i>🐑</i> 양 능력</button>

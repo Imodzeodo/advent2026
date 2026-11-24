@@ -20,7 +20,8 @@
   ];
   const GIFTS = [
     { id: 'scarf', title: '따뜻한 목도리', to: '사가랴', wool: { white: 4, brown: 2 },
-      note: n => [`${n}, 네 목도리 덕분에 지붕 위 밤바람이 하나도 안 춥다.`, '아직 말은 못 하지만 서판에 적는다. 고맙다.'] },
+      note: n => [`${n}, 네 목도리 덕분에 지붕 위 밤바람이 하나도 안 춥다.`,
+        date() >= Core.epById('1-3').date ? '아직 말은 못 하지만 서판에 적는다. 고맙다.' : '고맙다.'] },
     { id: 'cushion', title: '작업장 방석', to: '요셉', episode: '2-0', wool: { white: 5, black: 3, brown: 2 },
       note: n => ['작업장에 앉을 때마다 네 방석이 생각날 거야.', `손으로 만든 건 마음이 남지. 고마워, ${n}.`] },
     { id: 'swaddle', title: '아기 포대기', to: '마리아', episode: '3-0', wool: { white: 6, pink: 3, blue: 3 },
@@ -31,7 +32,7 @@
   const WOOL_IDS = ['white', 'black', 'brown', 'pink', 'blue', 'gold', 'green', 'purple'];
   const COLORED_WOOL = WOOL_IDS.slice(1);
   const BASIC_GUIDES = {
-    wear: { title: '👗 옷장', hint: '여기를 눌러 내 양에게 옷을 골라 줘.', selector: '.field-wear-shop' },
+    wear: { title: '👗 옷장', hint: '내 양에게 어울리는 옷을 골라 줘.', action: '옷장 열기', selector: '.field-wear-shop' },
     gift: { title: '🎁 선물 상자', hint: '여기를 눌러 양털로 만들 선물을 봐.', selector: '.field-gift-box' },
     flock: { title: '🐑 내 양', hint: '여기를 눌러 내 양과 놀러 온 친구들을 봐.', selector: '.field-flock' }
   };
@@ -1363,7 +1364,7 @@
           <div class="field-info-head"><h2 id="field-guide-title">${esc(feature.title)}</h2>
             <button type="button" class="link field-info-close">확인</button></div>
           <p>${esc(feature.hint)}</p>
-          <div class="field-info-actions"><button type="button" class="btn small field-guide-try">👆 눌러 봐</button></div>
+          <div class="field-info-actions"><button type="button" class="btn small field-guide-try">${feature.action || '👆 눌러 봐'}</button></div>
         </aside>`;
       }
       const streak = VISIT_MILESTONES.find(day => data.visitRewards?.[day] && !data.visitRewards[day].seen);
@@ -1541,7 +1542,7 @@
           `<button type="button" class="btn field-shear${tonightLeft ? '' : ' ghost'}" ${shearable.length ? '' : 'disabled'}>${shearable.length ?
             `${tonightLeft ? '✂️ 털 깎기' : '✂️ 더 깎기'} <small>· ${esc(shearable[0].name)} · ${woolType(woolOf(shearable[0])).name}</small>` :
             '내일 밤 다시 복슬해져'}</button>` :
-          hasSheepInField ? `<p class="field-shear-hint">${!shearable.length ? '✓ 오늘 밤엔 다 깎았어' : tonightLeft ? '✂️ 양을 쓱쓱 문질러 봐 · ' + tonightLeft + '마리 남음' : '✓ 오늘 밤 몫은 다 했어 · 더 깎아도 돼'}</p>` : ''}
+          hasSheepInField ? `<p class="field-shear-hint">${!shearable.length ? '✓ 오늘 밤엔 다 깎았어' : tonightLeft ? '✂️ 내 양의 털을 쓱쓱 문질러 봐' : '✓ 오늘 밤 몫은 다 했어 · 더 깎아도 돼'}</p>` : ''}
           <p class="field-feedback" role="status">${esc(message)}</p>`}`;
       manage.innerHTML = `${moving ? `<p class="field-move-tip"><span>${esc(josa(moving.item, '을를'))} 놓을 빈 칸을 골라 줘.</span><button type="button" class="link field-cancel-move">취소</button></p>` :
           `${giftBox(data)}<div class="field-actions">
@@ -2896,9 +2897,9 @@
         await Promise.race([opening, wait(3500)]);
         allow3D = false;
         if (!active) return;
+        const lamb = { id: 'welcome-lamb', name: sp.name, species: sp.id, level: 1, wool: 1 };
         if (view) {
           try {
-            const lamb = { id: 'welcome-lamb', name: sp.name, species: sp.id, level: 1, wool: 1 };
             view.update({ ...initial, sheep: [lamb] });
             const arrival = view.welcome(lamb.id);
             const follow = () => { try { view?.focus(lamb.id); } catch { /* 걷기 연출은 계속 */ } };
@@ -2918,9 +2919,9 @@
         button.disabled = false;
         button.textContent = previewSpecies ? '들판으로' : '계속';
         button.onclick = () => previewSpecies ? finish() :
-          dialogue('성탄까지 네가 맡아 주겠니? 이름을 지어 주렴.', 'lamb-2', () => naming(sp));
+          dialogue('성탄까지 네가 맡아 주겠니? 이름을 지어 주렴.', 'lamb-2', () => naming(sp, lamb));
       }
-      function naming(sp) {
+      function naming(sp, lamb) {
         content.innerHTML = nameForm('이 이름으로 맡을게', sp.name);
         content.querySelector('form').onsubmit = event => {
           event.preventDefault();
@@ -2934,6 +2935,7 @@
           data.dex[sp.id] ||= date();
           syncMainGrowth(data, date());
           Core.save();
+          view?.update({ ...initial, sheep: [{ ...lamb, name }] });
           Sound.sfx('star');
           content.innerHTML = `<div class="field-arrival" role="status"><p>🐑 ${esc(name)} (${esc(sp.name)}), 네 들판에 왔어!</p>
             <button type="button" class="btn field-first-card">자랑 카드 저장·공유</button>
@@ -2984,7 +2986,7 @@
     const line = '네가 돌본 양들도, 그 밤 구유 곁에 있었다.';
     const blanket = data.woolGifts.blanket;
     const colors = woolColors(blanket?.wool);
-    const talk = `<p>${line}</p>${blanket ? '<p class="field-blanket-line">(해설) 구유에는 네가 짠 이불이 깔려 있었다.</p>' : ''}`;
+    const talk = `<p>${line}</p>${blanket ? '<p class="field-blanket-line">구유에는 네가 짠 이불이 깔려 있었다.</p>' : ''}`;
     if (!window.__fast) {
       let played = false;
       if (window.SHEEP_DEX && can3D() && await load3D()) {

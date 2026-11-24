@@ -2948,7 +2948,7 @@
       }
       actor.scale.setScalar(size);
       // 걸음 상태: phase는 걸은 거리로만 늘어난다(발이 미끄러지지 않게)
-      actor.userData.gait = { rig, arms, feet, phase: Math.random() * 6, amt: 0, seed: Math.random() * 9, holds: prop === 'staff' || prop === 'jar' || prop === 'basket' || prop === 'lantern', wave: 0 };
+      actor.userData.gait = { rig, arms, feet, cloth, phase: Math.random() * 6, amt: 0, seed: Math.random() * 9, holds: prop === 'staff' || prop === 'jar' || prop === 'basket' || prop === 'lantern', wave: 0 };
       return { actor, arm };
     }
     function animal(kind, saddled = false) {
@@ -6298,7 +6298,7 @@
       if (marker.discoverId === 'millstone') return '🛠 맷돌 돌려 보기';
       if (marker.id === 'path/bush') return '✋ 수풀 흔들어 보기';
       if (marker.id === 'path/game') return seated ? '👀 자리에서 일어나기' : '👀 공기놀이 옆에 앉기';
-      if (marker.ride) return mounted ? '🫏 나귀에서 내리기' : '🫏 나귀 타기';
+      if (marker.ride) return '🫏 나귀 타기';
       if (marker.shortcut) return '🐑 담 넘기';
       if (marker.observe) return `👀 구경하기 · ${title}`;
       if (marker.type === 'person') return `💬 ${Core.josa(title, '과와')} ${verb}`;
@@ -6311,7 +6311,7 @@
     }
 
     function canActivate(entry, p = walkPosition()) {
-      if (!entry || entry.marker.lit || entry.marker.type === 'house-door') return false;
+      if (!entry || entry.marker.lit || entry.marker.type === 'house-door' || (mounted && entry.marker.ride)) return false;
       return inActionRange(entry.obj.position, p.x, p.y, p.z);
     }
 
@@ -6346,7 +6346,7 @@
     const onGround = (x, z) => [x, world.height(x, z), z];
     const walkPosition = () => (leader || player).position;
     const life = region ? makeRegionalLife(scene, region, world, reduced) : null;
-    let mounted = null, mountModel, held = false, carriedWordAt = 0, hoofDistance = 0;
+    let mounted = null, mountModel, riderLegs, held = false, carriedWordAt = 0, hoofDistance = 0;
     let sheepHop, crossing, jump, sheepJumps = [], lastHop, hopCount = 0, groundContact, jumpMovement = null;
     let wallHop = false, wallPassUntil = 0, lowPass = false, sheepCheck = false;   // lowPass: 점프 중이거나 낮은 담 위를 지나는 중 / sheepCheck: 양은 낮은 담을 폴짝 넘음   // 낮은 담: 뛰어서 넘는 중이거나 막 넘은 뒤 잠깐은 지나갈 수 있음(양도 따라 넘음)
     const surfaces = world.jumpSurfaces || [];
@@ -6532,6 +6532,14 @@
     const scenicMarkers = region ? pathPlay.markers.concat(life.markers, storyShortcuts, world.viewpoints.map((viewpoint, i) => ({
       id: 'viewpoint/' + i, type: 'photo', title: viewpoint.title, symbol: '📷', pos: viewpoint.pos, viewpoint
     }))) : [];
+    function ridingSheepSpot(p) {
+      for (const offset of [-.55, .55, -1.4, 1.4]) {
+        const angle = leader.rotation.y + offset;
+        const x = p.x - Math.sin(angle) * 2.25, z = p.z - Math.cos(angle) * 2.25;
+        if (sheepOpen(x, z)) return new T.Vector3(x, world.height(x, z), z);
+      }
+      return null;
+    }
     function ride(id = null) {
       if (!leader || id && (!life?.rides.has(id) || held || crossing)) return false;
       if (mounted) id = null;
@@ -6539,9 +6547,28 @@
       if (id && !mountModel) {
         mountModel = world.models.animal('나귀', true);
         mountModel.userData.drawPriority = 90;
+        const leg = new T.CylinderGeometry(.09, .105, 1, 6);
+        const segments = [-1, 1].flatMap(side => [
+          place(leg, side * .29, 1.23, .08, 1, .35, 1, .52, 0, side * .98),
+          place(leg, side * .43, 1.02, .16, 1, .38, 1, -.12)
+        ]);
+        riderLegs = merged(segments, mat(leader.userData.gait.cloth));
+        segments.forEach(segment => segment.dispose());
+        leg.dispose();
+        mountModel.add(riderLegs);
         leader.add(mountModel);
       }
+      wrap.classList.toggle('is-mounted', !!id);
       if (mountModel) mountModel.visible = !!id;
+      if (id) {
+        nearbyActions = nearbyActions.filter(({ marker }) => !marker.ride);
+        renderActions();
+        const p = leader.position, s = player.position;
+        if (Math.hypot(p.x - s.x, p.z - s.z) < 1.85) {
+          const spot = ridingSheepSpot(p);
+          if (spot) { s.copy(spot); trail.length = 0; }
+        }
+      }
       if (!id) {
         const { rig, arms, feet } = leader.userData.gait;
         rig.position.y = 0;
@@ -6613,11 +6640,13 @@
         const { rig, arms, feet } = leader.userData.gait, gait = hoofDistance * 8.4;
         const { head, ears, feet: hooves } = mountModel.userData.mountRig;
         const bob = reduced || !walking ? 0 : Math.sin(gait * 2) * .046;
-        rig.position.y = 1.08 + bob;
-        rig.scale.y = .86;
-        rig.rotation.x = .14;
+        rig.position.y = 1.05 + bob;
+        rig.scale.y = .83;
+        rig.rotation.x = .05;
+        rig.rotation.y = rig.rotation.z = 0;
+        riderLegs.position.y = bob;
         arms.forEach((arm, i) => { arm.rotation.x = -.83; arm.rotation.z = i ? -.34 : .34; });
-        feet.forEach((foot, i) => { foot.position.set(i ? .43 : -.43, .82 + bob, .12); foot.rotation.x = -.11; });
+        feet.forEach((foot, i) => { foot.position.set(i ? .43 : -.43, .82 + bob, .14); foot.rotation.x = -.11; });
         head.rotation.x = walking && !reduced ? Math.sin(gait) * .10 : 0;
         ears.forEach((ear, i) => { ear.rotation.x = reduced ? 0 : .13 * Math.sin(t * (3 + i) + i); });
         hooves.forEach((foot, i) => { foot.rotation.x = walking && !reduced ? Math.sin(gait + (i === 0 || i === 3 ? 0 : Math.PI)) * .54 : 0; });
@@ -7242,12 +7271,14 @@
       const distance = Math.hypot(dx, dz), near = Math.hypot(p.x - s.x, p.z - s.z);
       let trotting = false;
       // 멀수록 빨리, 가까워지면 천천히 — 속도를 부드럽게 올리고 내린다(갑자기 서거나 튀지 않게)
-      const chase = (near > 1.36 || trail.length > 3) && distance > .38 ? clamp((near - 1.1) * 1.6, .9, mounted ? 9.4 : sheepTopSpeed) : 0;
+      const gap = mounted ? 2.0 : 1.36;
+      const chase = (near > gap || !mounted && trail.length > 3) && distance > .38
+        ? clamp((near - gap + .26) * 1.6, .9, mounted ? 9.4 : sheepTopSpeed) : 0;
       sheepSpeed += (chase - sheepSpeed) * Math.min(1, delta * (chase > sheepSpeed ? 4.5 : 6.5));
       if (sheepSpeed > .04 && distance > .05) {
         const step = Math.min(distance, delta * sheepSpeed);
         const x = s.x + dx / distance * step, z = s.z + dz / distance * step;
-        if (sheepOpen(x, z)) {
+        if ((!mounted || Math.hypot(p.x - x, p.z - z) >= Math.min(near, 1.85)) && sheepOpen(x, z)) {
           s.x = x; s.z = z; s.y = world.height(x, z); trotting = true; followTimer = 0;
           if (now - lastSheepWallHop > 900 && insideLowBlock(x, z)) { lastSheepWallHop = now; sheepJumps.push({ start: now }); }   // 낮은 담은 폴짝
           const yaw = Math.atan2(dx, dz) - player.rotation.y;
@@ -7259,9 +7290,10 @@
         player.rotation.y += Math.atan2(Math.sin(yaw), Math.cos(yaw)) * Math.min(1, delta * 1.6);
       }
       if (near > 7 || followTimer > 1.7) {
-        const candidates = [trail.find(point => sheepOpen(point.x, point.z)), p];
-        const point = candidates.find(Boolean);
-        s.copy(point); trail.splice(0, Math.max(0, trail.indexOf(point))); followTimer = 0;
+        const point = trail.find(node => (!mounted || Math.hypot(p.x - node.x, p.z - node.z) >= 1.85) && sheepOpen(node.x, node.z))
+          || (mounted ? ridingSheepSpot(p) : p);
+        if (point) { s.copy(point); trail.splice(0, Math.max(0, trail.indexOf(point))); }
+        followTimer = 0;
       }
       if (escort) {
         const e = escort.actor, ex = e.position.x, ez = e.position.z;

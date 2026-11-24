@@ -201,6 +201,7 @@
     </g>
     <path d="M0,300 Q70,262 150,286 T300,270 T360,280 L360,360 L0,360 Z" fill="#0e1330"/>
     <g data-hot="마을">
+      <circle data-hot-anchor cx="59" cy="306" r="1" fill="none"/>
       ${house(10, 300, 52, 50, '#1a2040', { win: [[10, 18, 0], [32, 18, 0]] })}
       ${house(70, 312, 40, 40, '#161c38', { win: [[15, 14, 0]] })}
       ${house(118, 296, 60, 56, '#1c2243', { win: [[12, 20, 1], [38, 20, 0]] })}
@@ -470,7 +471,7 @@
     <rect x="30" y="200" width="10" height="230" fill="#4a3428"/><rect x="320" y="200" width="10" height="230" fill="#4a3428"/>
     <g data-hot="연장">${[60, 80, 100, 120].map((x, i) => `<rect x="${x}" y="220" width="6" height="${40 + i * 6}" fill="#9a7a5a"/>`).join('')}<rect x="56" y="214" width="76" height="6" fill="#4a3428"/></g>
     <g data-hot="문틀"><rect x="236" y="250" width="14" height="170" fill="#c99a6a"/><rect x="296" y="250" width="14" height="170" fill="#c99a6a"/><rect x="236" y="240" width="74" height="14" fill="#d8aa78"/></g>
-    <g data-hot="작업대"><rect x="90" y="370" width="140" height="16" fill="#b07a46"/><rect x="100" y="386" width="10" height="44" fill="#8a5a32"/><rect x="210" y="386" width="10" height="44" fill="#8a5a32"/><rect x="120" y="358" width="70" height="12" fill="#d8aa78"/></g>
+    <g data-hot="작업대"><circle data-hot-anchor cx="94" cy="399" r="1" fill="none"/><rect x="90" y="370" width="140" height="16" fill="#b07a46"/><rect x="100" y="386" width="10" height="44" fill="#8a5a32"/><rect x="210" y="386" width="10" height="44" fill="#8a5a32"/><rect x="120" y="358" width="70" height="12" fill="#d8aa78"/></g>
     <rect x="0" y="430" width="${W}" height="110" fill="#5a4234"/>
     ${person({ x: 170, y: 500, h: 152, ...JOS })}`;
   scenes['나사렛길'] = () => `

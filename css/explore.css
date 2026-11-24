@@ -1041,6 +1041,8 @@
   color: #ffe8b6; font: 700 24px/1 system-ui; touch-action: manipulation; cursor: pointer;
 }
 .explore-jump:active { background: #ffe0a2; color: #36213b; }
+.is-mounted .explore-jump { display: none; }
+.explore-stage > [data-dismount] { position: absolute; z-index: 4; right: 13px; bottom: 13px; width: auto; min-height: 49px; margin: 0; }
 
 .explore-places .explore-place-row {
   width: 100%; min-height: 54px; display: grid; grid-template-columns: 29px minmax(0, 1fr) auto;

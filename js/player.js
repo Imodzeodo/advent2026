@@ -53,7 +53,7 @@
     el.dialog.addEventListener('click', e => { if (!e.target.closest('button')) onTap(); });
     el.stage.addEventListener('click', e => { if (!e.target.closest('[data-hot],.hot-mark')) onTap(); });
     root.querySelector('.exit').addEventListener('click', () => {
-      if (confirm('이야기에서 나갈까요? 다음에 마지막 장면부터 이어서 할 수 있어요.')) {
+      if (confirm('이야기에서 나갈래? 다음에 마지막 장면부터 이어서 할 수 있어.')) {
         runId++;
         App.home();
       }
@@ -446,7 +446,7 @@
     el.hot.querySelectorAll('.hot-mark').forEach(m => {
       const t = el.scene.querySelector(`[data-hot="${CSS.escape(m.dataset.name)}"]`);
       if (!t) { m.style.display = 'none'; return; }
-      const r = t.getBoundingClientRect();
+      const r = (t.querySelector('[data-hot-anchor]') || t).getBoundingClientRect();
       const x = Math.min(sr.width - 50, Math.max(50, r.left - sr.left + r.width / 2));
       const y = Math.min(sr.height - 30, Math.max(30, r.top - sr.top + r.height / 2));
       m.style.left = x + 'px';
@@ -677,7 +677,7 @@
       hideOverlay();
       Core.data.diary[ep.id] = { q: Script.fill(s.text, ep.id), a: answer };
       Core.save();
-      if (answer) toast('일기장에 적었어요');
+      if (answer) toast('일기장에 적었어');
     },
     async mission(s) {
       clearDialog('');
@@ -696,12 +696,14 @@
       });
     },
     async game(s, my) {
+      if (ep.id === '1-0' && s.name === '등불' && Core.data.appointedOn) return;
       clearDialog('');
       const fn = Games[s.name];
       if (!fn) return;
       const box = showOverlay(`<div class="gamebox"></div>`, 'game').querySelector('.gamebox');
       await new Promise(res => {
         fn(box, {
+          episode: ep.id,
           done: res,
           say: async (who, text) => { await say(who, text); if (my === runId) clearDialog(''); }
         }, s.arg);
@@ -862,12 +864,13 @@
             <div class="medi-tag">말씀 묵상</div>
             <div class="medi-ref">${esc(refLabel)}</div>
             <div class="medi-help">천천히 읽어 봐. 마음에 남는 구절을 누르면 표시돼. 홈의 <b>📖 말씀 모음</b>에 모여.</div>
+            <button type="button" class="link medi-question-link" data-medi-questions>묵상 질문으로 ↓</button>
             <div class="medi-list">${list.map(v => `
               ${v.heading ? `<div class="mh">${esc(v.heading)}</div>` : ''}
               <button class="mv${picked.has(v.ref) ? ' on' : ''}" data-ref="${esc(v.ref)}"><sup>${v.v}</sup>${esc(v.text)}</button>`).join('')}
             </div>
             <div class="medi-src">성경전서 개역개정판 © 대한성서공회</div>
-            <div class="medi-qs">${qs.slice(0, 1).map((q, i) => mq(q, i)).join('')}
+            <div class="medi-qs" tabindex="-1">${qs.slice(0, 1).map((q, i) => mq(q, i)).join('')}
               ${qs.length > 1 ? `<details class="mq-more"${prev.a && prev.a.slice(1).some(Boolean) ? ' open' : ''}><summary>더 생각해 보기 (${qs.length - 1}) · 안 적어도 괜찮아</summary>${qs.slice(1).map((q, i) => mq(q, i + 1)).join('')}</details>` : ''}
             </div>
           </div>
@@ -876,6 +879,11 @@
             <button class="btn" data-v="ok">묵상 마치기</button>
           </div>
         </div>`, 'center input medi');
+      ov.querySelector('[data-medi-questions]').onclick = () => {
+        const questions = ov.querySelector('.medi-qs');
+        questions.scrollIntoView({ block: 'start' });
+        questions.focus({ preventScroll: true });
+      };
       ov.querySelectorAll('.mv').forEach(btn => btn.onclick = () => {
         const on = btn.classList.toggle('on');
         if (on) picked.add(btn.dataset.ref); else picked.delete(btn.dataset.ref);
@@ -971,7 +979,8 @@
       t.appendChild(b);
     }
     t.style.bottom = document.getElementById('play') ? 'calc(220px + env(safe-area-inset-bottom, 0px))' : 'calc(40px + env(safe-area-inset-bottom, 0px))';
-    document.body.appendChild(t);
+    const screen = action && document.getElementById('app')?.firstElementChild;
+    (screen || document.body).appendChild(t);
     setTimeout(() => t.classList.add('show'), 10);
     setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, action ? 6200 : 1800);
   }
