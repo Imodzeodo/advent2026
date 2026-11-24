@@ -250,6 +250,7 @@
     '모험 산길': 'wind', '모험 성소': 'temple', '모험 뜰': 'crowd', '모험 지붕': 'day',
     '밤하늘': 'night', '지붕': 'night', '지붕새벽': 'night', '새벽집': 'night', '새집': 'night', '들판': 'field', '들판새벽': 'day',
     '성소': 'temple', '성소천사': 'temple', '성전뜰': 'crowd', '성전': 'crowd', '베들레헴': 'crowd',
+    '탐험 성전 뜰': 'templeCourt', '탐험 밤의 성전': 'templeLamps',
     '나사렛길': 'day', '마리아집': 'day', '유대집': 'day', '할례': 'crowd', '산길': 'wind', '길': 'day', '언덕노을': 'wind',
     '집안': 'room', '요셉밤': 'room', '작업장': 'room', '마구간': 'stable', '꿈': 'dream'
   };
@@ -281,11 +282,13 @@
     if (kind === 'pasture') loopNoise(0.035, 'brown', 320);
     if (kind === 'market') { loopNoise(.085, 'pink', 535, .72); loopNoise(.05, 'brown', 350); }
     if (kind === 'water') { loopNoise(.054, 'pink', 1560, 1.35); loopNoise(.028, 'brown', 400); }
+    if (kind === 'templeCourt') { loopNoise(.054, 'pink', 625, .75); loopNoise(.025, 'brown', 345); }
+    if (kind === 'templeLamps') loopNoise(.038, 'brown', 450);
     if (kind === 'temple') {
       // 성소의 낮은 울림 (장면이 바뀌면 같이 멈춤)
       [110, 165].forEach(f => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = f; g.gain.value = 0.008; o.connect(g); g.connect(ambBus); o.start(); ambNodes.push(o); });
     }
-    let next = ctx.currentTime + 0.5;
+    let next = ctx.currentTime + 0.5, courtPulse = 0;
     ambTimer = setInterval(() => {
       const now = ctx.currentTime;
       if (next > now + 0.6) return;
@@ -311,6 +314,18 @@
         next = t + .52 + Math.random() * 1.1;
       }
       if (kind === 'crowd') { noise(t, 0.9, 0.025, 500 + Math.random() * 500, 700); next = t + 0.6 + Math.random() * 0.8; }
+      if (kind === 'templeLamps') {
+        for (let k = 0; k < 4; k++) noise(t + Math.random() * .69, .035, .012, 2350, 840);
+        next = t + 1.4 + Math.random() * 1.7;
+      }
+      if (kind === 'templeCourt') {
+        noise(t, .75, .028, 420 + Math.random() * 440, 580);
+        if (courtPulse % 4 === 1) for (let k = 0; k < 3; k++) chirp(t + .23 + k * .12, 503, 405, .13, .011);
+        if (courtPulse % 8 === 4) bleat(t + .34, 295, ambBus, .44);
+        if (courtPulse % 12 === 6) templeTrumpet(t, .017, 880, ambBus);
+        courtPulse++;
+        next = t + 1.3 + Math.random() * .8;
+      }
       if (kind === 'room' || kind === 'stable') { if (Math.random() < 0.3) noise(t, 0.05, 0.02, 2200, 1200); if (kind === 'stable' && Math.random() < 0.06) thud(t, 80, 0.06, 0.2); next = t + 1 + Math.random() * 2; }
       if (kind === 'temple' || kind === 'dream') { bell((kind === 'dream' ? 84 : 76) + [0, 3, 7, 10][Math.floor(Math.random() * 4)], t, 0.018, ambBus); next = t + 3 + Math.random() * 4; }
     }, 200);
@@ -339,6 +354,21 @@
   }
 
   /* ---------- 효과음 ---------- */
+  function templeTrumpet(t, volume, cutoff, bus) {
+    const destination = out(bus, 1, .35);
+    [62, 69, 74].forEach((m, i) => {
+      const at = t + i * .09;
+      const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(midi(m), at);
+      f.type = 'lowpass'; f.frequency.setValueAtTime(cutoff, at);
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(volume, at + .04);
+      g.gain.exponentialRampToValueAtTime(.0008, at + .42);
+      o.connect(f); f.connect(g); g.connect(destination);
+      o.start(at); o.stop(at + .45);
+    });
+  }
+
   const FX = {
     exploreBell(t, step = 0) {
       musicBox([69, 72, 76, 79][step % 4], t, .09, sfxBus);
@@ -360,6 +390,8 @@
     heart: t => { thud(t, 55, 0.3, 0.25); thud(t + 0.22, 50, 0.22, 0.25); },
     door: t => { thud(t, 90, 0.25, 0.3); noise(t + 0.02, 0.25, 0.08, 400, 200); },
     knock: t => [0, 0.18, 0.36].forEach(d => thud(t + d, 180, 0.2, 0.08)),
+    jumpLand: t => { thud(t, 96, .085, .042); noise(t, .075, .022, 760, 610); },
+    jumpSplash: t => { thud(t, 153, .057, .031); noise(t, .19, .046, 1700, 1050); },
     walkExplore: t => { thud(t, 106, .055, .021); noise(t, .058, .014, 840, 670); },
     hoofExplore: t => { thud(t, 147, .085, .062); thud(t + .058, 112, .083, .054); noise(t + .018, .076, .019, 710, 460); },
     steps: t => [0, 0.35, 0.7, 1.05].forEach(d => { thud(t + d, 110, 0.12, 0.1); noise(t + d, 0.08, 0.03, 900, 500); }),
@@ -369,18 +401,7 @@
     hammer: t => { thud(t, 220, 0.25, 0.06); bell(76, t, 0.03); },
     plane: t => noise(t, 0.45, 0.09, 2600, 900),
     grind: t => { noise(t, 0.2, 0.055, 620, 420); thud(t, 92, 0.06, 0.14); },
-    trumpet: t => {
-      [62, 69, 74].forEach((m, i) => {
-        const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-        o.type = 'sawtooth'; o.frequency.setValueAtTime(midi(m), t + i * 0.09);
-        f.type = 'lowpass'; f.frequency.setValueAtTime(1650, t + i * 0.09);
-        g.gain.setValueAtTime(0, t + i * 0.09);
-        g.gain.linearRampToValueAtTime(0.055, t + i * 0.09 + 0.04);
-        g.gain.exponentialRampToValueAtTime(0.0008, t + i * 0.09 + 0.42);
-        o.connect(f); f.connect(g); g.connect(out(sfxBus, 1, 0.35));
-        o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.45);
-      });
-    },
+    trumpet: t => templeTrumpet(t, .055, 1650, sfxBus),
     match: t => { noise(t, 0.16, 0.14, 3000, 1600); noise(t + 0.18, 0.27, 0.075, 1800, 1050); },
     sheep: bleat,
     fieldGreet: t => { musicBox(69, t, 0.045, sfxBus); musicBox(76, t + 0.11, 0.032, sfxBus); },
@@ -458,7 +479,7 @@
     },
     baby: t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(660, t + 0.25); o.frequency.linearRampToValueAtTime(480, t + 0.7); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.05, t + 0.08); g.gain.linearRampToValueAtTime(0, t + 0.75); o.connect(g); g.connect(out(sfxBus, 1, 0.5)); o.start(t); o.stop(t + 0.8); }
   };
-  function bleat(t, pitch = 420) {
+  function bleat(t, pitch = 420, bus = sfxBus, volume = 1) {
     const o = ctx.createOscillator(), v = ctx.createOscillator(), wobble = ctx.createGain();
     const g = ctx.createGain(), f = ctx.createBiquadFilter();
     o.type = 'sawtooth';
@@ -472,7 +493,7 @@
     g.gain.linearRampToValueAtTime(0.065, t + 0.05);
     g.gain.linearRampToValueAtTime(0.043, t + 0.29);
     g.gain.linearRampToValueAtTime(0, t + 0.43);
-    o.connect(f); f.connect(g); g.connect(out(sfxBus, 1, 0.23));
+    o.connect(f); f.connect(g); g.connect(out(bus, volume, 0.23));
     o.start(t); v.start(t); o.stop(t + 0.45); v.stop(t + 0.45);
   }
   function thud(t, f, vol, dur) {

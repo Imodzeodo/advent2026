@@ -1422,6 +1422,8 @@
       shear = null;
       if (!handlers.onShear) return;
       const o = sheepAt(cx, cy); if (!o) return;
+      // 털은 내 양만 깎인다. 친구 양을 문지르면 털은 그대로, 쓰다듬은 것처럼 하트만.
+      if (handlers.canShear && !handlers.canShear(o.userData.id)) { react(o.userData.id, 'heart'); return; }
       const prog = o.userData.shearProg || 0;
       shear = { o, dist: prog, last: prog, active: false, empty: o.userData.wool < 0.6 && !prog };
     }
@@ -2085,6 +2087,7 @@
     object.traverse(child => {
       if (child.geometry) geometry.add(child.geometry);
       if (child.isSprite) { child.material.map?.dispose(); child.material.dispose(); }
+      if (child.userData.disposeMaterial) child.material.dispose();
       if (child === object.userData.hit) child.material.dispose();
     });
     for (const part of geometry) part.dispose();
@@ -2280,9 +2283,11 @@
       scene.fog.near *= .73;
       scene.fog.far *= .77;
       const puddles = [];
+      climate.puddleCenters = [];
       const puddleShape = new T.CircleGeometry(1, 15);
       const puddleMat = new T.MeshBasicMaterial({ color: '#a0bfd0', opacity: .29, transparent: true, depthWrite: false });
       for (const [x, z] of [[-2.6, 3.6], [2.2, 1.4], [-4.3, -1.1], [2.8, -4.4], [-3.2, -7.2]]) {
+        climate.puddleCenters.push([x, z]);
         puddles.push(place(puddleShape, x, height(x, z) + .06, z, .84, .47, 1, -Math.PI / 2));
       }
       scene.add(merged(puddles, puddleMat));
@@ -2603,12 +2608,35 @@
     } else if (kit === 'stable') {
       const lit = Boolean(layout.christmas || layout.eve);
       const z = -7.4, y = height(0, z);
-      cube(wood, 0, y + 1.19, z - 1, 6.75, 2.4, .24);
-      for (const side of [-1, 1]) {
-        cube(wood, side * 3.14, y + 1.19, z, .23, 2.4, 2.57);
-        cube(wood, side * 2.83, y + 1.42, z + 1.25, .19, 2.84, .21);
-        cube(terra, side * 1.66, y + 2.91, z + .1, 3.66, .26, 3.43, 0, 0, side * -.38);
+      const limestone = ['#867374', '#b29c8e', '#9a8683', '#c1ab91', '#766772'].map(color => mat(color));
+      const recess = mat('#49404f'), stoneFloor = mat('#a48a71');
+      const caveFace = new T.IcosahedronGeometry(1, 1);
+      const front = z + 2.75;
+      for (let layer = 0; layer < 4; layer++) for (let i = 0; i <= 14; i++) {
+        const a = i / 14 * Math.PI, depth = front - layer * 1.38;
+        const width = 4.35 - layer * .25, vault = 3.12 - layer * .28;
+        const px = Math.cos(a) * width;
+        const py = y + .46 + Math.sin(a) * vault;
+        const hz = .93 + (i % 3) * .17;
+        batch(caveFace, limestone[(i + layer * 3) % limestone.length], px, py, depth + Math.sin(i * 2.4 + layer) * .26,
+          .94 + Math.abs(Math.cos(a)) * .28, .77 + (i % 4) * .11, hz, -.23, i * .29, a - 1.58);
+        if (i < 2 || i > 12) stop(px, depth, .52);
       }
+      for (let i = -4; i <= 4; i++) {
+        batch(caveFace, recess, i * .77, y + 1.35, z - 2.1, 1.05, 2.13, .88, .19, i);
+        stop(i * .77, z - 2.02, .45);
+        for (let j = 0; j < 6; j++) {
+          const px = i * .84 + .11 * (j % 2), pz = z + 2.85 - j * .86;
+          cube(j % 4 === 0 ? limestone[2] : stoneFloor, px, height(px, pz) + .014, pz, .80, .027, .82, 0, i * .02);
+        }
+      }
+      for (const side of [-1, 1]) {
+        batch(caveFace, limestone[2], side * 5.2, y + .74, z - .3, 2.22, 1.49, 2.95, -.25, side);
+        batch(caveFace, limestone[1], side * 4.4, y + .19, z + 3.45, 1.58, .78, 1.09, .10, side * .72);
+        cube(wood, side * 2.66, y + 1.11, z + 1.57, .17, 2.24, .19);
+        cube(wood, side * 2.66, y + 1.09, z + 2.29, .12, .12, 1.48);
+      }
+      caveFace.dispose();
       const interior = mat('#a27147');
       cube(interior, 0, y + 1.22, z - .86, 4.28, 2.2, .081);
       for (const side of [-1, 1]) for (let i = 0; i < 4; i++) cube(wood, side * (1.09 + i * .46), y + 1.24, z - .78, .086, 2.4, .088);
@@ -2642,6 +2670,10 @@
       if (lit) {
         const cribLight = new T.PointLight('#ffb65c', layout.christmas ? 13 : 7, 7.4, 1.8);
         cribLight.position.set(0, y + 1.62, crib + .24); scene.add(cribLight);
+        for (const side of [-1, 1]) {
+          const lantern = at('등불 기둥', side * 2.35, z + 2.6);
+          lantern.scale.setScalar(.8);
+        }
       }
       cube(wood, 0, y + .48, crib, 1.64, .44, .68);
       cube(edge, 0, y + .72, crib, 1.55, .12, .65);
@@ -2661,6 +2693,54 @@
     } else {
       const village = kit === 'elizabeth' || kit === 'hillpath' && !dry;
       if (village) building(0, -8.65, kit === 'elizabeth' ? 1.66 : 1.0, 'farm');
+      if (kit === 'elizabeth') {
+        const canopy = [olive, juniper, mat('#71855c'), mat('#526442')];
+        const grapes = [mat('#5b4765'), mat('#89718a')];
+        const face = -8.65 + 1.66 * .975, base = height(0, -8.65);
+        const stonework = ['#9b8d83', '#9d8b7d', '#a99b8d', '#a2928b', '#bbb09c'].map(color => mat(color));
+        for (let row = 0; row < 9; row++) for (let i = -5; i <= 5; i++) {
+          const px = i * .67 + (row % 2 ? .13 : -.14), py = (row + .5) * .51;
+          if (Math.abs(px) < .94 && py < 2.72 || Math.abs(Math.abs(px) - 2.36) < .76 && py > 2.35 && py < 3.77) continue;
+          cube(stonework[(Math.abs(i + row * 2) * 3) % stonework.length], px, base + py, face + .035, .653, .494, .078);
+        }
+        cube(wood, 0, base + 2.65, face + .125, 1.74, .27, .27);
+        for (const side of [-1, 1]) cube(edge, side * 2.36, base + 2.48, face + .112, 1.18, .18, .25);
+        for (const x of [-6.4, -2.25]) for (const z of [-4.55, -.65]) {
+          const y = height(x, z);
+          cube(wood, x, y + 1.26, z, .16, 2.52, .16);
+          cube(stone, x, y + .11, z, .37, .22, .37);
+          stop(x, z, .13);
+        }
+        for (let i = 0; i < 9; i++) {
+          const x = -6.45 + i * .525, top = 2.71 + Math.sin(i * 1.9) * .06;
+          cube(wood, x, top, -2.6, .12, .13, 4.45);
+          for (let j = 0; j < 10; j++) {
+            const z = -4.65 + j * .46;
+            if ((i + j * 3) % 8 === 0) continue;
+            batch(rock, canopy[(i * 3 + j) % 4], x + Math.sin(j * 5) * .18, top + .13, z, .47, .20 + .13 * Math.abs(Math.sin(i + j)), .43, .20, i * 1.4);
+            if ((i * 2 + j) % 4 === 0) for (let k = 0; k < 4; k++) {
+              batch(rock, grapes[k % 2], x + Math.cos(k * 2.4) * .10, top - .10 - k * .073, z + Math.sin(k * 2.4) * .10, .086, .102, .085);
+            }
+          }
+        }
+        for (const z of [-4.65, -2.65, -.55]) cube(wood, -4.32, 2.63, z, 4.57, .14, .16);
+        const hearthX = 4.01, hearthZ = -3.8, hearthY = height(hearthX, hearthZ);
+        for (let i = 0; i <= 20; i++) {
+          const angle = i / 20 * Math.PI * 2;
+          if (Math.sin(angle) > .72) continue;
+          cube(i % 3 ? bricks : edge, hearthX + Math.cos(angle) * .72, hearthY + .41, hearthZ + Math.sin(angle) * .69,
+            .32, .79, .35, 0, -angle);
+        }
+        batch(rock, terra, hearthX, hearthY + .84, hearthZ - .07, .92, .57, .84);
+        const ember = mat('#ffad56', { emissive: '#ff8139', ei: 1.5 });
+        for (let i = 0; i < 7; i++) batch(rock, ember, hearthX + (i - 3) * .13, hearthY + .11, hearthZ + .51, .11, .08, .17);
+        stop(hearthX, hearthZ, .80);
+        for (const z of [2.7, 6, 9.3, 12.6]) for (let i = 0; i < 11; i++) {
+          const x = 4.9 + i * 1.18, pz = z + (x - 4.9) * .2, h = height(x, pz);
+          cube(i % 3 ? stone : edge, x, h + .23, pz, 1.16, .49, .45, 0, -.19);
+          batch(rock, canopy[(i + 1) % 4], x, h + .34, pz - .62, .64, .27, .42, 0, i);
+        }
+      }
       if (kit === 'field') {
         const fire = at('모닥불', 0, -5.5); fire.scale.setScalar(1.22); stop(0, -5.5, .75);
         campfire = fire.userData.flicker;
@@ -2749,8 +2829,22 @@
     rock.dispose();
     const star = new T.Sprite(new T.SpriteMaterial({ map: starTexture(), transparent: true, depthWrite: false, blending: T.AdditiveBlending, fog: false }));
     if (stable) {
-      star.position.set(.65, 5, -10.7);
-      star.scale.setScalar(layout.christmas ? 4.8 : 3.7);
+      star.position.set(.38, 8.6, -8.2);
+      star.scale.setScalar(layout.christmas ? 6.1 : 3.7);
+      if (layout.christmas) {
+        const ray = new T.BufferGeometry();
+        ray.setAttribute('position', new T.Float32BufferAttribute([
+          -.95, .04, 0, .95, .04, 0, .35, 8.3, -.6, .35, 8.3, -.6, -.15, .04, -1.15, .75, .04, 1.05
+        ], 3));
+        ray.setAttribute('uv', new T.Float32BufferAttribute([0,0,1,0,.5,1,.5,1,0,0,1,0], 2));
+        const light = new T.Mesh(ray, new T.ShaderMaterial({
+          side: T.DoubleSide, transparent: true, depthWrite: false, forceSinglePass: true, blending: T.AdditiveBlending,
+          vertexShader: 'varying vec2 rayUV; void main(){rayUV=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+          fragmentShader: 'varying vec2 rayUV; void main(){float strength=pow(max(0.,1.-2.*abs(rayUV.x-.5)),2.); gl_FragColor=vec4(1.,.77,.41,strength*mix(.16,.29,rayUV.y));}'
+        }));
+        light.position.set(.03, 0, -7.55); scene.add(light);
+        light.userData.disposeMaterial = true;
+      }
     } else {
       star.position.set(3.1, 7.8, -22); star.scale.setScalar(2.65);
     }
@@ -3132,15 +3226,18 @@
         lamp(side * 13, 6.9, 1.02, true);
         if (!regional) olive(side * 15.7, -13, 1.45);
         home(side * 16.5, -20.7, 5.3);
+        if (regional && visual === 'sanctuary') continue;
         box(wall, side * 4.65, elevation(-21, 3), -21, 3.65, 6, 1.7);
         box(cap, side * 2.8, elevation(-21, 2.96), -20.05, .68, 5.9, .58);
         box(fabric, side * 1.45, elevation(-21, 2.46), -20.75, 2.81, 4.9, .22);
         box(ochre, side * 3.91, elevation(-21, 4.52), -20.05, .51, 1.42, .1);
       }
-      box('@flame', 0, elevation(-21, 2.44), -20.89, .36, 4.82, .05);
-      box(cap, 0, elevation(-21, 5.85), -21, 13.4, .49, 1.99);
-      box(roofLine, 0, elevation(-21, 6.22), -21, 13.9, .40, 2.22);
-      if (regional) box('#d4a456', 0, elevation(-21, 6.44), -21, 14.05, .12, 2.34);
+      if (!(regional && visual === 'sanctuary')) {
+        box('@flame', 0, elevation(-21, 2.44), -20.89, .36, 4.82, .05);
+        box(cap, 0, elevation(-21, 5.85), -21, 13.4, .49, 1.99);
+        box(roofLine, 0, elevation(-21, 6.22), -21, 13.9, .40, 2.22);
+        if (regional) box('#d4a456', 0, elevation(-21, 6.44), -21, 14.05, .12, 2.34);
+      }
       for (let x = -18; x <= 18; x += 2.7) for (let z = -19; z < 19; z += 2.6) {
         if (Math.abs(x) > 11 && z > 9) continue;
         if (z < -11.4) continue;
@@ -3374,7 +3471,8 @@
     for (const [i, pair] of (adventure.fauna || (temple ? [['비둘기', [-2.4, 10]], ['비둘기', [-3, 8]], ['비둘기', [4.9, -8]], ['고양이', [2.6, 13.1]], ['나귀', [7.1, 11.5]], ['닭', [11.6, 5.4]]] :
       [['닭', [-2.5, 12]], ['닭', [-4.7, 10]], ['염소', [3.1, 9.5]], ['나귀', [-6.6, 14]], ['고양이', [3.4, -10]], ['비둘기', [-5.2, -12]]])).entries()) {
       const [kind, pos] = pair;
-      addActor(models.animal(kind), pos, .92 + (i % 3) * .31);
+      const resident = addActor(models.animal(kind), pos, .92 + (i % 3) * .31);
+      resident.animal = kind;
     }
     if (!regional) exploreBoundary(scene, terrainHeight, ADVENTURE_EDGE, cap);
     return { ground, height, groundHeight: terrainHeight, dome, blocks, birds, fx, actors, residents, models, features,
@@ -3586,15 +3684,56 @@
       }
       climbs.push([.15, 2]);
     } else if (key === 'synagogue-yard') {
-      pavement(-5.9, -.1, 9, 5);
-      masonry(0, -4.8, 10.7, 3.45, 6.0);
-      box(shade, 0, 3.69, -4.8, 11.0, .31, 6.15);
-      box('#684746', 0, 1.41, -1.78, 1.63, 2.5, .11);
-      for (const x of [-4, -2, 2, 4]) round(cap, x, 1.6, -1.35, .20, 2.88, .20);
-      solid(0, -4.8, 10.7, 6);
+      pavement(-6.18, -1.0, 10, 7);
+      const foundation = height(0, 0);
+      masonry(0, -7.65, 11.5, 4.65, .38);
+      for (const side of [-1, 1]) {
+        masonry(side * 5.47, -4.5, .59, 4.65, 6.4);
+        masonry(side * 3.59, -1.83, 4.09, 3.50, .56);
+        masonry(side * 3.77, -5.16, 2.42, .51, .58);
+        masonry(side * 3.73, -3.25, 2.49, .49, .56);
+        box(bronze, side * 1.51, 2.08, -1.46, .23, 3.85, .37);
+        for (let j = 0; j < 5; j++) {
+          const x = side * (1.78 + j * .76);
+          stoneJoint(cap, x, foundation + .029, .82, .26, .045, .26, 0, Math.PI / 4);
+        }
+      }
+      box(shade, 0, 4.82, -4.46, 11.88, .36, 6.7);
+      box(cap, 0, 4.67, -1.43, 11.97, .20, .67);
+      box(bronze, 0, 4.53, -1.32, 11.74, .11, .43);
+      box(wall, 0, 4.19, -1.86, 11.11, .75, .77);
+      box(cap, 0, 3.84, -1.41, 3.25, .24, .38);
+      for (const x of [-4.68, -3.21, 3.21, 4.68]) {
+        box(shade, x, .33, -.90, .72, .34, .72);
+        round(cap, x, 1.95, -.90, .245, 3.22, .245);
+        box(cap, x, 3.59, -.90, .74, .30, .71);
+      }
+      const chestZ = -4.89;
+      box('#765248', 0, .57, chestZ, 2.23, .84, .83);
+      box(bronze, 0, .97, chestZ, 2.31, .14, .91);
+      for (let i = 0; i < 4; i++) {
+        const px = -.66 + i * .44;
+        round('#d6b88d', px, 1.14, chestZ, .105, .54, .103, Math.PI / 2 + i * .15, 0, .12);
+        round('#87664e', px + .035, 1.18, chestZ + .24, .143, .073, .143, Math.PI / 2);
+      }
+      torch(-1.26, -5.17); torch(1.27, -5.17);
+      solid(0, -7.65, 11.5, .38);
+      for (const side of [-1, 1]) {
+        solid(side * 5.47, -4.5, .59, 6.4);
+        solid(side * 3.59, -1.83, 4.09, .56);
+      }
+      solid(0, chestZ, 2.31, .91);
       for (const side of [-1, 1]) {
         masonry(side * 4.35, 3.4, 2.6, .42, .70);
         olive(side * 6.6, 3.05, 1.02);
+      }
+      for (let i = 0; i < 12; i++) {
+        const x = (i % 2 ? 1 : -1) * (6.4 + Math.floor(i / 4) * 2.09);
+        const z = 6.9 - (i % 4) * 3.09, y = height(x, z), h = 1.83 + rand() * 1.62;
+        box(i % 3 ? wall : '#bc9981', x, y + h / 2, z, 1.85, h, 2.35);
+        box(cap, x, y + h, z, 2.02, .19, 2.5);
+        box(wood, x, y + .65, z + 1.19, .53, 1.3, .052);
+        if (Math.abs(x) < edge - 1) solid(x, z, 1.85, 2.35);
       }
     } else if (key === 'grain-yard') {
       round('#ba9768', -.9, .16, .1, 5.15, .05, 4.4);
@@ -3870,6 +4009,372 @@
     };
   }
 
+  const TEMPLE_STAIRS = { front: 4.04, tread: .47, rise: .185, count: 12, base: 1.19, width: 16.6 };
+
+  function templeMount(scene, x, z, climate, groundAt) {
+    const group = new T.Group();
+    group.position.set(x, 0, z);
+    scene.add(group);
+    const night = climate.time === 'night', dusk = climate.time === 'dusk';
+    const ivory = night ? '#ded1cd' : '#faf0dc';
+    const ash = night ? '#918b9e' : '#baa68f';
+    const gold = '#dca45e', dark = '#352b43', flame = '#ffbf69';
+    const blocks = [], walls = [];
+    const cube = new T.BoxGeometry(), jewel = new T.OctahedronGeometry(1), post = new T.CylinderGeometry(.85, 1, 1, 12);
+    const shell = new Map(), trim = new Map(), far = new Map();
+    const add = (batch, shape, color, ...pose) => {
+      if (!batch.has(color)) batch.set(color, []);
+      batch.get(color).push(place(shape, ...pose));
+    };
+    const box = (color, ...pose) => add(shell, cube, color, ...pose);
+    const line = (color, ...pose) => add(trim, cube, color, ...pose);
+    const tower = (color, ...pose) => {
+      box(color, ...pose);
+      add(far, cube, color, ...pose);
+    };
+    const stone = (color, px, py, pz, width, height, depth) => box(color, px, py + height / 2, pz, width, height, depth);
+    const boundary = (px, pz, width, depth) => walls.push([x + px, z + pz, width / 2 + .15, depth / 2 + .15]);
+    const colors = ['#93869a', ash, '#b4a49f', '#bba999'];
+    const { front, tread, rise, count, base: deck, width: stairWidth } = TEMPLE_STAIRS;
+    const entry = deck + count * rise, roof = entry + 24.2;
+    const face = front - .12, doorHalf = 3.24, doorTop = entry + 13.35;
+    tower(ash, 0, -.71, -.65, 44, 3.7, 25.1);
+    tower(ivory, 0, 1.07, -.65, 44.3, .24, 25.4);
+    for (let h = 0; h < 4; h++) {
+      const y = -1.25 + h * .64;
+      for (let j = 0; j < 15; j++) {
+        const px = (j - 7) * 2.9, pz = 11.98;
+        if (Math.abs(px) < 7.2) continue;
+        line(colors[(j + h) % 4], px + (h % 2 ? .14 : -.14), y, pz, 2.86, .60, .25);
+      }
+      for (const side of [-1, 1]) for (let j = 0; j < 9; j++) {
+        line(colors[(j + h + 1) % 4], side * 22.04, y, -11.8 + j * 2.8, .21, .60, 2.76);
+      }
+    }
+    for (let j = 0; j < count; j++) {
+      const top = entry - j * rise;
+      const pz = front + (j + .5) * tread;
+      box('#c1ad9d', 0, (top + deck) / 2, pz, stairWidth + j * .15, top - deck, tread + .018);
+      box(ivory, 0, top - .031, pz, stairWidth + j * .15 + .09, .063, tread + .055);
+    }
+    tower(ash, 0, (entry + deck) / 2, -.88, 16.9, entry - deck, 10.2);
+    tower(ivory, 0, entry - .08, -.88, 17.12, .16, 10.28);
+
+    // The broad upper front overhangs the narrower body behind it.
+    const bodyWidth = 16.4, shoulderWidth = 24.2, shoulderY = entry + 15.22, frontDepth = 4.15;
+    const midZ = face - frontDepth / 2;
+    const bodyPier = (bodyWidth / 2 - doorHalf), pierX = doorHalf + bodyPier * .5;
+    tower(ivory, 0, (entry + roof - .64) / 2, -4.77, 14.6, roof - .64 - entry, 7.15);
+    tower(ivory, 0, (doorTop + roof - .7) / 2, midZ, bodyWidth, roof - .7 - doorTop, frontDepth);
+    tower(ivory, 0, (shoulderY + roof - .71) / 2, midZ - .05, shoulderWidth, roof - .71 - shoulderY, frontDepth - .1);
+    const spikes = new T.ConeGeometry(1, 1, 6);
+    for (const side of [-1, 1]) {
+      tower(ivory, side * pierX, (entry + doorTop) / 2, midZ, bodyPier, doorTop - entry, frontDepth);
+      tower(ash, side * 7.98, entry + 3.45, -4.5, 1.93, 6.9, 6.7);
+      box(ivory, side * 7.98, entry + 6.98, -4.5, 2.05, .26, 6.9);
+      for (let i = 0; i < 4; i++) {
+        const width = .73 + i * 1.04;
+        box(i === 0 ? ash : ivory, side * (bodyWidth + width) / 2, shoulderY - 1.22 + i * .32,
+          midZ, width + .12, .36, frontDepth - .18);
+      }
+      const pilasterX = side * 5.73;
+      add(shell, post, '#e0cdbb', pilasterX, entry + 5.86, face - .08, .46, 11.25, .36);
+      box(ash, pilasterX, entry + .2, face + .10, 1.24, .38, .63);
+      box(ivory, pilasterX, entry + 11.66, face + .11, 1.21, .42, .7);
+      line(gold, pilasterX, entry + 11.96, face + .14, .92, .13, .66);
+      stone(dark, side * 3.18, entry, 1.59, .34, doorTop - entry, 3.33);
+      line(gold, side * 3.33, (entry + doorTop) / 2, face + .14, .27, doorTop - entry, .28);
+      line('#ae7b45', side * 3.59, (entry + doorTop) / 2, face + .12, .19, doorTop - entry, .21);
+      for (let i = 0; i < 19; i++) {
+        const y = entry + .81 + 1.16 * i;
+        const lower = y < doorTop;
+        const inside = lower ? 3.70 : .12, edge = y < shoulderY ? bodyWidth / 2 : shoulderWidth / 2;
+        line('#b5a392', side * (inside + edge) / 2, y, face + .024, edge - inside, .024, .036);
+        for (let j = 0; j < (lower ? 2 : 4); j++) {
+          const xx = inside + .86 + j * 2.21 + (i % 2) * .55;
+          if (xx < edge - .45) line('#b5a392', side * xx, y - .52, face + .023, .025, 1.03, .034);
+        }
+      }
+      for (const px of [7.78, 9.53]) {
+        line('#746777', side * px, roof - 3.52, face + .052, .53, 1.46, .088);
+        line(ivory, side * px, roof - 4.31, face + .11, .78, .19, .32);
+      }
+    }
+    for (const [y, w, depth, height, color] of [[-.83, 24.38, 4.58, .27, ash], [-.61, 24.54, 4.73, .19, gold],
+      [-.37, 24.02, 4.49, .29, ivory], [-.15, 24.41, 4.67, .17, gold]]) {
+      tower(color, 0, roof + y, midZ, w, height, depth);
+    }
+    tower('#c2a580', 0, roof - .45, -4.71, 14.96, .46, 7.16);
+    for (let i = -18; i <= 18; i++) {
+      add(trim, spikes, gold, i * .652, roof + .12, face + .18, .096, .52, .096);
+      if (i % 3 === 0) add(far, spikes, gold, i * .652, roof + .14, face + .18, .13, .52, .13);
+    }
+    spikes.dispose();
+
+    // The curtain hangs within the deep portal, below a gilded vine relief.
+    stone('#59364e', 0, entry, .03, 6.5, 12.62, .29);
+    for (let i = 0; i < 28; i++) {
+      const px = (i - 13.5) * .234, color = ['#7d3855', '#ab5263', '#763b5a', '#553955'][i % 4];
+      const pleat = .10 + Math.sin(i * 1.7) * .16;
+      if (Math.abs(px) < .19) continue;
+      line(color, px, entry + 6.25, .3 + pleat, .27, 12.4, .19, 0, i * .49);
+      line('#c18b64', px, entry + .45, .40 + pleat, .25, .16, .13, 0, i * .49);
+    }
+    add(trim, cube, 'light', 0, entry + 6.15, .26, .14, 12.18, .12);
+    line(gold, 0, doorTop + .01, face + .15, 7.2, .29, .33);
+    line('#9a7051', 0, doorTop + .86, face + .12, 9.25, 1.28, .32);
+    for (const y of [.31, 1.49]) line(gold, 0, doorTop + y, face + .24, 9.42, .14, .34);
+    const vineHeight = t => doorTop + .93 + .22 * Math.sin(Math.PI * 8 * t);
+    for (let i = 0; i < 64; i++) {
+      const dx = 8.88 / 64, x = i * dx - 4.44;
+      const y = vineHeight(i / 64), dy = vineHeight((i + 1) / 64) - y;
+      add(trim, post, gold, x + dx / 2, y + dy / 2, face + .34, .053, Math.hypot(dx, dy) + .024, .052, 0, 0, -Math.atan2(dx, dy));
+    }
+    for (let i = 0; i <= 16; i++) {
+      const px = i * .554 - 4.432, y = vineHeight(i / 16);
+      add(trim, jewel, gold, px, y + .18, face + .36, .22, .103, .052, 0, 0, i % 2 ? -.55 : .55);
+      if (i % 2 === 0) for (let berry = 0; berry < 6; berry++) {
+        const row = berry < 3 ? 0 : berry < 5 ? 1 : 2;
+        const col = berry - [0, 3, 5][row];
+        add(trim, jewel, gold, px + (col - (2 - row) / 2) * .105, y - .11 - row * .112, face + .40, .076, .083, .067);
+      }
+    }
+    for (let i = -10; i <= 10; i++) for (let j = 0; j < 19; j++) {
+      const px = i * 1.8 + (j % 2) * .25, pz = 9.4 + j * 1.54;
+      if (Math.abs(px) > 14 && pz > 27 || Math.abs(px) < 6 && pz > 36) continue;
+      const base = groundAt(x + px, z + pz);
+      const border = Math.abs(i) === 3 || Math.abs(i) === 4;
+      const color = border ? (i % 2 ? '#846f77' : '#ad8a6d') : colors[(Math.abs(i) + j * 7) % colors.length];
+      line(color, px, base + .023, pz, 1.76, .047, 1.49);
+    }
+    const altarX = -6.25, altarZ = 14.05, court = groundAt(x + altarX, z + altarZ), altarTop = court + 2.19;
+    for (const [py, w, d, h, color] of [[.18, 6.08, 5.1, .36, ash], [1.07, 5.55, 4.7, 1.44, '#ac9380'],
+      [1.84, 5.87, 4.98, .24, ivory], [2.05, 5.60, 4.78, .27, '#a88972']]) {
+      box(color, altarX, court + py, altarZ, w, h, d);
+    }
+    box(dark, altarX, altarTop + .018, altarZ, 3.5, .05, 2.62);
+    for (const dx of [-2.46, 2.46]) for (const dz of [-2.07, 2.07]) box(ivory, altarX + dx, altarTop + .23, altarZ + dz, .54, .49, .53);
+    for (let i = 0; i < 12; i++) add(trim, jewel, 'light', altarX - 1.2 + i * .22, altarTop + .077,
+      altarZ + Math.sin(i * 6) * .54, .16, .085, .21);
+    boundary(altarX, altarZ, 6.08, 5.1);
+    const rampLength = 5.1, rampWidth = 2.16, rampZ = altarZ + 2.35, rampX = altarX + .36;
+    const rampFoot = groundAt(x + rampX, z + rampZ + rampLength) + .05;
+    const rampRise = altarTop - rampFoot - .125, slope = Math.atan2(rampRise, rampLength);
+    const rampShape = new T.Shape();
+    rampShape.moveTo(0, 0); rampShape.lineTo(rampLength, 0); rampShape.lineTo(0, rampRise); rampShape.closePath();
+    const ramp = new T.ExtrudeGeometry(rampShape, { depth: rampWidth, bevelEnabled: false });
+    add(shell, ramp, '#b4a096', rampX + rampWidth / 2, rampFoot, rampZ, 1, 1, 1, 0, -Math.PI / 2);
+    ramp.dispose();
+    box(ivory, rampX, rampFoot + rampRise / 2, rampZ + rampLength / 2, rampWidth + .15, .18,
+      Math.hypot(rampLength, rampRise), slope);
+    for (let j = 1; j < 9; j++) {
+      const step = j / 9;
+      line('#a18a7b', rampX, rampFoot + rampRise * (1 - step) + .103, rampZ + rampLength * step,
+        rampWidth + .03, .017, .035, slope);
+    }
+    boundary(rampX, rampZ + rampLength / 2, rampWidth, rampLength);
+
+    const basinX = 5.1, basinZ = 14.75, basinY = groundAt(x + basinX, z + basinZ);
+    const bronze = '#af754d', brass = '#e1a565';
+    const bowl = new T.LatheGeometry([[.64, .75], [.88, .91], [1.22, 1.05], [1.45, 1.35], [1.52, 1.69],
+      [1.55, 1.83], [1.48, 1.9], [1.36, 1.86], [1.35, 1.69], [1.21, 1.34], [.65, 1.11], [0, 1.09]]
+      .map(([r, h]) => new T.Vector2(r, h)), 24);
+    add(trim, bowl, bronze, basinX, basinY, basinZ);
+    bowl.dispose();
+    add(shell, post, '#785048', basinX, basinY + .38, basinZ, .61, .76, .61);
+    add(shell, post, '#b3876c', basinX, basinY + .20, basinZ, .85, .36, .85);
+    box(ash, basinX, basinY + .075, basinZ, 2.13, .15, 2.13);
+    const water = new T.CircleGeometry(1.37, 24).rotateX(-Math.PI / 2);
+    add(trim, water, '#638891', basinX, basinY + 1.75, basinZ);
+    water.dispose();
+    const rim = new T.TorusGeometry(1.49, .065, 6, 32).rotateX(-Math.PI / 2);
+    add(trim, rim, brass, basinX, basinY + 1.88, basinZ);
+    rim.dispose();
+    for (let i = 0; i < 12; i++) {
+      const angle = i * Math.PI / 6;
+      add(trim, jewel, brass, basinX + 1.47 * Math.sin(angle), basinY + 1.57, basinZ + 1.47 * Math.cos(angle), .09, .12, .092);
+    }
+    boundary(basinX, basinZ, 2.62, 2.62);
+    function lamp(px, pz, height) {
+      const base = groundAt(x + px, z + pz);
+      add(trim, post, '#6d5154', px, base + height * .48, pz, .10, height, .10);
+      add(trim, post, gold, px, base + height, pz, .21, .16, .21);
+      add(trim, jewel, 'light', px, base + height + .19, pz, .095, .22, .094);
+      if (night || dusk) {
+        const glow = glowSprite('#ffc281', 3, .52);
+        glow.userData.drawPriority = 18;
+        glow.position.set(px, base + height + .18, pz);
+        group.add(glow);
+      }
+    }
+    for (const side of [-1, 1]) {
+      for (const pz of [4.7, 10.1, 16.8, 22]) lamp(side * 9.3, pz, 1.55);
+      for (const pz of [2.6, 6.45, 10.3, 14.15, 18.0, 21.85]) {
+        if (side === 1 && pz > 11 && pz < 20) continue;
+        const px = side * 14.25, y = groundAt(x + px, z + pz);
+        stone('#aa958b', px, y, pz, .75, 1.69, 3.84);
+        line(ivory, px, y + 1.76, pz, .88, .17, 3.89);
+        for (let row = 1; row < 4; row++) line(ash, px - side * .378, y + row * .42, pz, .03, .025, 3.85);
+        boundary(px, pz, .75, 3.84);
+      }
+      const px = side * 10.65, pz = 23.75, y = groundAt(x + px, z + pz);
+      stone('#aa958b', px, y, pz, 6.68, 1.87, .82);
+      line(ivory, px, y + 1.93, pz, 6.84, .16, .99);
+      boundary(px, pz, 6.68, .82);
+      const jambX = side * 6.85;
+      stone(ash, jambX, y, pz, 1.75, .41, 1.88);
+      stone(ivory, jambX, y + .41, pz, 1.48, 2.46, 1.55);
+      box(ivory, jambX, y + 2.92, pz, 1.88, .25, 1.83);
+      line(gold, jambX, y + 3.09, pz, 1.69, .10, 1.67);
+      boundary(jambX, pz, 1.7, 1.82);
+    }
+    const gateX = 14.25, gateZ = 16.08, gateY = groundAt(x + gateX, z + gateZ);
+    for (const side of [-1, 1]) {
+      const pz = gateZ + side * 3.23;
+      stone(ash, gateX, gateY, pz, 1.73, .41, 1.54);
+      stone(ivory, gateX, gateY + .41, pz, 1.49, 4.10, 1.44);
+      box(ivory, gateX, gateY + 4.58, pz, 1.75, .27, 1.66);
+      box('#91644c', gateX - .93, gateY + 2.41, pz - side * .50, .22, 3.97, 1.27, 0, side * .58);
+      for (const py of [1.03, 3.21]) line(brass, gateX - 1.06, gateY + py, pz - side * .58, .14, .09, 1.27, 0, side * .58);
+      boundary(gateX, pz, 1.71, 1.67);
+    }
+    box(ash, gateX, gateY + 4.91, gateZ, 1.75, .54, 8.1);
+    line(ivory, gateX, gateY + 5.27, gateZ, 1.94, .20, 8.5);
+    line(gold, gateX, gateY + 5.41, gateZ, 1.88, .092, 8.45);
+    const doorwayGlow = glowSprite('#ffca87', 10, night ? .69 : .32);
+    doorwayGlow.position.set(0, entry + 5.35, face + .23);
+    group.add(doorwayGlow);
+    const entranceLight = new T.PointLight('#ffc079', night ? 71 : 13, 15, 2);
+    entranceLight.position.set(0, entry + 5.3, front + 1.1);
+    const spill = new T.Mesh(new T.PlaneGeometry(13, 12).rotateX(-Math.PI / 2), new T.MeshBasicMaterial({
+      color: '#ffb674', map: radialTexture('rgba(255,241,202,.82)', 'rgba(255,178,103,0)'),
+      opacity: night ? .68 : .31, transparent: true, depthWrite: false, blending: T.AdditiveBlending
+    }));
+    spill.position.set(0, deck + .016, 9.3);
+    spill.userData.drawPriority = 18;
+    group.add(spill);
+
+    // Instanced double rows let the east and south porticoes read as long continuous galleries.
+    const columns = [];
+    function portico(px, pz, length, alongX, rows) {
+      const roofY = 5.25, count = Math.ceil(length / 2.45);
+      const width = rows * 1.39;
+      for (let j = 0; j <= count; j++) for (let r = 0; r < rows; r++) {
+        const step = length * (j / count - .5), offset = (r - (rows - 1) / 2) * 1.39;
+        const cx = px + (alongX ? step : offset), cz = pz + (alongX ? offset : step);
+        const base = Math.max(groundAt(x + cx, z + cz), 1.19);
+        columns.push([cx, base, cz, roofY]);
+        blocks.push([x + cx, z + cz, .32]);
+        if (r === 0) add(far, cube, ivory, cx, (base + roofY) / 2, cz, .40, roofY - base, .40);
+      }
+      tower(ash, px, roofY, pz, alongX ? length + 1.15 : width + .25, .48, alongX ? width + .25 : length + 1.15);
+      box(ivory, px, roofY + .34, pz, alongX ? length + 1.34 : width + .49, .21, alongX ? width + .49 : length + 1.34);
+      line(gold, px, roofY + .18, pz, alongX ? length + 1.26 : width + .39, .09, alongX ? width + .39 : length + 1.26);
+    }
+    portico(19.4, -.9, 23.6, false, 2);
+    portico(-19.4, -.9, 23.6, false, 2);
+    portico(0, -11.6, 33.7, true, 2);
+    for (const side of [-1, 1]) portico(side * 14.45, 10.3, 12.4, true, 3);
+    const dummy = new T.Object3D();
+    function instanced(geometry, color, count, pose) {
+      const mesh = new T.InstancedMesh(geometry.clone(), mat(color), count);
+      for (let i = 0; i < count; i++) {
+        pose(dummy, i);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      group.add(mesh);
+      return mesh;
+    }
+    const shafts = instanced(post, ivory, columns.length, (obj, i) => {
+      const [px, base, pz, top] = columns[i];
+      obj.position.set(px, (base + top) / 2, pz); obj.scale.set(.25, top - base - .31, .25);
+    });
+    const capitals = instanced(cube, ivory, columns.length * 2, (obj, i) => {
+      const [px, base, pz, top] = columns[Math.floor(i / 2)];
+      obj.position.set(px, i % 2 ? base + .09 : top - .21, pz); obj.scale.set(.71, .18, .72);
+    });
+    boundary(0, -4.77, 16.7, 7.15);
+    for (const side of [-1, 1]) boundary(side * pierX, midZ, bodyPier, frontDepth);
+    const decoration = new T.Group(), near = new T.Group(), distant = new T.Group();
+    group.add(near, distant);
+    near.add(decoration, shafts, capitals, spill, entranceLight, ...group.children.filter(obj => obj.isSprite));
+    addScenery(near, shell, color => mat(color));
+    addScenery(distant, far, color => mat(color, { emissive: dusk ? '#c58b44' : night ? '#a89088' : '#e8d5b6', ei: night ? .13 : .16 }));
+    addScenery(decoration, trim, color => color === 'light' ? mat(flame, { emissive: '#ff9c3d', ei: night ? 2.4 : .8 }) :
+      color === gold ? mat(gold, { rough: .41, emissive: '#df913b', ei: night ? .27 : .09 }) : mat(color));
+
+    const people = new T.Group();
+    near.add(people);
+    const rand = seeded(1749);
+    const crowd = Array.from({ length: night ? 6 : 42 }, (_, i) => {
+      const aisle = i < 16 && !night;
+      const priest = i >= 16 && i < 24;
+      const px = aisle ? -5.1 + (i % 4) * .99 : priest ? 3.8 + (i % 4) * .74 : (rand() < .5 ? -1 : 1) * (6.2 + rand() * 10.5);
+      const pz = aisle ? 24 - Math.floor(i / 4) * 2.1 - rand() : priest ? 8.3 + (i % 3) * 1.2 : 8.4 + rand() * 17;
+      return { px, pz, speed: aisle ? .62 + rand() * .25 : 0, phase: rand() * 6, priest };
+    });
+    const robeGeo = new T.CylinderGeometry(.22, .36, 1.2, 7);
+    const crowdRobes = instanced(robeGeo, '#ffffff', crowd.length, obj => obj.scale.setScalar(1));
+    const crowdHeads = instanced(jewel, '#bea48c', crowd.length, obj => obj.scale.setScalar(.19));
+    people.add(crowdRobes, crowdHeads);
+    const tint = new T.Color(), robes = ['#ae8774', '#88718d', '#736e82', '#a14f5a', '#a99b79'];
+    crowd.forEach(({ priest }, i) => crowdRobes.setColorAt(i, tint.set(priest ? '#e4d8c5' : robes[i % robes.length])));
+    for (const mesh of [crowdHeads, crowdRobes]) {
+      mesh.frustumCulled = false;
+      mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
+    }
+    const wings = new T.BufferGeometry();
+    wings.setAttribute('position', new T.Float32BufferAttribute([
+      0,0,.12, -.54,-.05,-.11, -.23,-.06,.15, 0,0,.12, .23,-.06,.15, .54,-.05,-.11,
+      0,0,-.12, 0,0,.18, -.08,-.06,-.2, 0,0,-.12, .08,-.06,-.2, 0,0,.18
+    ], 3));
+    wings.computeVertexNormals();
+    const birds = instanced(wings, '#d7ceda', night ? 0 : 7, obj => obj.scale.setScalar(1));
+    birds.material = mat('#d7ceda', { doubleSided: true });
+    wings.dispose();
+    birds.frustumCulled = false;
+    near.add(birds);
+    robeGeo.dispose(); cube.dispose(); post.dispose(); jewel.dispose();
+    return {
+      walls, blocks, title: '예루살렘 성전',
+      dispose() { spill.material.map.dispose(); spill.material.dispose(); },
+      shot: [x + 3.2, z + 44.8], look: [x, 12.65, z + .4], height: 2.1, lowHeight: .84, push: 2.3,
+      trigger(px, pz, site) {
+        return ['temple', 'sanctuary'].includes(site?.key) ||
+          (site?.key === 'south-steps' && Math.hypot(px - site.offset[0], pz - site.offset[1] + 5.1) < 1.9);
+      },
+      update(px, pz, seconds, close) {
+        const distance = Math.hypot(x - px, z - pz);
+        near.visible = close || distance < 50;
+        distant.visible = !near.visible;
+        decoration.visible = close || distance < 35;
+        if (!near.visible) return;
+        for (let i = 0; i < crowd.length; i++) {
+          const { px, pz, speed, phase } = crowd[i];
+          const travel = speed ? (seconds * speed + phase) % 8 : 0;
+          const cz = pz - travel, cx = px + .22 * Math.sin(seconds + phase);
+          const y = Math.max(groundAt(x + cx, z + cz), Math.abs(cx) < 21.9 && cz < 11.8 ? 1.18 : -Infinity);
+          dummy.rotation.set(0, phase, Math.sin(seconds * 6 + phase) * (speed ? .04 : .012));
+          dummy.position.set(cx, y + .61, cz); dummy.scale.setScalar(1);
+          dummy.updateMatrix(); crowdRobes.setMatrixAt(i, dummy.matrix);
+          dummy.position.y = y + 1.42; dummy.scale.set(.18, .22, .17);
+          dummy.updateMatrix(); crowdHeads.setMatrixAt(i, dummy.matrix);
+        }
+        crowdRobes.instanceMatrix.needsUpdate = crowdHeads.instanceMatrix.needsUpdate = true;
+        for (let i = 0; i < birds.count; i++) {
+          const turn = seconds * .49 + i;
+          dummy.position.set(Math.cos(turn) * (9 + i), 9 + Math.sin(turn * 1.2) * 2 + i * .32, 7.8 + Math.sin(turn) * 8);
+          dummy.scale.set(1, .85 + .65 * Math.abs(Math.sin(seconds * 15 + i)), 1);
+          dummy.rotation.set(0, turn, Math.sin(seconds * 15 + i) * .32);
+          dummy.updateMatrix(); birds.setMatrixAt(i, dummy.matrix);
+        }
+        birds.instanceMatrix.needsUpdate = true;
+      }
+    };
+  }
+
   function regionWorld(scene, options, climate, protectedPoints) {
     const { region, seed } = options;
     const [ox, oz] = region.origin, [wide, deep] = region.bounds;
@@ -3879,7 +4384,7 @@
     const summit = region.index === 2 ? [36 - ox, -24 - oz] : null;
     const ground = new T.Group(), sky = new T.Group();
     const blocks = [], actors = [], birds = [], fx = [];
-    const features = new Map(), residents = new Map(), parts = [];
+    const features = new Map(), residents = new Map(), parts = [], jumpSurfaces = [];
     scene.add(ground, sky);
     let main, activePart;
     const rand = seeded(hashStr('region/' + region.index));
@@ -4006,7 +4511,16 @@
     };
     const height = (x, z) => {
       const part = partAt(x, z);
-      return part ? part.local.height(x - part.site.offset[0], z - part.site.offset[1]) : exterior(x, z);
+      const base = part ? part.local.height(x - part.site.offset[0], z - part.site.offset[1]) : exterior(x, z);
+      if (!jerusalem) return base;
+      const dx = x + ox - 28, dz = z + oz + 32.5;
+      const { front, tread, count, rise, base: deck, width } = TEMPLE_STAIRS;
+      if (dz >= front && dz < front + tread * count) {
+        const stair = Math.floor((dz - front) / tread);
+        if (Math.abs(dx) < (width + stair * .15) / 2) return Math.max(base, deck + (count - stair) * rise);
+      }
+      if (Math.abs(dx) < 21.99 && dz >= -13.2 && dz < 11.9) return Math.max(base, 1.19);
+      return base;
     };
     const density = .94;
     const landGeo = new T.PlaneGeometry(wide * 2 + 4, deep * 2 + 4, Math.ceil(wide * density), Math.ceil(deep * density))
@@ -4055,6 +4569,11 @@
       add(cube, wall, x, y + h * .5, z, width, h, length);
       add(cube, cap, x, y + h, z, width + .12, .12, length + .12);
     }
+    function lowStep(x, z, width, depth, rise, color, walkOn = false) {
+      const base = height(x, z);
+      add(cube, color, x, base + rise / 2, z, width, rise, depth);
+      jumpSurfaces.push({ x, z, halfX: width / 2, halfZ: depth / 2, top: base + rise, walkOn });
+    }
     // The region has a continuous stone boundary, with its road network inside.
     for (const side of [-1, 1]) {
       for (let x = -wide + 1; x < wide; x += 2) wallAt(x - ox, side * (deep + .15) - oz, 2.10, .66);
@@ -4090,11 +4609,26 @@
       }
       river.computeVertexNormals();
       scene.add(new T.Mesh(river, mat('#598492', { rough: .39 })));
-      for (const dx of [-1.26, -.42, .42, 1.26]) add(stone, cap, wx + dx, height(wx + dx, wz) + .11, wz, .61, .19, .72, 0, dx);
+      for (const dx of [-1.26, -.42, .42, 1.26]) lowStep(wx + dx, wz, .76, .82, .26, cap, true);
       for (const dx of [-1.64, 1.64]) for (const dz of [-5.3, -3.4, 2.8, 4.9]) {
         const x = wx + dx, z = wz + dz;
         add(cone, foliage, x, height(x, z) + .36, z, .13, .78, .14, .10, dz);
       }
+    }
+    for (const [x, z, w, d, rise, color] of [[3.3, 4.7, 1.32, 1.06, .52, trunk], [-3.45, 9.25, 1.36, 1.02, .43, cap]]) {
+      lowStep(x, z, w, d, rise, color);
+      if (color === trunk) for (const side of [-1, 1]) {
+        add(cube, '#b28868', x + side * .44, height(x, z) + rise / 2, z + d / 2, .11, rise, .045);
+      }
+    }
+    const stairSite = region.sites.find(site => site.key === 'south-steps');
+    if (stairSite) {
+      for (const side of [-1, 1]) lowStep(...stairSite.translate([side * 2.7, 3.2]), 1.18, .74, .41, cap);
+    }
+    const wellSite = region.sites.find(site => site.key === 'village-threshing' || site.key === 'well');
+    if (wellSite) {
+      const [x, z] = wellSite.translate(wellSite.extension ? [-4.9, .46] : [2.7, .61]);
+      lowStep(x, z, 1.35, .78, .40, cap);
     }
     for (const site of region.sites) {
       const [x, z] = site.offset, r = site.edge, towardsRoad = site.z > 0 ? -1 : 1;
@@ -4128,11 +4662,16 @@
         blocks.push([lx, lz, 2.6]);
       } else if (site.key === 'stable' || site.key === 'field') {
         const stable = site.key === 'stable';
-        for (const dx of [-2.8, 2.8]) wallAt(lx + dx, lz, .45, 4, stable ? 2.55 : .67);
+        for (const dx of [-2.8, 2.8]) wallAt(lx + dx, lz, .45, 4, .67);
         if (stable) {
-          add(cube, trunk, lx, y + 2.65, lz, 6.25, .55, 4.35);
-          const glow = glowSprite('#ffd790', 7.1, .74);
-          glow.position.set(lx, y + 1.14, lz + 1.2); scene.add(glow);
+          if (!site.area) {
+            for (let i = 0; i <= 10; i++) {
+              const angle = i * Math.PI / 10;
+              add(stone, i % 2 ? wall : cap, x + 4.1 * Math.cos(angle), 1 + 2.85 * Math.sin(angle), z - 5,
+                1.17, 1.13, 2.68, .21, i * .7);
+            }
+            add(stone, '#564654', x, 1.62, z - 8, 4.25, 2.91, 1.31);
+          }
         } else {
           add(cube, trunk, lx, y + .22, lz, 1.1, .28, .65, 0, -.3);
           add(cone, '#d8854c', lx, y + .72, lz, .32, .90, .34);
@@ -4185,6 +4724,24 @@
         add(cube, lake ? '#9abdc0' : '#cbb1a4', x - 4 + rand() * 13, lake ? -3.51 : -7.21, z - 8 + i * 4, 3.2 + rand() * 4, .028, .18);
         add(stone, lake ? '#748d89' : '#a38b81', x + 17 + i * 4, -3 + rand() * 2, z - 28 + i * 12, 13, 7.2, 10.5, 0, i);
       }
+      if (!lake) {
+        const basin = new T.SphereGeometry(1, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+        const sand = ['#b18b68', '#a48674', '#967f7b', '#b4927d'];
+        const ridge = seeded(9075);
+        for (const [row, px, py, width, depth] of [[0, 117, -9.5, 16, 16], [1, 131, -12.2, 17, 20], [2, 169, -13.3, 17, 24], [3, 190, -10, 30, 28]]) {
+          for (let i = 0; i < 9; i++) {
+            const pz = -82 + i * (row < 2 ? 24 : 28) + ridge() * 12;
+            if (row < 2 && pz > -11 && pz < 37) continue;
+            const [sx, sz] = positionOf([px + ridge() * 12, pz]);
+            add(basin, sand[row], sx, py, sz, width + ridge() * 10, 7.5 + ridge() * 11, depth, .06, .28 + i * .64, .06);
+          }
+        }
+        basin.dispose();
+        for (let i = 0; i < 46; i++) {
+          const px = x - 9 + ridge() * 18, pz = z - 29 + ridge() * 58;
+          add(cube, ['#b8bbb0', '#9ea9a6', '#9ab7bc', '#adc0bd'][i % 4], px, -7.206, pz, .45 + ridge() * 2.6, .009, .08 + ridge() * .04);
+        }
+      }
       if (lake) {
         const [tx, tz] = positionOf([134, 73]);
         const hill = new T.SphereGeometry(1, 24, 10, 0, 2 * Math.PI, 0, Math.PI / 2);
@@ -4207,32 +4764,39 @@
       star.scale.setScalar(3.7);
       scene.add(star);
     }
-    let templeSilhouette;
-    if (jerusalem) {
-      const scenery = new Map(), dusk = climate.time === 'dusk';
-      const [x, z] = positionOf([28, -32.5]);
-      const silhouette = (color, ...shape) => {
-        if (!scenery.has(color)) scenery.set(color, []);
-        scenery.get(color).push(place(cube, ...shape));
-      };
-      silhouette('#a89882', x, 1.25, z + 3, 24, 2.65, 15.5);
-      silhouette(dusk ? '#d4aa70' : '#d1bda4', x, 6.15, z, 14.2, 7.5, 9);
-      silhouette('#8f7786', x, 10.08, z, 15.7, .68, 10.2);
-      silhouette(dusk ? '#ffbe61' : '#deae65', x, 10.49, z, 15.8, .20, 10.3);
-      silhouette('#664e5d', x, 5.38, z + 4.51, 3.3, 5.55, .16);
-      for (const dx of [-5.8, -3.9, -2.4, 2.4, 3.9, 5.8]) {
-        silhouette('#ead0a0', x + dx, 6.15, z + 4.65, .43, 7.25, .63);
+    const temple = jerusalem ? templeMount(scene, ...positionOf([28, -32.5]), climate, height) : null;
+    if (temple) {
+      blocks.push(...temple.blocks);
+      const city = seeded(1072);
+      for (let i = 0; i < 144; i++) {
+        const px = -48 + (i % 15) * 6.15 + (city() - .5) * 2.8;
+        const pz = -31 + Math.floor(i / 15) * 7.3 + (city() - .5) * 3.1;
+        const [x, z] = positionOf([px, pz]);
+        if (partAt(x, z) || pathDistance(x, z) < 4.1 || (Math.abs(px - 28) < 23.4 && pz < 8) ||
+            (Math.abs(px - 31) < 6.8 && pz < 17)) continue;
+        const y = height(x, z), w = 2.4 + city() * 2.75, h = 1.8 + city() * 2.98;
+        add(cube, ['#a38c88', '#b49684', '#a99b96', '#ccb3a1'][i % 4], x, y + h * .5, z, w, h, 3.7);
+        add(cube, '#d0b8a1', x, y + h, z, w + .16, .18, 3.86);
+        add(cube, '#795d62', x, y + .69, z + 1.86, .52, 1.36, .07);
+        blocks.push([x, z, w * .39]);
       }
-      for (const dx of [-10.2, 10.2]) {
-        silhouette('#ac9887', x + dx, 4.52, z + 1.8, 4.15, 4.45, 8.55);
-        silhouette('#ccb091', x + dx, 6.82, z + 1.8, 4.35, .21, 8.74);
-      }
-      templeSilhouette = new T.Group();
-      scene.add(templeSilhouette);
-      addScenery(templeSilhouette, scenery, color => mat(color));
     }
     addScenery(scene, patches, color => mat(color));
     cube.dispose(); stone.dispose(); cone.dispose(); column.dispose();
+    const landmarks = temple ? [temple] : [];
+    const landmarkScenes = {
+      stable: { title: '마구간', shot: [-.8, 7.25], look: [.13, 3.25, -7.68], height: 3.05, lowHeight: 1.85, push: 1.32, range: 10.7 },
+      elizabeth: { title: '엘리사벳 집 마당', shot: [1.8, 10.2], look: [-.2, 1.92, -6.3], height: 3.05, lowHeight: 1.75, push: 1.42, range: 11.2 },
+      'synagogue-yard': { title: '회당 앞 마당', shot: [1.3, 9.85], look: [-.12, 2.26, -3.25], height: 3.05, lowHeight: 1.75, push: 1.23, range: 7.4 },
+      'wilderness-vista': { title: '광야 길 전망 자리', shot: [-1.60, 1.32], look: [54, -1.05, -18], height: 4.3, lowHeight: 2.2, push: .83, range: 3.95, foreground: false }
+    };
+    for (const { site } of parts) {
+      const spec = landmarkScenes[site.key];
+      if (!spec) continue;
+      const [x, y, z] = spec.look;
+      landmarks.push({ ...spec, shot: site.translate(spec.shot), look: [x + site.offset[0], y, z + site.offset[1]],
+        trigger(px, pz, place) { return site === place && Math.hypot(px - site.offset[0], pz - site.offset[1]) < spec.range; } });
+    }
     const regularFog = scene.fog.far;
     const horizonFogs = { 'wilderness-vista': 116, 'tabor-vista': 116, 'lake-pass': 124, 'bethlehem-vista': 156 };
     const horizons = region.sites.filter(site => horizonFogs[site.key]);
@@ -4260,7 +4824,6 @@
       for (const part of parts) {
         if (!part.site.extension) part.group.visible = part.actors.visible = part.group === group;
       }
-      if (templeSilhouette) templeSilhouette.visible = !parts.some(part => part.site.key === 'sanctuary' && part.group === group);
     }
     const titles = { temple: '성전 계단 전망', sanctuary: '성소 계단 전망', roof: '사가랴 집 지붕 전망', gate: '성문 망루 전망',
       'bethlehem-vista': '베들레헴 언덕 전망', 'wilderness-vista': '광야 길 전망 자리', 'tabor-vista': '다볼산 전망',
@@ -4275,17 +4838,19 @@
     }
     activePart = undefined;
     update(...(options.spawn || options.adventure?.spawn || [0, 6.2]));
-    return { ...main, ground, height, blocks, actors, residents, features, birds, fx, update, viewpoints,
+    return { ...main, ground, height, blocks, actors, residents, features, birds, fx, update, viewpoints, jumpSurfaces, temple, landmarks,
       placesToPlay: region.placesToPlay,
       climbs: viewpoints.map(viewpoint => viewpoint.pos),
       signs: signs.concat(parts.flatMap(({ site, local }) => (local.signs || []).map(site.translate))),
       walkable(x, z) {
         if (Math.abs(x + ox) > wide || Math.abs(z + oz) > deep) return false;
         if (water && Math.abs(x - water[0]) < 1.28 && Math.abs(z - water[1]) < 6.85 && Math.abs(z - water[1]) > .63) return false;
+        if (temple?.walls.some(([px, pz, w, d]) => Math.abs(x - px) < w && Math.abs(z - pz) < d)) return false;
         const part = partAt(x, z);
         return !part || part.local.walkable(x - part.site.offset[0], z - part.site.offset[1]);
       },
       dispose() {
+        temple?.dispose();
         for (const { local } of parts) if (local !== main) local.models?.dispose();
         for (const part of ground.children) part.material.dispose();
       }
@@ -5065,6 +5630,9 @@
       box(timber, -2.9, .84, -1.15, 2.25, .14, .12);
       blocks.push([-2.9, -1.15, .93]);
     }
+    const crate = { x: 3.35, z: 2.15, halfX: .54, halfZ: .48, top: .46 };
+    box(timber, crate.x, .23, crate.z, 1.08, .46, .96);
+    for (const dx of [-.37, .37]) box('#bf9c75', crate.x + dx, .23, crate.z + .482, .11, .46, .04);
     const lamp = new T.Mesh(new T.ConeGeometry(.10, .20, 7), mat('#ffd588', { emissive: '#ff9724', ei: 2 }));
     lamp.position.set(0, workroom ? 1.09 : .74, tableZ); scene.add(lamp);
     const glow = new T.PointLight('#ffbb72', 6.4, 7.5, 2);
@@ -5075,11 +5643,12 @@
     scene.background = new T.Color('#2b2021');
     geometry.dispose();
     return {
-      ground, height, blocks, models, walls, bounds, residents: new Map(), features: new Map(), actors: [], birds: [], fx: [],
+      ground, height, blocks, models, walls, bounds, jumpSurfaces: [crate], residents: new Map(), features: new Map(), actors: [], birds: [], fx: [],
       walkable: (x, z) => Math.abs(x) <= bounds.x && Math.abs(z) <= bounds.z
     };
   }
 
+  const landmarkDays = new Map();
   async function mountExplore(container, options, handlers = {}) {
     await load();
     const { sheep, layout = {}, room, region } = options;
@@ -5102,6 +5671,7 @@
     wrap.append(canvas, hud); container.append(wrap);
 
     const scene = new T.Scene(), camera = new T.PerspectiveCamera(53, 1, .1, region ? 160 : 105);
+    if (region) scene.matrixWorldAutoUpdate = false; // renderScene updates scene matrices before the draw-call budget pass.
     const reduced = calm();
     const climate = room ? null : exploreClimate(options.place, layout.time, reduced);
     const protectedPoints = [options.spawn || adventure?.spawn || [0, 6.2],
@@ -5109,7 +5679,7 @@
       ...(options.markers || []).map(marker => marker.pos), ...(options.houses || []).map(house => house.pos)].filter(Boolean);
     const world = room ? interiorWorld(scene, room) : region ? regionWorld(scene, options, climate, protectedPoints) : options.adventure ? adventureWorld(scene, seed, layout, adventure, climate, protectedPoints) :
       exploreWorld(scene, options.kit || options.place, seed, layout, climate, protectedPoints);
-    if (climate?.weather === 'market') {
+    if (climate?.weather === 'market' && region?.index !== 0) {
       const onZone = handlers.onZone;
       const marketSound = () => window.Sound?.ambience('모험 장터');
       marketSound();
@@ -5186,6 +5756,81 @@
     let peakCalls = 0, metrics = { fps: 0, calls: 0, triangles: 0, ratio: resolution };
     const enterDistance = adventure ? 1.48 : 1.2;
     const actionDistance = 2.15;
+    const landmarks = world.landmarks || [];
+    const witnessed = new Set();
+    let landmark, revealAfter = performance.now() + 240, cinematic = false, revealHUD, revealVeil, revealName, skipReveal, lookUpUntil = 0;
+    const sheepBeforeShot = new T.Vector3();
+    if (landmarks.length) {
+      revealHUD = document.createElement('div');
+      revealHUD.className = 'explore-landmark';
+      revealHUD.hidden = true;
+      revealVeil = document.createElement('div');
+      revealVeil.className = 'explore-landmark-veil';
+      revealName = document.createElement('span');
+      revealName.className = 'explore-landmark-title';
+      revealName.setAttribute('aria-live', 'polite');
+      skipReveal = document.createElement('button');
+      skipReveal.type = 'button'; skipReveal.textContent = '건너뛰기';
+      skipReveal.onclick = () => finishReveal(performance.now());
+      revealHUD.append(revealVeil, revealName, skipReveal);
+      wrap.append(revealHUD);
+    }
+
+    function finishReveal(now) {
+      if (!landmark) return;
+      const hadFocus = document.activeElement === skipReveal;
+      landmark = null;
+      cinematic = false;
+      revealHUD.hidden = true;
+      wrap.classList.remove('is-revealing');
+      world.update?.(walkPosition().x, walkPosition().z);
+      lookUpUntil = now + 700;
+      if (hadFocus) wrap.querySelector('.adventure-stick')?.focus({ preventScroll: true });
+    }
+
+    function revealFrame(now, p) {
+      if (!revealHUD) return;
+      if (!landmark && now >= revealAfter && !held && !mounted && !crossing && !jump && !inspectState &&
+          !activePointer && !joystick && handlers.canInteract?.() !== false) {
+        const site = region.nearSite([p.x, p.z]);
+        const show = landmarks.find(entry => !witnessed.has(entry.title) && entry.trigger(p.x, p.z, site));
+        if (show) {
+          witnessed.add(show.title);
+          const day = window.Core?.nowKST().date || new Date().toISOString().slice(0, 10);
+          const key = 'advent-landmark:' + (window.Core?.IS_TEST ? 'test:' : '') + show.title;
+          let played = landmarkDays.get(key) === day;
+          try {
+            played ||= localStorage.getItem(key) === day;
+            if (!played) localStorage.setItem(key, day);
+          } catch { /* Storage can be unavailable in a private web view. */ }
+          landmarkDays.set(key, day);
+          if (!played) {
+            landmark = { show, start: now };
+            revealName.textContent = show.title;
+            revealHUD.hidden = false;
+            wrap.classList.add('is-revealing');
+          }
+        }
+      }
+      if (!landmark) return;
+      const age = now - landmark.start, duration = reduced ? 1900 : 3520;
+      if (age >= duration) return finishReveal(now);
+      cinematic = age >= 220 && age < duration - 220;
+      revealVeil.style.opacity = clamp(age < 440 ? 1 - Math.abs(age - 220) / 220 :
+        age > duration - 440 ? 1 - Math.abs(age - (duration - 220)) / 220 : 0, 0, 1);
+    }
+
+    function useLandmarkCamera(now) {
+      if (!cinematic || !landmark) return;
+      const { show, start } = landmark, [x, z] = show.shot;
+      const time = reduced ? .55 : clamp((now - start - 220) / 2940, 0, 1);
+      const eased = time * time * (3 - 2 * time), baseline = world.height(x, z);
+      const [lx, ly, lz] = show.look, yaw = Math.atan2(lx - x, lz - z);
+      const push = eased * (show.push ?? 2.65);
+      camera.position.set(x + Math.sin(yaw) * push, baseline + lerp(show.height, show.lowHeight ?? 1.65, eased), z + Math.cos(yaw) * push);
+      camera.lookAt(lx, ly + (show.push == null ? .7 : .25) * eased, lz);
+      camera.updateMatrixWorld();
+    }
     const actionHUD = document.createElement('div');
     actionHUD.className = 'explore-action-hud';
     actionHUD.hidden = true;
@@ -5236,7 +5881,7 @@
 
     function activateMarker(id) {
       const entry = elements.get(id);
-      if (stopped || handlers.canInteract?.() === false || !canActivate(entry)) return false;
+      if (stopped || landmark || handlers.canInteract?.() === false || !canActivate(entry)) return false;
       waitForTarget = null;
       route = []; goal.visible = false;
       leaderVel.set(0, 0);
@@ -5266,7 +5911,96 @@
     const walkPosition = () => (leader || player).position;
     const life = region ? makeRegionalLife(scene, region, world, reduced) : null;
     let mounted = null, mountModel, held = false, carriedWordAt = 0, hoofDistance = 0;
-    let sheepHop, crossing;
+    let sheepHop, crossing, jump, sheepJumps = [], lastHop, hopCount = 0, groundContact, jumpMovement = null;
+    const surfaces = world.jumpSurfaces || [];
+    const jumpFX = leader && new T.Points(new T.BufferGeometry().setAttribute(
+      'position', new T.BufferAttribute(new Float32Array(36), 3).setUsage(T.DynamicDrawUsage)
+    ), new T.PointsMaterial({ color: '#e2bc8c', size: .092, transparent: true, depthWrite: false }));
+    if (jumpFX) {
+      jumpFX.visible = false;
+      jumpFX.frustumCulled = false;
+      jumpFX.userData.drawPriority = 24;
+      scene.add(jumpFX);
+    }
+    let landingEffect;
+    function surfaceAt(x, z) {
+      return surfaces.find(({ x: px, z: pz, halfX, halfZ }) => Math.abs(x - px) < halfX && Math.abs(z - pz) < halfZ);
+    }
+    function jumpLift(now) {
+      if (!jump) return 0;
+      const arc = clamp((now - jump.start - 85) / 500, 0, 1);
+      return Math.max(0, Math.min(4 * .9 * arc * (1 - arc), (room ? 2.76 - 1.94 : Infinity) - (groundContact?.top || 0)));
+    }
+    function startJump() {
+      if (!leader || stopped || landmark || jump || held || mounted || crossing || inspectState || handlers.canInteract?.() === false) return false;
+      const now = performance.now(), p = walkPosition();
+      seated = kneeling = false;
+      hopCount = lastHop && now - lastHop.time < 4200 && Math.hypot(p.x - lastHop.x, p.z - lastHop.z) < .65 ? hopCount + 1 : 1;
+      lastHop = { time: now, x: p.x, z: p.z };
+      jump = { start: now, floor: p.y };
+      const takeoff = now + 235;
+      sheepJumps.push({ start: takeoff });
+      if (hopCount === 3) {
+        sheepJumps.push({ start: takeoff + 320 }, { start: takeoff + 640, heart: true });
+        hopCount = 0;
+      } else if (Math.random() < .17) sheepJumps.push({ start: takeoff + 320 });
+      for (const animal of pathPlay?.animals || []) {
+        const at = animal.flock.position;
+        if (animal.flying && Math.hypot(p.x - at.x, p.z - at.z) < 4.2 && animal.start === null) {
+          animal.start = now;
+          animal.direction = Math.atan2(at.x - p.x, at.z - p.z);
+        }
+      }
+      if ((!doveAt || now - doveAt > 3200) && world.birds.some(({ home }) => Math.hypot(home.x - p.x, home.z - p.z) < 4)) doveAt = now;
+      if (!reduced) for (const resident of world.actors) {
+        const { actor, animal, travel } = resident;
+        if (animal !== '비둘기' || travel || !actor.visible) continue;
+        const from = actor.position, dx = from.x - p.x, dz = from.z - p.z, distance = Math.hypot(dx, dz);
+        if (distance < .15 || distance > 3.55) continue;
+        const x = from.x + dx * 3.25 / distance, z = from.z + dz * 3.25 / distance;
+        if (open(x, z)) resident.travel = { start: now, from: from.clone(), to: new T.Vector3(...onGround(x, z)), lift: 3.15 };
+      }
+      return true;
+    }
+    function jumpKey(event) {
+      if (event.key === 'Escape' && landmark) { event.preventDefault(); finishReveal(performance.now()); return; }
+      if (event.code !== 'Space' || event.defaultPrevented || event.repeat ||
+          event.target.closest?.('button, input, textarea, select, [contenteditable], dialog, [role="button"]')) return;
+      if (startJump()) event.preventDefault();
+    }
+    function jumpPose(now, p) {
+      if (!jump) return;
+      const age = now - jump.start, rig = leader.userData.gait.rig;
+      const landing = age >= 585;
+      if (landing && !jump.landed) {
+        jump.landed = true;
+        const splash = !groundContact && climate?.puddleCenters?.some(([x, z]) => ((p.x - x) / .84) ** 2 + ((p.z - z) / .47) ** 2 <= 1);
+        handlers.onLand?.(splash);
+        if (!reduced) {
+          landingEffect = { start: now, x: p.x, z: p.z, y: p.y, splash };
+          jumpFX.material.color.set(splash ? '#b4e5fa' : '#e2bc8c');
+          jumpFX.visible = true;
+        }
+      }
+      if (age >= 715) { jump = null; return; }
+      const press = age < 85 ? Math.sin(Math.PI * age / 85) : landing ? Math.sin(Math.PI * (age - 585) / 130) : 0;
+      rig.position.y += Math.max(0, jumpLift(now) - Math.max(0, p.y - jump.floor)) - (reduced ? .035 : .12) * press;
+      rig.scale.y *= 1 - .075 * press;
+    }
+    function updateLandingEffect(now) {
+      if (!landingEffect) return;
+      const { start, x, z, y, splash } = landingEffect;
+      const age = (now - start) / (splash ? 380 : 310);
+      if (age >= 1) { jumpFX.visible = false; landingEffect = null; return; }
+      const coordinates = jumpFX.geometry.attributes.position;
+      for (let i = 0; i < coordinates.count; i++) {
+        const angle = i * 2.4, distance = (.37 + .56 * age) * (.45 + (i % 5) * .16);
+        coordinates.setXYZ(i, x + Math.cos(angle) * distance, y + .035 + Math.sin(Math.PI * age) * (splash ? .34 : .13) * (1 - i / 20),
+          z + Math.sin(angle) * distance);
+      }
+      coordinates.needsUpdate = true;
+      jumpFX.material.opacity = .74 * (1 - age);
+    }
     const previewedShortcuts = new Set();
     const carryPoint = new T.Vector3();
     const jumpContents = new Set(['carpenter-plane', 'traveler-pack']);
@@ -5290,6 +6024,9 @@
     }
     const open = (x, z) => {
       if (Math.abs(x) > edge || Math.abs(z) > edge || world.walkable?.(x, z) === false) return false;
+      const surface = surfaceAt(x, z);
+      if (surface && !surface.walkOn && jumpMovement?.surface !== surface &&
+          (!jumpMovement || jumpMovement.height + .035 < surface.top || surface.top - jumpMovement.base > .701)) return false;
       const blocks = blockCells ? blockCells.get(`${Math.floor(x / cellSize)},${Math.floor(z / cellSize)}`) || [] : world.blocks;
       if (blocks.some(([ox, oz, r]) => (x - ox) ** 2 + (z - oz) ** 2 < (r + .24) ** 2)) return false;
       if (adventure) for (const [kind, feature] of world.features) {
@@ -5460,6 +6197,21 @@
       return calls;
     }
     function renderScene() {
+      const staged = cinematic && landmark?.show.foreground !== false;
+      const facing = player.rotation.y;
+      const leaderVisible = leader?.visible, sheepVisible = player.visible;
+      if (cinematic && leader) leader.visible = false;
+      if (cinematic && !staged) player.visible = false;
+      if (staged) {
+        const cam = camera.position, [lx, , lz] = landmark.show.look;
+        const yaw = Math.atan2(lx - cam.x, lz - cam.z);
+        const distance = 6.6 + 1.35 * Math.max(0, cam.y - world.height(cam.x, cam.z));
+        const x = cam.x + Math.sin(yaw) * distance - Math.cos(yaw) * 1.3;
+        const z = cam.z + Math.cos(yaw) * distance + Math.sin(yaw) * 1.3;
+        sheepBeforeShot.copy(player.position);
+        player.position.set(x, world.height(x, z), z);
+        player.rotation.y = yaw + .22;
+      }
       if (region) {
         scene.updateMatrixWorld();
         camera.updateMatrixWorld();
@@ -5484,6 +6236,9 @@
         }
       }
       renderer.render(scene, camera);
+      if (staged) { player.position.copy(sheepBeforeShot); player.rotation.y = facing; }
+      player.visible = sheepVisible;
+      if (leader) leader.visible = leaderVisible;
       peakCalls = Math.max(peakCalls, renderer.info.render.calls);
       for (const obj of culled) obj.visible = true;
       culled.length = 0;
@@ -5692,6 +6447,7 @@
     }
     function moveTo(x, z, markerId = null) {
       const p = walkPosition();
+      if (landmark) finishReveal(performance.now());
       route = destinationRoute([p.x, p.z], x, z, markerId);
       waitForTarget = markerId;
       if (markerId && elements.has(markerId)) elements.get(markerId).near = false;
@@ -5777,7 +6533,7 @@
       player.rotation.y = Math.atan2(to[0] - from[0], to[1] - from[1]);
     }
     function down(event) {
-      if ((!adventure && !event.isPrimary) || activePointer || event.button > 0) return;
+      if (landmark || (!adventure && !event.isPrimary) || activePointer || event.button > 0) return;
       canvas.setPointerCapture?.(event.pointerId);
       activePointer = { id: event.pointerId, x: event.clientX, moved: false, az };
     }
@@ -5821,6 +6577,14 @@
     canvas.addEventListener('pointerdown', down); canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
     if (adventure) {
+      const jumpButton = document.createElement('button');
+      jumpButton.type = 'button'; jumpButton.className = 'explore-jump'; jumpButton.textContent = '⤴';
+      jumpButton.setAttribute('aria-label', '점프'); jumpButton.setAttribute('aria-keyshortcuts', 'Space');
+      jumpButton.onpointerdown = event => event.preventDefault();
+      jumpButton.onclick = startJump;
+      wrap.append(jumpButton);
+      wrap.classList.add('has-jump');
+      window.addEventListener('keydown', jumpKey);
       const stick = document.createElement('div');
       stick.className = 'adventure-stick';
       stick.tabIndex = 0; stick.setAttribute('role', 'group');
@@ -5838,6 +6602,7 @@
         steer(event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2, event.pointerId);
       };
       stick.onpointerdown = event => {
+        if (landmark) finishReveal(performance.now());
         if (joystick?.pointer != null) return;
         stick.setPointerCapture?.(event.pointerId);
         route = []; waitForTarget = null; goal.visible = false; dragStick(event); handlers.onMove?.();
@@ -5849,6 +6614,7 @@
       const arrows = { ArrowLeft: [-27, 0], ArrowRight: [27, 0], ArrowUp: [0, -27], ArrowDown: [0, 27] };
       stick.onkeydown = event => {
         if (!arrows[event.key]) return;
+        if (landmark) finishReveal(performance.now());
         event.preventDefault(); route = []; waitForTarget = null; goal.visible = false;
         steer(...arrows[event.key]); handlers.onMove?.();
       };
@@ -6235,7 +7001,8 @@
       const t = now / 1000, p = walkPosition(), u = player.userData, mover = leader || player;
       const fromX = p.x, fromZ = p.z;
       const requested = waitForTarget;
-      const allowed = !crossing && handlers.canInteract?.() !== false;
+      revealFrame(now, p);
+      const allowed = !crossing && !landmark && handlers.canInteract?.() !== false;
       const step = allowed ? route[0] : null;
       const running = region && joystick?.pointer != null && Math.hypot(joystick.x, joystick.y) >= .97;
       const walkSpeed = running ? 4.08 : 2.55;
@@ -6263,6 +7030,9 @@
       const accel = Math.min(1, delta * (speeding ? 8 : 15));
       leaderVel.x += (wantX - leaderVel.x) * accel; leaderVel.y += (wantZ - leaderVel.y) * accel;
       if (leaderVel.lengthSq() < .0009 && !wantX && !wantZ) leaderVel.set(0, 0);
+      const base = groundContact?.top ?? world.height(p.x, p.z);
+      const lift = jump ? Math.max(0, jump.floor + jumpLift(now) - base) : 0;
+      jumpMovement = leader && !mounted && !held && !crossing ? { height: base + lift, base: jump?.floor ?? base, surface: groundContact } : null;
       const mx = leaderVel.x * delta, mz = leaderVel.y * delta;
       if (mx || mz) {
         if (step && !stickOn) { p.x += mx; p.z += mz; }
@@ -6271,6 +7041,7 @@
         else if (open(p.x, p.z + mz)) { p.z += mz; leaderVel.x *= .4; }
         else leaderVel.multiplyScalar(.2);
       }
+      jumpMovement = null;
       leaderSpeed = leaderVel.length();
       if (leaderSpeed > .08) {
         const turn = Math.atan2(leaderVel.x, leaderVel.y) - mover.rotation.y;
@@ -6278,7 +7049,8 @@
       }
       const walked = Math.hypot(p.x - fromX, p.z - fromZ);
       walking = leaderSpeed > .12 && walked > .0008; travel += walked;
-      p.y = world.height(p.x, p.z);
+      groundContact = leader && !mounted && !crossing ? surfaceAt(p.x, p.z) : null;
+      p.y = groundContact?.top ?? world.height(p.x, p.z);
       if (!crossing && sheepHop && Math.hypot(p.x - sheepHop.marker.pos[0], p.z - sheepHop.marker.pos[1]) > 4) sheepHop = null;
       if (region && allowed && !held && !mounted && !sheepHop) {
         const shortcut = shortcutMarkers.find(marker => !previewedShortcuts.has(marker.id) &&
@@ -6315,6 +7087,8 @@
         pose.rig.position.y = -.55;
         pose.feet.forEach(foot => { foot.position.z = .42; });
       }
+      jumpPose(now, p);
+      updateLandingEffect(now);
       if (step && requested !== 'photo' && requested !== 'activity') kneeling = false;
       const sleep = kneeling;
       if (world.rearPath) world.rearPath.visible = options.progress?.[options.place] === 'done';
@@ -6337,12 +7111,28 @@
       }
       const bounce = !reduced && reaction?.kind === 'spark' ? Math.max(0, 1 - (now - reaction.start) / 700) * .28 : 0;
       const sheepMoved = Math.min(Math.hypot(player.position.x - sheepX, player.position.z - sheepZ), delta * 6);
+      u.body.position.y -= u.jumpLift || 0;
       const gs = sheepGait(player, sheepMoved, delta, t, sleep, reduced);
       u.body.position.y = lerp(u.body.position.y, sleep ? -.33 : gs.bob + bounce, .3);
       u.head.rotation.x = lerp(u.head.rotation.x, sleep ? .17 : gs.nod, .25);
       if (!reduced) animateWings(player, t);
+      if (cinematic || now < lookUpUntil) u.head.rotation.x = lerp(u.head.rotation.x, -.34, cinematic ? .75 : .35);
       applyDiscoverFrame(u, t, now);
       updateScentEffect(now);
+      if (sheepJumps.length) {
+        let lift = 0;
+        sheepJumps = sheepJumps.filter(hop => {
+          const phase = (now - hop.start) / 300;
+          if (phase >= 1) return false;
+          if (phase >= 0) {
+            lift = Math.max(lift, 2.1 * phase * (1 - phase));
+            if (hop.heart && phase > .32) { say('sheep', '♥'); hop.heart = false; }
+          }
+          return true;
+        });
+        u.jumpLift = held || sheepHop || crossing ? 0 : lift;
+        u.body.position.y += u.jumpLift;
+      } else u.jumpLift = 0;
       if (region) {
         const next = world.viewpoints.find(({ pos }) => Math.hypot(pos[0] - p.x, pos[1] - p.z) < 2.0 &&
           Math.abs(world.height(...pos) - p.y) < .8);
@@ -6370,6 +7160,7 @@
         aim.copy(target);
         camera.lookAt(aim); camera.updateMatrixWorld();
       }
+      useLandmarkCamera(now);
       for (const { axis, side, group } of world.walls || []) {
         group.visible = side * camera.position[axis] < world.bounds[axis] - .13;
       }
@@ -6430,7 +7221,9 @@
         chosenAction = nearbyActions[0]?.marker.id || '';
       }
       renderActions();
-      world.update?.(p.x, p.z);
+      const viewX = cinematic ? camera.position.x : p.x, viewZ = cinematic ? camera.position.z : p.z;
+      world.update?.(viewX, viewZ);
+      world.temple?.update(viewX, viewZ, reduced ? 0 : t, cinematic);
       life?.update(p, t, mounted);
       pathPlay?.update(p, now, t);
       checkNearbyDiscover(p);
@@ -6480,6 +7273,8 @@
     const destroy = () => {
       if (stopped) return;
       stopped = true; cancelAnimationFrame(raf); observer.disconnect();
+      window.removeEventListener('keydown', jumpKey);
+      jumpFX?.material.dispose();
       clearScent();
       climate?.material?.dispose();
       climate?.puddles?.dispose();
@@ -6513,8 +7308,12 @@
         const pos = panorama ? new T.Vector3(...onGround(...viewpoint.pos)) : walkPosition();
         const lookAt = viewpoint.lookAt || region?.origin.map(value => -value);
         const yaw = panorama && lookAt ? Math.atan2(pos.x - lookAt[0], pos.z - lookAt[1]) : az;
-        if (panorama) world.update?.(pos.x, pos.z);
+        if (panorama) {
+          world.update?.(pos.x, pos.z);
+          world.temple?.update(pos.x, pos.z, performance.now() / 1000, false);
+        }
         aim.set(pos.x - Math.sin(yaw) * 6, pos.y + .4, pos.z - Math.cos(yaw) * 6);
+        if (panorama && region?.index === 0 && viewpoint.title === '감람산 전망') aim.y += 3.45;
         camera.position.set(pos.x + Math.sin(yaw) * 15, pos.y + 12.6, pos.z + Math.cos(yaw) * 15);
         camera.lookAt(aim);
       } else if (layout.christmas) {
@@ -6538,6 +7337,7 @@
         camera.aspect = oldAspect;
         camera.updateProjectionMatrix();
         world.update?.(walkPosition().x, walkPosition().z);
+        world.temple?.update(walkPosition().x, walkPosition().z, performance.now() / 1000, false);
       }
       player.rotation.y = oldFacing;
       for (const [obj, visible] of masks) obj.visible = visible;
@@ -6552,6 +7352,7 @@
       if (marker) moveTo(...marker.pos, id);
     }, destroy, metrics: () => ({ ...metrics, peakCalls }), _debug: { player, leader, camera, moveTo, markers: elements, blocks: world.blocks, actors: world.actors,
       destinationRoute, time: climate?.time, weather: climate?.weather, stalls: climate?.stalls, rainDraw: () => climate?.rain?.geometry.drawRange.count || 0, height: world.height, climbs: world.climbs || [], signs: world.signs || [], edge, enterDistance, region, viewpoints: world.viewpoints, vistaBlend: () => vistaBlend, seated: () => seated, speed: () => leaderSpeed, animals: pathPlay?.animals,
+      jumpSurfaces: surfaces, jumping: () => !!jump, landing: () => landingEffect,
       riding: () => !!mounted, holdingLamb: () => held, crossing: () => !!crossing, sheepShortcut: () => sheepHop?.marker.id,
       turnCamera(radians) { azWant = radians; } } };
   }

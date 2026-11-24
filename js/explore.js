@@ -548,9 +548,9 @@
   function map() {
     if (!Field.has()) return App.home();
     Sound.ambience(null);
-    const list = openList(), log = progress(), latest = list.at(-1), tally = counts();
-    const event = todayEvent();
-    const placeStatus = ep => {
+    const episodes = epList(), list = episodes.filter(isOpen), log = progress(), latest = list.at(-1), tally = counts();
+    const event = todayEvent(), day = date();
+    const pinStatus = ep => {
       const area = window.EXPLORE[ep.id];
       if (area.discover) {
         const dc = discoverCount(ep.id, log);
@@ -559,37 +559,59 @@
       const score = stars(ep.id, log);
       return area.adventure ? `별 ${score.n}/3 · 부탁 ${sideCount(area, adventureLog(ep.id, log))}/${area.adventure.sides.length} · 비밀 ${log.found[foundKey(ep.id, 'secret')] ? '✓' : '◇'}` : '';
     };
+    const dateText = iso => {
+      const [, month, day] = iso.split('-').map(Number);
+      return `${month}/${day}`;
+    };
+    const weekday = new Intl.DateTimeFormat('ko-KR', { weekday: 'short', timeZone: 'UTC' });
+    const row = (ep, i, featured = false) => {
+      const available = isOpen(ep), score = stars(ep.id, log);
+      const status = !available ? `🔒 ${dateText(ep.date)}에 열려` : score.max > 0 && score.n === score.max ? '✓ 다 찾음' : '열림';
+      return `<button type="button" class="explore-place-row${featured ? ' explore-place-today' : ''}" data-place="${ep.id}"${available ? '' : ' aria-disabled="true"'}>
+        <span class="explore-place-number" aria-hidden="true">${i + 1}</span>
+        <span class="explore-place-name">${esc(window.EXPLORE[ep.id].title)}
+          <small>${dateText(ep.date)} ${weekday.format(new Date(ep.date))} · 발견 ${score.n}/${score.max}</small>
+        </span>
+        <span class="explore-place-state">${featured ? '가 보자' : status}</span>
+      </button>`;
+    };
+    const featured = episodes.findIndex(ep => ep.date === day && isOpen(ep));
+    const headings = ['예루살렘', '유대 산골', '빈 들', '나사렛·갈릴리', '베들레헴'];
+    const groups = headings.map(() => []);
+    episodes.forEach((ep, i) => {
+      const key = siteKey(ep.id), region = regionForSite(key);
+      const group = region === 1 && key === 'desert' ? 2 : region >= 2 ? region + 1 : region;
+      groups[group]?.push(row(ep, i));
+    });
     const ball = (ep, i) => {
       const [x, y] = mapPoints[i], score = stars(ep.id, log);
       const secret = log.found[foundKey(ep.id, 'secret')], photo = log.photos[ep.id];
       const tags = (score.n === score.max ? '★' : '') + (secret ? ' ⚿' : '') + (photo ? ' ◎' : '');
       const current = ep.id === latest?.id && ep.date === date();
+      const status = pinStatus(ep);
       return `<button class="explore-map-pin${current ? ' today' : ''}" data-place="${ep.id}" style="--x:${x / 3.7}%;--y:${y / 3.7}%"
-        aria-label="${esc(window.EXPLORE[ep.id].title + (current ? ' · 오늘' : '') + (score.n === score.max ? ' · 전부 찾음' : '') + (secret ? ' · 비밀' : '') + (photo ? ' · 사진' : '') + (placeStatus(ep) ? ' · ' + placeStatus(ep) : ''))}">
+        aria-label="${esc(window.EXPLORE[ep.id].title + (current ? ' · 오늘' : '') + (score.n === score.max ? ' · 전부 찾음' : '') + (secret ? ' · 비밀' : '') + (photo ? ' · 사진' : '') + (status ? ' · ' + status : ''))}">
         <b>${i + 1}</b>${tags ? `<small aria-hidden="true">${tags}</small>` : ''}</button>`;
     };
     const journeys = Object.entries(window.EXPLORE_JOURNEYS).filter(([key]) =>
       key === 'mary' ? list.some(ep => ep.id === '3-2') : date() >= '2026-12-19');
     const traveled = list.at(-1)?.id;
-    const first = list.find(ep => ep.date === date()) || latest;
     const discoveredCount = Object.keys(log.discoveries || {}).length;
     const totalDiscoveries = Object.keys(window.DISCOVERIES || {}).length;
     const root = replace(`<header class="explore-head">${backButton('들판으로')}<div><h1>성탄 길 지도</h1><p>내 양과 걸어온 길</p></div><div class="explore-head-btns"><button class="explore-sub" type="button" data-notebook>📓 ${discoveredCount}/${totalDiscoveries}</button><button class="explore-sub" type="button" data-album>사진 ${tally.photos}/27</button></div></header>
       <div class="explore-parchment">
         ${geographyMap({ journeys })}
-        ${list.map(ball).join('')}
+        ${episodes.map((ep, i) => isOpen(ep) ? ball(ep, i) : '').join('')}
       </div>
       <p class="explore-map-scale">지도는 줄여서 그렸어. 실제로는 나사렛에서 예루살렘까지 약 100km, 걸어서 4~5일 걸려.</p>
       <div class="explore-geography-links" aria-label="지역 소개">${Object.entries(window.EXPLORE_GEOGRAPHY).map(([key, place]) =>
         `<button class="btn ghost" type="button" data-geography="${key}">${esc(place.title)}</button>`).join('')}</div>
       <div class="explore-map-stats"><span>장소 ${list.length}/27</span><span>★ ${tally.stars}곳</span><span>⚿ ${tally.secrets}곳</span></div>
       ${event ? `<p class="explore-map-event">★ 오늘 ${esc(window.EXPLORE[event.ep].title)}에 무슨 일이 생겼대.</p>` : ''}
-      ${first ? `<button type="button" class="btn explore-go" data-place="${first.id}">${esc(window.EXPLORE[first.id].title)}에 가 보자</button>${placeStatus(first) ? `<p class="explore-place-status">${placeStatus(first)}</p>` : ''}` : '<p class="explore-map-event">첫 이야기가 열리는 날, 지도에 길이 생겨.</p>'}
-      <button type="button" class="link explore-places-toggle" aria-expanded="false">장소 이름으로 보기</button>
-      <div class="explore-places" hidden>${regions.map((region, i) => {
-        const places = list.filter(ep => regionForSite(siteKey(ep.id)) === i);
-        return places.length ? `<h2>${region}</h2>${places.map(ep => `<button type="button" data-place="${ep.id}">${esc(Core.dateLabel(ep.date))} · ${esc(window.EXPLORE[ep.id].title)}${placeStatus(ep) ? `<small>${placeStatus(ep)}</small>` : ''}</button>`).join('')}` : '';
-      }).join('')}</div>
+      <div class="explore-places">
+        ${featured >= 0 ? `<h2>오늘의 장소</h2>${row(episodes[featured], featured, true)}` : ''}
+        ${groups.map((places, i) => places.length ? `<h2>${headings[i]}</h2>${places.join('')}` : '').join('')}
+      </div>
       ${traveled ? '<button type="button" class="btn ghost explore-challenge">탐험 도전장 저장·공유</button>' : ''}
       ${canWatchEnding() ? '<button type="button" class="btn ghost explore-ending-btn" data-walked-ending>🌟 성탄 엔딩 · 그 길을 함께 걸었어</button>' : ''}`, 'explore-map');
     root.querySelector('.explore-back').onclick = () => Field.page();
@@ -613,12 +635,27 @@
     root.querySelector('[data-walked-ending]')?.addEventListener('click', () => ending());
     root.querySelector('.explore-challenge')?.addEventListener('click', () =>
       Field.showCard(root, '탐험 도전장', () => Card.drawExploreChallenge(tally), 'EXPLORE', '탐험 도전장', `내 탐험 기록은 ★ ${tally.stars}곳. 이길 수 있어?`));
-    root.querySelectorAll('[data-place]').forEach(button => button.onclick = () => enter(button.dataset.place));
-    root.querySelector('.explore-places-toggle').onclick = event => {
-      const list = root.querySelector('.explore-places');
-      list.hidden = !list.hidden;
-      event.currentTarget.setAttribute('aria-expanded', String(!list.hidden));
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('no-motion');
+    const rows = new Map([...root.querySelectorAll('.explore-place-row:not(.explore-place-today)')].map(button => [button.dataset.place, button]));
+    const pins = new Map([...root.querySelectorAll('.explore-map-pin')].map(button => [button.dataset.place, button]));
+    let enterTimer, selectedRow;
+    for (const [id, pin] of pins) pin.onclick = () => {
+      const target = rows.get(id);
+      if (!target) return;
+      selectedRow?.classList.remove('is-highlighted');
+      selectedRow = target;
+      target.classList.add('is-highlighted');
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'instant' : 'smooth' });
     };
+    root.querySelectorAll('.explore-place-row:not([aria-disabled])').forEach(button => button.onclick = () => {
+      if (enterTimer) return;
+      const id = button.dataset.place, pin = pins.get(id);
+      pin?.classList.add('is-selected');
+      if (reduceMotion) return enter(id);
+      pin?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      enterTimer = setTimeout(() => { if (root.isConnected) enter(id); }, 190);
+    });
   }
 
   // 사진은 기기 안의 앨범에만 둔다. 백업에는 날짜와 촬영 당시의 양만 기록한다.
@@ -1225,16 +1262,19 @@
     const chargeMs = rarity === 'legend' ? 1150 : rarity === 'rare' ? 620 : 320;
     const flipAt = !isFirst ? 90 : rarity === 'legend' ? 1750 : rarity === 'rare' ? 1080 : 680;
     const burstAt = rarity === 'legend' ? 1180 : rarity === 'rare' ? 760 : 0;
+    const sparkCount = rarity === 'legend' ? 24 : rarity === 'rare' ? 14 : 8;
 
-    const sparksHTML = Array.from({ length: rarity === 'legend' ? 20 : rarity === 'rare' ? 10 : 4 }, (_, i) => {
-      const ang = (i / (rarity === 'legend' ? 20 : rarity === 'rare' ? 10 : 4)) * Math.PI * 2;
-      const dist = (rarity === 'legend' ? 128 : 96) + (i % 3) * 28;
+    const sparksHTML = Array.from({ length: sparkCount }, (_, i) => {
+      const ang = (i / sparkCount) * Math.PI * 2;
+      const dist = (rarity === 'legend' ? 136 : rarity === 'rare' ? 108 : 86) + (i % 3) * 26;
       const tx = Math.round(Math.cos(ang) * dist) + 'px';
       const ty = Math.round(Math.sin(ang) * dist) + 'px';
-      const delay = ((i % 4) * 0.04).toFixed(2) + 's';
+      const delay = ((i % 4) * 0.035).toFixed(2) + 's';
       return `<i class="discover-reveal-spark" style="--tx:${tx};--ty:${ty};--d:${delay}">${i % 2 ? '✦' : '★'}</i>`;
     }).join('');
 
+    const titleCharsHTML = [...String(item.title || '')].map((ch, i) =>
+      `<span class="reveal-char" style="--ci:${i}">${esc(ch)}</span>`).join('');
     const sheepSvg = window.Field?.sheepArt ? `<svg class="reveal-sheep-svg" viewBox="-42 -56 84 75" aria-hidden="true">${Field.sheepArt(sheep)}</svg>` : '<span class="reveal-sheep-svg">🐑</span>';
     const overlay = document.createElement('div');
     overlay.className = `discover-reveal rarity-${rarity}${reduced ? ' is-reduced' : ''}`;
@@ -1242,6 +1282,7 @@
     overlay.dataset.revealMode = isFirst ? 'first' : 'replay';
     overlay.dataset.revealDuration = String(totalMs);
     overlay.dataset.revealPhase = (reduced || !isFirst) ? 'front' : 'orb';
+    overlay.dataset.frontStage = (reduced || !isFirst) ? 'details' : 'tada';
     overlay.style.setProperty('--charge-ms', chargeMs + 'ms');
 
     overlay.innerHTML = `
@@ -1274,9 +1315,11 @@
               ${isFirst ? `<span class="reveal-new-ribbon">✨ 처음 발견${res?.oilBonus ? ' · 기름 +1' : ''}</span>` : ''}
             </div>
             <div class="reveal-front-body">
-              <h3 class="reveal-front-title" data-reveal-title>${esc(item.title)}</h3>
-              <p class="reveal-front-fact" data-reveal-fact>${esc(item.fact)}</p>
-              ${item.ref ? `<span class="reveal-front-ref" data-reveal-ref>📖 ${esc(Bible.full(item.ref))}</span>` : ''}
+              <h3 class="reveal-front-title" data-reveal-title>${titleCharsHTML}</h3>
+              <div class="reveal-front-details" data-reveal-details>
+                <p class="reveal-front-fact" data-reveal-fact>${esc(item.fact)}</p>
+                ${item.ref ? `<span class="reveal-front-ref" data-reveal-ref>📖 ${esc(Bible.full(item.ref))}</span>` : ''}
+              </div>
             </div>
             <div class="reveal-sheep-row" data-reveal-sheep>
               <div class="reveal-sheep-avatar-wrap">
@@ -1322,13 +1365,25 @@
       timers.length = 0;
       overlay.dataset.revealPhase = 'front';
       if (skipped) overlay.dataset.revealSkipped = 'true';
-      overlay.classList.remove('is-shaking', 'is-flashing');
-      if (rarity === 'legend') overlay.classList.add('is-bursting');
+      if (reduced || !isFirst) {
+        overlay.dataset.frontStage = 'details';
+        overlay.classList.remove('is-shaking', 'is-flashing', 'is-bursting', 'is-tada');
+      } else {
+        overlay.dataset.frontStage = 'tada';
+        overlay.classList.remove('is-shaking', 'is-flashing', 'is-bursting', 'is-tada');
+        void overlay.offsetWidth;
+        overlay.classList.add('is-flashing', 'is-bursting', 'is-tada');
+        schedule(() => {
+          if (!overlay.isConnected || overlay.dataset.tadaHold === 'true') return;
+          overlay.dataset.frontStage = 'details';
+        }, 700);
+      }
       const hintEl = overlay.querySelector('[data-reveal-hint]');
       if (hintEl) hintEl.textContent = '화면을 톡 누르면 계속 둘러봐요';
       Sound.sfx('revealFlip', rarity);
       vibrateDevice(rarity === 'legend' ? [25, 35, 45] : 16);
-      scheduleFinish(skipped ? 650 : Math.max(420, totalMs - flipAt));
+      const stayMs = skipped ? 950 : Math.max(1350, totalMs - flipAt);
+      scheduleFinish(stayMs);
     }
 
     if (reduced || !isFirst) {
@@ -1338,30 +1393,36 @@
       // 1단계: 빛 구슬 상승 (0 ~ 0.4초)
       Sound.sfx('revealOrb', rarity);
       vibrateDevice(14);
-      // 2단계: 카드 뒷면 회전 & 등급 테두리 차오름 (0.4초~)
-      schedule(() => {
+      // 2단계: 첫 프레임(orb)이 그려진 뒤 카드 뒷면 회전 & 등급 테두리 차오름 (0.4초~)
+      requestAnimationFrame(() => {
         if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
-        overlay.dataset.revealPhase = 'back';
-        Sound.sfx('revealCharge', rarity);
-      }, 400);
-      if (burstAt > 0) {
         schedule(() => {
           if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
-          overlay.classList.add('is-bursting');
-          if (rarity === 'legend') {
-            overlay.classList.add('is-shaking', 'is-flashing');
-            vibrateDevice([30, 45, 25, 45, 55]);
-          } else {
-            vibrateDevice([22, 40, 30]);
+          overlay.dataset.revealPhase = 'back';
+          Sound.sfx('revealCharge', rarity);
+          if (burstAt > 400) {
+            schedule(() => {
+              if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
+              overlay.classList.add('is-bursting');
+              if (rarity === 'legend') {
+                overlay.classList.add('is-shaking', 'is-flashing');
+                vibrateDevice([30, 45, 25, 45, 55]);
+              } else {
+                vibrateDevice([22, 40, 30]);
+              }
+            }, burstAt - 400);
           }
-        }, burstAt);
-      }
-      // 3단계: 카드 앞면 뒤집기
-      schedule(() => {
-        if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
-        showFrontFace(false);
-      }, flipAt);
-      scheduleFinish(totalMs + 400);
+          // 3단계: 카드 앞면 뒤집기
+          requestAnimationFrame(() => {
+            if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
+            schedule(() => {
+              if (!overlay.isConnected || overlay.dataset.revealPhase === 'front') return;
+              showFrontFace(false);
+            }, Math.max(200, flipAt - 400));
+          });
+        }, 400);
+      });
+      scheduleFinish(totalMs + 900);
     }
 
     overlay.addEventListener('click', e => {
@@ -1934,6 +1995,11 @@
     const proximity = pos => Math.hypot(here()[0] - pos[0], here()[1] - pos[1]);
     const isUnlocked = (kind, episode = activeSite?.episode || id) => !!log.discoverUnlock[episode + '/' + kind];
     const doneFound = key => log.found[foundKey(id, key)];
+    const templeAmbience = site => {
+      if (site?.key === 'temple' || site?.key === 'sanctuary') return id === '1-0' || area.layout.time === 'night' ? '탐험 밤의 성전' : '탐험 성전 뜰';
+      if (id === '1-0' && ['outer-court', 'south-steps'].includes(site?.key)) return '탐험 밤의 성전';
+      return null;
+    };
 
     function soundZone(index) {
       const room = getRoom();
@@ -1946,7 +2012,7 @@
       if (index === zone) return;
       zone = index;
       if (zoneText) zoneText.textContent = zones[zone];
-      Sound.ambience(adv.ambience[zone]);
+      Sound.ambience(templeAmbience(activeSite || region?.main) || adv.ambience[zone]);
     }
     soundZone(0);
 
@@ -2420,7 +2486,7 @@
           const ambience = { 'outer-court': '모험 장터', 'south-steps': '모험 뜰', 'sheep-gate': '모험 우물',
             'lower-town': '모험 뜰', siloam: '모험 우물', 'david-well': '모험 우물',
             'village-threshing': '모험 뜰', 'shepherd-cave': '마구간', 'valley-stream': '모험 우물' };
-          Sound.ambience(site?.area?.adventure?.ambience[0] || ambience[site?.key] || '모험 산길');
+          Sound.ambience(templeAmbience(site) || site?.area?.adventure?.ambience[0] || ambience[site?.key] || '모험 산길');
         }
         const dc = site?.extension ? countAtSite(site, entries, log) : discoverCount(site?.episode || id, log);
         countEl.textContent = dc.max ? `발견 ${dc.n}/${dc.max}` : '둘러보기';
@@ -3104,6 +3170,7 @@
           progress: log.quests, found: log.found, sheep, markers: shown, adventure: area.adventure }, {
           companionLine: enhanced ? Field.exploreReaction(sheep) : null,
           onFootstep: enhanced || room ? mounted => Sound.sfx(mounted ? 'hoofExplore' : 'walkExplore') : null,
+          onLand: splash => Sound.sfx(splash ? 'jumpSplash' : 'jumpLand'),
           onRide: mounted => { if (dismountButton) dismountButton.hidden = !mounted; },
           onBearing: room ? null : adventure?.onBearing,
           onZone: discovery?.zoneChanged || (room ? null : adventure?.zoneChanged),

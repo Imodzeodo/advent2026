@@ -150,6 +150,14 @@
   const woolOf = sheep => spec(sheep?.species).wool || 'white';
   const woolLength = (sheep, today = date()) => Number(sheep.shornOn !== today);
   const mainSheep = (data = field()) => data?.sheep?.find(sheep => sheep.id === data.mainId) || data?.sheep?.[0];
+  const nearbyIds = (data = field()) => Array.isArray(data?.nearby) ? data.nearby : [];
+  function visibleSheep(data = field()) {
+    if (!data?.sheep?.length) return [];
+    const mine = mainSheep(data);
+    const near = new Set(nearbyIds(data));
+    const friends = data.sheep.filter(s => s.id !== mine?.id && near.has(s.id)).slice(0, 2);
+    return mine ? [mine, ...friends] : friends;
+  }
   const shearReady = (sheep, today = date()) => sheep.id === mainSheep()?.id && !sheep.lost && woolLength(sheep, today) === 1;
   const growthFor = days => MAIN_STAGES.findLast(item => days >= item.days) || MAIN_STAGES[0];
   const growthDays = data => (data.mainCareDays ?? data.careDays ?? 0) + Math.floor((data.mainAdventureDays || 0) / 3);
@@ -274,6 +282,22 @@
     if (typeof f.visitRoll !== 'number') f.visitRoll = 0;
     if (typeof f.patrolDay !== 'string') f.patrolDay = '';
     if (typeof f.patrolBest !== 'number') f.patrolBest = 0;
+    if (!f.departed || typeof f.departed !== 'object' || Array.isArray(f.departed)) f.departed = {};
+    if (typeof f.recalledOn !== 'string') f.recalledOn = '';
+    const friends = f.sheep.filter(s => s.id !== f.mainId);
+    const friendIdSet = new Set(friends.map(s => s.id));
+    if (!Array.isArray(f.nearby)) {
+      f.nearby = friends.map((s, idx) => ({ s, idx }))
+        .sort((a, b) => String(b.s.born || '').localeCompare(String(a.s.born || '')) || (b.idx - a.idx))
+        .slice(0, 2)
+        .map(x => x.s.id);
+    } else {
+      const clean = [];
+      for (const id of f.nearby) {
+        if (friendIdSet.has(id) && !clean.includes(id)) clean.push(id);
+      }
+      f.nearby = clean.slice(0, 2);
+    }
     if (!f.sheep.some(s => s.id === f.leader)) f.leader = f.sheep[0]?.id || null;
     f.foundTotal = f.found;
     if (changed || JSON.stringify(f) !== before) Core.save();
@@ -418,8 +442,8 @@
     return deliverChapterGuests(ensure()).includes(episode);
   }
   function activeVisitors(data) {
-    const first = data.visitors.find(v => v.helper || v.sunday);
-    return first ? [first, ...data.visitors.filter(v => v !== first).slice(0, 1)] : data.visitors.slice(0, 2);
+    const first = data.visitors.find(v => v.helper) || data.visitors.find(v => v.sunday || v.chapterGift);
+    return first ? [first] : data.visitors.slice(0, 1);
   }
   function sundayGuestDue(data, today) {
     return isSunday(today) && data.sundayVisitDay !== today;
@@ -502,12 +526,12 @@
   }
   function receiveFriend(id) {
     const data = ensure();
-    const visitor = activeVisitors(data).find(v => v.id === id);
+    const visitor = activeVisitors(data).find(v => v.id === id) || data.visitors.find(v => v.id === id);
     if (!visitor) return null;
     const today = date();
     const species = spec(visitor.species);
     const wool = species.wool || 'white';
-    const count = visitor.helper || visitor.sunday || visitor.chapterGift || species.rarity !== 'common' ? 2 : 1;
+    const count = visitor.helper ? 3 : visitor.sunday || visitor.chapterGift || species.rarity !== 'common' ? 2 : 1;
     data.visitors = data.visitors.filter(v => v !== visitor);
     addWool(data.woolBag, wool, count);
     data.friendMet[species.id] ||= today;
@@ -757,7 +781,7 @@
 
   function mapArt(data, labels = false) {
     const decor = data?.slots || {};
-    const flock = data?.sheep || [];
+    const flock = visibleSheep(data);
     return scenery() + slots.map(([x, y], i) => decor[i] ? at(x, y, objects[decor[i]] || '') : '').join('') +
       (data?.items?.['마구간'] ? at(184, 209, objects['마구간']) : '') +
       flock.slice(0, MAX_SHEEP).map((sheep, i) => {
@@ -848,7 +872,7 @@
   function stateOf(data, extra = {}) {
     const moving = extra.moving || null;
     return {
-      sheep: data.sheep.map(s => ({ id: s.id, species: s.species, name: s.name, level: s.level, wear: s.wear || null, lost: s.id === data.mainId && !!s.lost && !extra.trial,
+      sheep: visibleSheep(data).map(s => ({ id: s.id, species: s.species, name: s.name, level: s.level, wear: s.wear || null, lost: s.id === data.mainId && !!s.lost && !extra.trial,
         wool: s.id === data.mainId && extra.trial ? Number(!extra.trial.shorn) : woolLength(s),
         highlight: s.id === extra.selected, miss: extra.miss?.has(s.id) || false })),
       slots: Object.fromEntries(Object.entries(data.slots).filter(([, v]) => v)),
@@ -1112,7 +1136,7 @@
     const data = ensure();
     const visit = recordVisit(data, date());
     const gap = visit?.gap;
-    const greetIds = visit ? data.sheep.filter(s => !s.lost).slice(0, gap === 1 ? 1 : gap === 2 ? 2 : 4).map(s => s.id) : [];
+    const greetIds = visit ? visibleSheep(data).filter(s => !s.lost).slice(0, gap === 1 ? 1 : gap === 2 ? 2 : 3).map(s => s.id) : [];
     const miss = new Set(gap === 1 || gap === 2 ? greetIds : []);
     visitCheck();
     Sound.music('night');
@@ -1220,6 +1244,7 @@
         if (sheep?.id === id && (!sheep.lost || trial)) pet(sheep, true);
       },
       onShear: shear,
+      canShear: id => id === field().mainId,
       onShearTick(id) {
         if (!alive || busy || moving || root.querySelector('dialog[open]')) return;
         const sheep = field().sheep.find(s => s.id === id);
@@ -1678,10 +1703,10 @@
       sheep.shornOn = today;
       if (view) woolTouched = true;
       const kind = woolOf(sheep);
-      const base = sheep.level >= 10 ? 3 : sheep.level >= 5 ? 2 : 1;
+      const base = sheep.level >= 10 ? 3 : sheep.level >= 3 ? 2 : 1;
       const elapsed = daysBetween(lastShear, today);
       // 이튿날 자란 털은 기본 몫에 들어가므로 건너뛴 날만 센다.
-      const bonusWool = Number.isFinite(elapsed) ? Math.min(3, Math.max(0, elapsed - 1)) : 0;
+      const bonusWool = Number.isFinite(elapsed) ? Math.min(6, Math.max(0, elapsed - 1)) : 0;
       const bunches = base + bonusWool;
       addWool(data.woolBag, kind, bunches);
       sheep.care++;
@@ -1810,12 +1835,110 @@
       modal.querySelector('.field-gift-back').onclick = () => giftSheet(id);
     }
 
-    function flockSheet() {
+    function animateFriendLeave(friend, wasNear, farewell) {
+      const calm = document.documentElement.classList.contains('no-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!wasNear || calm) {
+        render(farewell);
+        return;
+      }
+      if (view && view._debug?.sheepObjs) {
+        const dbg = view._debug;
+        const obj = dbg.sheepObjs.get(friend.id);
+        if (obj) {
+          dbg.sheepObjs.delete(friend.id);
+          render(farewell);
+          const x0 = obj.position.x, z0 = obj.position.z;
+          const tx = -5.2, tz = 7.4;
+          const start = performance.now();
+          let lookedBack = false;
+          const step = () => {
+            if (!alive || !view) return;
+            const elapsed = performance.now() - start;
+            if (elapsed < 560) {
+              const p = elapsed / 560;
+              const nx = x0 + (tx - x0) * p;
+              const nz = z0 + (tz - z0) * p;
+              const gy = typeof dbg.groundAt === 'function' ? dbg.groundAt(nx, nz) : obj.position.y;
+              obj.position.set(nx, gy + Math.abs(Math.sin(p * Math.PI * 3)) * 0.14, nz);
+              obj.rotation.y = Math.atan2(tx - x0, tz - z0);
+              requestAnimationFrame(step);
+            } else if (elapsed < 980) {
+              if (!lookedBack) {
+                lookedBack = true;
+                obj.rotation.y = Math.atan2(0 - obj.position.x, 2.2 - obj.position.z);
+                obj.userData.hop = 0.65;
+              }
+              const fade = Math.max(0, 1 - (elapsed - 720) / 260);
+              obj.scale.setScalar(0.85 + fade * 0.15);
+              requestAnimationFrame(step);
+            } else {
+              dbg.scene?.remove(obj);
+            }
+          };
+          requestAnimationFrame(step);
+          return;
+        }
+      }
+      render(farewell);
+      const mapEl = stageEl.querySelector('.field-map');
+      if (mapEl) {
+        const leaveEl = document.createElement('div');
+        leaveEl.className = 'field-sheep is-leaving';
+        leaveEl.dataset.leavingSheep = friend.id;
+        leaveEl.style.cssText = position(114, 340);
+        leaveEl.innerHTML = `${sprite(sheepArt(friend), '-40 -50 80 58')}<span class="field-leave-bubble">${esc(farewell)}</span>`;
+        mapEl.appendChild(leaveEl);
+        setTimeout(() => leaveEl.classList.add('is-lookback'), 480);
+        setTimeout(() => leaveEl.remove(), 980);
+      }
+    }
+
+    function confirmLeaveFriend(friend) {
+      const sp = spec(friend.species);
+      const modal = sheet('친구 떠나보내기', `<div class="field-visitor-card ${sp.rarity}">
+          ${portraitHTML(friend.species, { level: friend.level || 5, wear: friend.wear }, 'big')}
+          <h3>${esc(friend.name || sp.name)} ${rarityBadge(sp)}</h3>
+          <p class="field-visitor-desc" data-leave-prompt>${esc(josa(friend.name || sp.name, '을를'))} 들판 밖으로 보내 줄까? 도감 기록은 남아.</p>
+        </div>
+        <div class="row field-leave-actions">
+          <button type="button" class="btn field-leave-confirm" data-leave-confirm="${esc(friend.id)}">떠나보내기</button>
+          <button type="button" class="btn ghost field-leave-cancel" data-leave-cancel>그만두기</button>
+        </div>`, 'field-leave-sheet');
+      modal.querySelector('[data-leave-cancel]').onclick = () => flockSheet();
+      modal.querySelector('[data-leave-confirm]').onclick = () => {
+        const data = ensure();
+        const target = data.sheep.find(s => s.id === friend.id && s.id !== data.mainId);
+        if (!target) { modal.close(); return; }
+        const today = date();
+        const wasNear = nearbyIds(data).includes(target.id);
+        data.friendMet[target.species] ||= target.born || data.since || today;
+        data.dex[target.species] ||= target.born || data.since || today;
+        (data.departed ||= {})[target.species] = {
+          id: target.id, name: target.name, species: target.species,
+          level: target.level || 5, born: target.born || today, care: target.care || 0
+        };
+        data.sheep = data.sheep.filter(s => s.id !== target.id);
+        data.nearby = nearbyIds(data).filter(id => id !== target.id);
+        if (data.leader === target.id) data.leader = data.mainId || data.sheep[0]?.id || null;
+        Core.save();
+        modal.close();
+        const farewell = `잘 가, ${target.name || sp.name}`;
+        servedTonight = farewell;
+        Sound.sfx('select');
+        showHoldFeedback(farewell, 2800);
+        Player.toast?.(farewell);
+        animateFriendLeave(target, wasNear, farewell);
+      };
+    }
+
+    function flockSheet(notice = '') {
       if (busy || moving) return;
+      const noticeText = typeof notice === 'string' ? notice : '';
       const data = ensure();
       const mine = mainSheep(data);
       const guests = activeVisitors(data);
       const legacy = data.sheep.filter(s => s.id !== mine.id);
+      const near = nearbyIds(data);
       const card = (s, attr, caption) => {
         const sp = spec(s.species);
         return `<button type="button" class="field-flock-card" ${attr}="${esc(s.id)}">
@@ -1823,12 +1946,24 @@
           <strong>${esc(s.name || sp.name)}</strong><span class="field-flock-kind">${esc(sp.name)} ${rarityBadge(sp)}</span>
           <span class="field-flock-status">${esc(caption)}</span></button>`;
       };
+      const friendCard = s => {
+        const isNear = near.includes(s.id);
+        const caption = isNear ? '🌿 곁에 둔 친구' : '🏠 우리에서 쉬는 중';
+        return `<div class="field-flock-item ${isNear ? 'is-nearby' : 'is-resting'}" data-flock-item="${esc(s.id)}">
+          ${card(s, 'data-flock-friend', caption)}
+          <div class="field-flock-item-actions">
+            <button type="button" class="btn small ${isNear ? 'ghost' : ''} field-flock-toggle" data-flock-toggle="${esc(s.id)}" aria-pressed="${isNear}">${isNear ? '우리로 보내기' : '곁에 두기'}</button>
+            <button type="button" class="btn small ghost field-flock-leave" data-flock-leave="${esc(s.id)}">떠나보내기</button>
+          </div>
+        </div>`;
+      };
       const modal = sheet('내 양', `${card(mine, 'data-flock-id', mine.lost ? '길을 잃었어' : growthStage(data, date()).label)}
         <h3 class="field-sub">놀러 온 친구들</h3>
         ${guests.length ? `<div class="field-flock-grid">${guests.map(v => card(v, 'data-flock-guest', '털 선물 받기')).join('')}</div>` :
           '<p class="field-sheet-meta">지금 놀러 온 친구가 없어.</p>'}
-        ${legacy.length ? `<h3 class="field-sub">함께 지낸 친구들</h3><div class="field-flock-grid">${legacy.map(s =>
-          card(s, 'data-flock-friend', '들판에서 인사하기')).join('')}</div>` : ''}`, 'field-flock-sheet');
+        ${legacy.length ? `<h3 class="field-sub">함께 지낸 친구들 <small class="field-sub-count">(곁에 ${near.length}/2)</small></h3>
+          <p class="field-sheet-meta field-flock-notice" data-flock-notice role="status">${esc(noticeText || '들판에는 친구를 2마리까지 곁에 둘 수 있어. 나머지는 우리에서 쉬어.')}</p>
+          <div class="field-flock-grid">${legacy.map(friendCard).join('')}</div>` : ''}`, 'field-flock-sheet');
       modal.querySelector('[data-flock-id]').onclick = () => {
         modal.close();
         if (!mine.lost && mode !== '2d') stageEl.scrollIntoView({ block: 'nearest' });
@@ -1840,9 +1975,53 @@
       modal.querySelectorAll('[data-flock-friend]').forEach(button => {
         button.onclick = () => {
           const friend = legacy.find(s => s.id === button.dataset.flockFriend);
+          if (!friend) return;
+          if (!nearbyIds(field()).includes(friend.id)) {
+            const noticeEl = modal.querySelector('[data-flock-notice]');
+            if (noticeEl) noticeEl.textContent = `${josa(friend.name, '이는은')} 지금 우리에서 쉬는 중이야. [곁에 두기]를 누르면 들판에 나와.`;
+            return;
+          }
           modal.close();
           focus(friend.id);
           showPersonality(friend, 'idle');
+        };
+      });
+      modal.querySelectorAll('[data-flock-toggle]').forEach(button => {
+        button.onclick = () => {
+          const d = ensure();
+          const friend = d.sheep.find(s => s.id === button.dataset.flockToggle && s.id !== d.mainId);
+          if (!friend) return;
+          const curNear = nearbyIds(d);
+          if (curNear.includes(friend.id)) {
+            d.nearby = curNear.filter(id => id !== friend.id);
+            Core.save();
+            Sound.sfx('select');
+            const msg = `${josa(friend.name, '이가')} 우리에서 쉬러 갔어.`;
+            render(msg);
+            flockSheet(msg);
+          } else if (curNear.length >= 2) {
+            Sound.sfx('boop');
+            const warn = '곁에 둘 수 있는 친구는 2마리까지야. 먼저 한 마리를 우리로 보내 줘.';
+            const noticeEl = modal.querySelector('[data-flock-notice]');
+            if (noticeEl) {
+              noticeEl.textContent = warn;
+              noticeEl.classList.add('is-warn');
+            }
+            showHoldFeedback(warn);
+          } else {
+            d.nearby = [...curNear, friend.id];
+            Core.save();
+            Sound.sfx('select');
+            const msg = `${josa(friend.name, '이를')} 들판 곁에 두었어.`;
+            render(msg);
+            flockSheet(msg);
+          }
+        };
+      });
+      modal.querySelectorAll('[data-flock-leave]').forEach(button => {
+        button.onclick = () => {
+          const friend = legacy.find(s => s.id === button.dataset.flockLeave);
+          if (friend) confirmLeaveFriend(friend);
         };
       });
     }
@@ -1979,33 +2158,59 @@
       const mine = mainSheep(data);
       const modal = sheet('이런 양들도 있어', `<div class="field-dex-grid">${DEX().map(s => {
         const own = s.id === mine.species;
-        const met = data.friendMet[s.id];
+        const met = data.friendMet[s.id] || data.departed?.[s.id];
         return `<button type="button" class="field-dex-cell ${s.rarity} ${own || met ? 'got' : ''}" data-dex="${s.id}">
           ${portraitHTML(s.id, { level: own ? mine.level : 5, wear: own ? mine.wear : null })}
-          <span>${esc(s.name)}</span>${own || met ? `<small>${own ? '내 양' : '만난 친구'}</small>` : ''}</button>`;
+          <span>${esc(s.name)}</span>${own || met ? `<small>${own ? '내 양' : '만난 양'}</small>` : ''}</button>`;
       }).join('')}</div>`, 'field-dex-sheet');
       modal.querySelectorAll('[data-dex]').forEach(button => { button.onclick = () => dexDetail(button.dataset.dex); });
     }
 
-    function dexDetail(speciesId) {
-      const data = field();
+    function dexDetail(speciesId, notice = '') {
+      const data = ensure();
       const sp = spec(speciesId);
-      const met = data.friendMet[sp.id];
+      const met = data.friendMet[sp.id] || data.departed?.[sp.id]?.born;
       const sheep = mainSheep(data);
       const own = sheep.species === sp.id;
+      const inFlock = data.sheep.find(s => s.id !== sheep.id && s.species === sp.id);
+      const parted = data.departed?.[sp.id];
+      const canRecall = !own && !inFlock && Boolean(parted);   // 떠나보낸 양만(손님으로 만난 양까지 공짜로 데려오면 기름 경제가 무너짐)
+      const today = date();
+      const recalledToday = data.recalledOn === today;
       const condition = sp.attract === 'cond:harp8' ? '하프를 놓고 친구 양 8번 맞이하기' : sp.cond;
-      const label = own ? '내 양' : met ? '만난 친구' : '';
+      const label = own ? '내 양' : met ? '만난 양' : '';
       const body = `<div class="field-visitor-card ${sp.rarity}">${portraitHTML(sp.id,
-        { level: own ? sheep.level : 5, wear: own ? sheep.wear : null }, 'big')}
+        { level: own ? sheep.level : (parted?.level || 5), wear: own ? sheep.wear : null }, 'big')}
         <h3>${esc(sp.name)} ${rarityBadge(sp)} ${label ? `<small class="field-main-tag">${label}</small>` : ''}</h3>
         <p class="field-visitor-desc">${esc(trait(sp.id))}</p>
         <p class="field-sheep-stage"><i class="field-wool-dot" style="--wool:${woolType(sp.wool).color}"></i> ${esc(woolType(sp.wool).name)}</p>
         ${sp.verse ? verseHTML(sp.verse) : ''}
         ${met ? `<p class="field-sheet-meta">처음 만난 날 ${esc(Core.dateLabel(met))}</p>` : ''}
         ${condition && (sp.attract !== 'cond:codes4' || (window.CODES || []).length) ?
-          `<p class="field-sheet-meta">${esc(condition)}</p>` : ''}</div>`;
+          `<p class="field-sheet-meta">${esc(condition)}</p>` : ''}
+        ${notice ? `<p class="field-sheet-meta field-recall-notice" data-recall-notice role="status">${esc(notice)}</p>` : ''}
+        ${canRecall ? `<button type="button" class="btn field-dex-recall" data-dex-recall="${esc(sp.id)}" ${recalledToday ? 'disabled' : ''}>${recalledToday ? '오늘 다시 데려왔어 (하루 1번)' : '다시 데려오기 · 무료'}</button>` : ''}</div>`;
       const modal = sheet(sp.name, body + '<button type="button" class="btn ghost field-dex-back">둘러보기로</button>', 'field-dex-detail');
       modal.querySelector('.field-dex-back').onclick = dexSheet;
+      modal.querySelector('[data-dex-recall]')?.addEventListener('click', () => {
+        const d = ensure();
+        if (d.recalledOn === today) return;
+        const p = d.departed?.[sp.id];
+        const restored = p
+          ? { ...newSheep(d, p.name || sp.name, sp.id), level: p.level || 5, born: p.born || today, care: p.care || 0 }
+          : { ...newSheep(d, sp.name, sp.id), level: 5 };
+        d.sheep.push(restored);
+        if (d.departed) delete d.departed[sp.id];
+        d.recalledOn = today;
+        Core.save();
+        Sound.sfx('select');
+        const msg = `${josa(restored.name, '이가')} 우리로 돌아왔어!`;
+        servedTonight = msg;
+        render(msg);
+        showHoldFeedback(msg);
+        Player.toast?.(msg);
+        dexDetail(sp.id, `${msg} 양 목록에서 곁에 둘 수 있어.`);
+      });
     }
 
     function shop(section = 'objects') {
@@ -2529,7 +2734,7 @@
         aria-label="${id ? esc(id) : (i < 8 ? '들판 칸 ' + (i + 1) : '하늘 칸 ' + (i - 7))} 선택" data-slot="${i}" ${allowed ? '' : 'disabled'}>
         ${id ? sprite(objects[id] || '') : '<span aria-hidden="true">+</span>'}</button>`;
     }).join('');
-    const flockHTML = data.sheep.slice(0, MAX_SHEEP).map((sheep, i) => {
+    const flockHTML = visibleSheep(data).slice(0, MAX_SHEEP).map((sheep, i) => {
       const [x, y] = pasture[i];
       if (sheep.lost && sheep.id === data.mainId && !trial) return '';
       return `<button type="button" class="field-sheep" style="${position(x, y)};--delay:${-i * 1.47}s;--drift:${i % 2 ? -12 : 12}px;z-index:${3 + Math.round(y / 40)}" data-sheep-id="${esc(sheep.id)}" ${sheep.id === data.mainId ? 'data-main' : ''} data-stage="${stage(sheep)}"
