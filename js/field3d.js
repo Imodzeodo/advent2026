@@ -2475,17 +2475,21 @@
       for (const side of [-1, 1]) {
         const row = inner ? 5.3 : 6.5;
         for (let i = 0; i < 4; i++) pillar(side * row, -6.5 + i * 2.8 + (seed % 3) * .18, inner ? 3.75 : 2.8);
-        cube(stone, side * 3.4, 2.1, -9.55, 2.8, 4.2, 1.18);
-        cube(edge, side * 1.71, 1.95, -8.94, .67, 3.9, .36);
+        if (!regional) {
+          cube(stone, side * 3.4, 2.1, -9.55, 2.8, 4.2, 1.18);
+          cube(edge, side * 1.71, 1.95, -8.94, .67, 3.9, .36);
+          cube(terra, side * 2.53, 2.44, -8.91, .42, 2.21, .07);
+          cube(edge, side * 2.53, 3.66, -8.9, .58, .08, .11);
+        }
       }
-      cube(door, 0, 1.9, -9.7, 3.38, 3.8, .69);
-      cube(windowLight, 0, 1.8, -9.29, inner ? 1.26 : .19, 3.55, .094);
-      cube(stone, 0, 4.32, -9.57, 9.0, .48, 1.6);
-      cube(edge, 0, 4.01, -8.69, 9.03, .17, .19);
-      cube(edge, 0, 4.78, -9.7, 9.45, .30, 1.75);
+      if (!regional) {
+        cube(door, 0, 1.9, -9.7, 3.38, 3.8, .69);
+        cube(windowLight, 0, 1.8, -9.29, inner ? 1.26 : .19, 3.55, .094);
+        cube(stone, 0, 4.32, -9.57, 9.0, .48, 1.6);
+        cube(edge, 0, 4.01, -8.69, 9.03, .17, .19);
+        cube(edge, 0, 4.78, -9.7, 9.45, .30, 1.75);
+      }
       for (const side of [-1, 1]) {
-        cube(terra, side * 2.53, 2.44, -8.91, .42, 2.21, .07);
-        cube(edge, side * 2.53, 3.66, -8.9, .58, .08, .11);
         at('등불 기둥', side * 4.55, -6.09, -.22 * side);
       }
       for (let i = 0; i < 3; i++) cube(edge, 0, .08 + i * .10, -8.1 - i * .38, 8.1 - i * .37, .16 + i * .20, .43);
@@ -3230,17 +3234,16 @@
         lamp(side * 13, 6.9, 1.02, true);
         if (!regional) olive(side * 15.7, -13, 1.45);
         home(side * 16.5, -20.7, 5.3);
-        if (regional && visual === 'sanctuary') continue;
+        if (regional) continue;
         box(wall, side * 4.65, elevation(-21, 3), -21, 3.65, 6, 1.7);
         box(cap, side * 2.8, elevation(-21, 2.96), -20.05, .68, 5.9, .58);
         box(fabric, side * 1.45, elevation(-21, 2.46), -20.75, 2.81, 4.9, .22);
         box(ochre, side * 3.91, elevation(-21, 4.52), -20.05, .51, 1.42, .1);
       }
-      if (!(regional && visual === 'sanctuary')) {
+      if (!regional) {
         box('@flame', 0, elevation(-21, 2.44), -20.89, .36, 4.82, .05);
         box(cap, 0, elevation(-21, 5.85), -21, 13.4, .49, 1.99);
         box(roofLine, 0, elevation(-21, 6.22), -21, 13.9, .40, 2.22);
-        if (regional) box('#d4a456', 0, elevation(-21, 6.44), -21, 14.05, .12, 2.34);
       }
       for (let x = -18; x <= 18; x += 2.7) for (let z = -19; z < 19; z += 2.6) {
         if (Math.abs(x) > 11 && z > 9) continue;
@@ -3268,11 +3271,11 @@
         }
         stall(6.85, 8.15, '#76618b');
       }
-      if (visual === 'sanctuary') {
+      if (visual === 'sanctuary' && !regional) {
         box(wood, 0, elevation(-18, .49), -18, 1.12, .98, .87);
         box(cap, 0, elevation(-18, 1.04), -18, 1.17, .12, .91);
         stop(0, -18, .67, 1.1); lamp(1.15, -18, 1.18, true, true);
-      } else lamp(-4.7, 6, 1.1, true, true);
+      } else if (visual !== 'sanctuary') lamp(-4.7, 6, 1.1, true, true);
     } else if (openCountry) {
       for (const side of [-1, 1]) {
         for (let i = 0; i < 27; i++) {
@@ -3404,6 +3407,8 @@
       rock(desert ? '#a78177' : night ? '#494568' : '#777d80', x, 1, z, 3.7 + rand() * 6, 4 + rand() * 8, 6, 0, i);
     }
     for (const [index, [opening, z]] of adventure.crossings.entries()) {
+      // 지역 성소의 북쪽 담 자리는 헤롯 성전 계단과 겹친다.
+      if (regional && visual === 'sanctuary' && z < 0) continue;
       for (let x = -23.25; x <= 23.4; x += 1.5) {
         if (Math.abs(x - opening) < 2.0) continue;
         const y = height(x, z), low = temple ? .53 : .43;
@@ -4017,7 +4022,10 @@
     };
   }
 
+  const TEMPLE_POSITION = [28, -32.5];
   const TEMPLE_STAIRS = { front: 4.04, tread: .47, rise: .185, count: 12, base: 1.19, width: 16.6 };
+  const TEMPLE_LANDING = { z: -.88, width: 17.12, depth: 10.28 };
+  const TEMPLE_ENTRY = TEMPLE_STAIRS.base + TEMPLE_STAIRS.count * TEMPLE_STAIRS.rise;
 
   function templeMount(scene, x, z, climate, groundAt) {
     const group = new T.Group();
@@ -4027,7 +4035,7 @@
     const ivory = night ? '#ded1cd' : '#faf0dc';
     const ash = night ? '#918b9e' : '#baa68f';
     const gold = '#dca45e', dark = '#352b43', flame = '#ffbf69';
-    const blocks = [], walls = [];
+    const blocks = [], walls = [], cameraWalls = [];
     const cube = new T.BoxGeometry(), jewel = new T.OctahedronGeometry(1), post = new T.CylinderGeometry(.85, 1, 1, 12);
     const shell = new Map(), trim = new Map(), far = new Map();
     const add = (batch, shape, color, ...pose) => {
@@ -4042,9 +4050,16 @@
     };
     const stone = (color, px, py, pz, width, height, depth) => box(color, px, py + height / 2, pz, width, height, depth);
     const boundary = (px, pz, width, depth) => walls.push([x + px, z + pz, width / 2 + .15, depth / 2 + .15]);
+    function structureWall(px, y, pz, width, height, depth, blocksWalking = true) {
+      if (blocksWalking) boundary(px, pz, width, depth);
+      cameraWalls.push(new T.Box3(
+        new T.Vector3(x + px - width / 2, y, z + pz - depth / 2),
+        new T.Vector3(x + px + width / 2, y + height, z + pz + depth / 2)
+      ).expandByScalar(.10));
+    }
     const colors = ['#93869a', ash, '#b4a49f', '#bba999'];
     const { front, tread, rise, count, base: deck, width: stairWidth } = TEMPLE_STAIRS;
-    const entry = deck + count * rise, roof = entry + 24.2;
+    const entry = TEMPLE_ENTRY, roof = entry + 24.2;
     const face = front - .12, doorHalf = 3.24, doorTop = entry + 13.35;
     tower(ash, 0, -.71, -.65, 44, 3.7, 25.1);
     tower(ivory, 0, 1.07, -.65, 44.3, .24, 25.4);
@@ -4065,8 +4080,9 @@
       box('#c1ad9d', 0, (top + deck) / 2, pz, stairWidth + j * .15, top - deck, tread + .018);
       box(ivory, 0, top - .031, pz, stairWidth + j * .15 + .09, .063, tread + .055);
     }
-    tower(ash, 0, (entry + deck) / 2, -.88, 16.9, entry - deck, 10.2);
-    tower(ivory, 0, entry - .08, -.88, 17.12, .16, 10.28);
+    const landing = TEMPLE_LANDING;
+    tower(ash, 0, (entry + deck) / 2, landing.z, landing.width - .22, entry - deck, landing.depth - .08);
+    tower(ivory, 0, entry - .08, landing.z, landing.width, .16, landing.depth);
 
     // The broad upper front overhangs the narrower body behind it.
     const bodyWidth = 16.4, shoulderWidth = 24.2, shoulderY = entry + 15.22, frontDepth = 4.15;
@@ -4303,8 +4319,11 @@
       const [px, base, pz, top] = columns[Math.floor(i / 2)];
       obj.position.set(px, i % 2 ? base + .09 : top - .21, pz); obj.scale.set(.71, .18, .72);
     });
-    boundary(0, -4.77, 16.7, 7.15);
-    for (const side of [-1, 1]) boundary(side * pierX, midZ, bodyPier, frontDepth);
+    structureWall(0, entry, -4.77, 16.7, roof - entry, 7.15);
+    for (const side of [-1, 1]) structureWall(side * pierX, entry, midZ, bodyPier, doorTop - entry, frontDepth);
+    structureWall(0, entry, face - .58, doorHalf * 2, doorTop - entry, .36);
+    structureWall(0, doorTop, midZ, bodyWidth, roof - doorTop, frontDepth, false);
+    structureWall(0, shoulderY, midZ - .05, shoulderWidth, roof - shoulderY, frontDepth - .1, false);
     const decoration = new T.Group(), near = new T.Group(), distant = new T.Group();
     group.add(near, distant);
     near.add(decoration, shafts, capitals, spill, entranceLight, ...group.children.filter(obj => obj.isSprite));
@@ -4345,8 +4364,21 @@
     birds.frustumCulled = false;
     near.add(birds);
     robeGeo.dispose(); cube.dispose(); post.dispose(); jewel.dispose();
+    const cameraRay = new T.Raycaster().ray, cameraHit = new T.Vector3();
     return {
       walls, blocks, title: '예루살렘 성전',
+      door: [x, z + front + .28],
+      clipCamera(from, to) {
+        const distance = cameraRay.direction.subVectors(to, from).length();
+        if (distance < .01) return;
+        cameraRay.origin.copy(from);
+        cameraRay.direction.multiplyScalar(1 / distance);
+        let limit = distance;
+        for (const wall of cameraWalls) {
+          if (cameraRay.intersectBox(wall, cameraHit)) limit = Math.min(limit, cameraHit.distanceTo(from));
+        }
+        if (limit < distance) cameraRay.at(Math.max(.03, limit - .12), to);
+      },
       dispose() { spill.material.map.dispose(); spill.material.dispose(); },
       shot: [x + 3.2, z + 44.8], look: [x, 12.65, z + .4], height: 2.1, lowHeight: .84, push: 2.3,
       trigger(px, pz, site) {
@@ -4521,13 +4553,15 @@
       const part = partAt(x, z);
       const base = part ? part.local.height(x - part.site.offset[0], z - part.site.offset[1]) : exterior(x, z);
       if (!jerusalem) return base;
-      const dx = x + ox - 28, dz = z + oz + 32.5;
+      const dx = x + ox - TEMPLE_POSITION[0], dz = z + oz - TEMPLE_POSITION[1];
       const { front, tread, count, rise, base: deck, width } = TEMPLE_STAIRS;
       if (dz >= front && dz < front + tread * count) {
         const stair = Math.floor((dz - front) / tread);
-        if (Math.abs(dx) < (width + stair * .15) / 2) return Math.max(base, deck + (count - stair) * rise);
+        if (Math.abs(dx) < (width + stair * .15) / 2) return deck + (count - stair) * rise;
       }
-      if (Math.abs(dx) < 21.99 && dz >= -13.2 && dz < 11.9) return Math.max(base, 1.19);
+      const landing = TEMPLE_LANDING;
+      if (Math.abs(dx) < landing.width / 2 && Math.abs(dz - landing.z) < landing.depth / 2) return TEMPLE_ENTRY;
+      if (Math.abs(dx) < 21.99 && dz >= -13.2 && dz < 11.9) return Math.max(base, deck);
       return base;
     };
     const density = .94;
@@ -4655,17 +4689,16 @@
         wallAt(px, entranceZ, 1.73, .96, 1.08);
         add(stone, cap, px, py + 1.18, entranceZ, .35, .20, .35);
       }
-      if (site.extension || jerusalem && site.key === 'sanctuary') continue;
+      if (site.extension || jerusalem && ['temple', 'sanctuary'].includes(site.key)) continue;
       const inward = site.x <= 0 ? 1 : -1;
       const lx = x + inward * (r + 3.7), lz = z - towardsRoad * Math.min(r - 3, inward > 0 ? 9 : 3);
       const y = height(lx, lz);
-      if (['temple', 'sanctuary', 'gate'].includes(site.key)) {
-        const tower = site.key === 'gate', tall = tower ? 7.8 : 5.35;
-        add(cube, wall, lx, y + tall * .5, lz, tower ? 4.2 : 6, tall, 3.8);
-        add(cube, cap, lx, y + tall, lz, tower ? 4.6 : 7.2, .48, 4.4);
+      if (site.key === 'gate') {
+        const tall = 7.8;
+        add(cube, wall, lx, y + tall * .5, lz, 4.2, tall, 3.8);
+        add(cube, cap, lx, y + tall, lz, 4.6, .48, 4.4);
         for (const dx of [-2.6, -1.3, 0, 1.3, 2.6]) {
-          if (tower) add(cube, wall, lx + dx * .71, y + tall + .41, lz + 1.5, .54, .69, .59);
-          else add(column, cap, lx + dx, y + tall * .45, lz + 2.25, .27, tall * .9, .27);
+          add(cube, wall, lx + dx * .71, y + tall + .41, lz + 1.5, .54, .69, .59);
         }
         blocks.push([lx, lz, 2.6, tall + .8]);
       } else if (site.key === 'stable' || site.key === 'field') {
@@ -4772,7 +4805,7 @@
       star.scale.setScalar(3.7);
       scene.add(star);
     }
-    const temple = jerusalem ? templeMount(scene, ...positionOf([28, -32.5]), climate, height) : null;
+    const temple = jerusalem ? templeMount(scene, ...positionOf(TEMPLE_POSITION), climate, height) : null;
     if (temple) {
       blocks.push(...temple.blocks);
       const city = seeded(1072);
@@ -6295,6 +6328,7 @@
         look: '살펴보기', touch: '만져 보기', try: '해 보기', person: '말하기',
         verse: '읽기', photo: '사진 찍기', exit: '가기'
       }[marker.type] || '살펴보기';
+      if (marker.type === 'temple-door') return `👀 ${title}`;
       if (marker.discoverId === 'millstone') return '🛠 맷돌 돌려 보기';
       if (marker.id === 'path/bush') return '✋ 수풀 흔들어 보기';
       if (marker.id === 'path/game') return seated ? '👀 자리에서 일어나기' : '👀 공기놀이 옆에 앉기';
@@ -6532,6 +6566,9 @@
     const scenicMarkers = region ? pathPlay.markers.concat(life.markers, storyShortcuts, world.viewpoints.map((viewpoint, i) => ({
       id: 'viewpoint/' + i, type: 'photo', title: viewpoint.title, symbol: '📷', pos: viewpoint.pos, viewpoint
     }))) : [];
+    if (world.temple) scenicMarkers.push({
+      id: 'temple-door', type: 'temple-door', title: '성소 문', symbol: '👀', pos: world.temple.door, quiet: true
+    });
     function ridingSheepSpot(p) {
       for (const offset of [-.55, .55, -1.4, 1.4]) {
         const angle = leader.rotation.y + offset;
@@ -7476,7 +7513,6 @@
       camPosition.set(target.x + Math.sin(orbit) * 4.3, target.y + 1.7, target.z + Math.cos(orbit) * 4.3);
       camera.position.lerp(camPosition, reduced ? 1 : Math.min(1, delta * 5));
       aim.copy(target);
-      camera.lookAt(aim); camera.updateMatrixWorld();
       return true;
     }
     function checkNearbyDiscover(p) {
@@ -7791,9 +7827,12 @@
         camPosition.set(target.x + Math.sin(az) * distance, target.y + (room ? 4.1 : gazing ? 2.1 : adventure ? 4.45 + vistaBlend * vistaLift : 3.85), target.z + Math.cos(az) * distance);
         camera.position.copy(camPosition);
         aim.copy(target);
+      }
+      if (cinematic) useLandmarkCamera(now);
+      else {
+        if (world.temple) world.temple.clipCamera(spot.set(p.x, p.y + 1.58, p.z), camera.position);
         camera.lookAt(aim); camera.updateMatrixWorld();
       }
-      useLandmarkCamera(now);
       for (const { axis, side, group } of world.walls || []) {
         group.visible = side * camera.position[axis] < world.bounds[axis] - .13;
       }

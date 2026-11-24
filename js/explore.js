@@ -3139,6 +3139,7 @@
       if (dead || changingRoom || watching || curtain?.open) return;
       const marker = shown.find(m => m.id === markerId);
       if (!marker) return;
+      if (marker.type === 'temple-door') return card(marker.title, '성소 안에는 제비 뽑힌 제사장만 들어갈 수 있었어. (눅 1:9)');
       if (marker.type === 'house-door') return changeRoom(marker.house || null);
       if (marker.viewpoint) return photo(marker.viewpoint);
       if (marker.pathPlay) return view?.playAt(marker.id);
